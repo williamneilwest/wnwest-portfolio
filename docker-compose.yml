@@ -1,0 +1,10 @@
+services:
+  wnwest:
+    build: .
+    container_name: wnwest-portfolio
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true
