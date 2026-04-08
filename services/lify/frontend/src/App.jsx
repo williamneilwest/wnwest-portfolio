@@ -26,21 +26,25 @@ const products = [
     name: 'Infrastructure Core',
     description: 'Caddy, Portainer, code-server, and Jupyter provide the control layer that keeps the platform maintainable.',
     accent: 'from-cyan-400/30 via-sky-300/10 to-transparent',
+    href: '/stack',
   },
   {
     name: 'AI Layer',
     description: 'OpenWebUI, ai-gateway, and custom services like kitchen-ai make model access part of the system, not a side integration.',
     accent: 'from-emerald-400/30 via-teal-300/10 to-transparent',
+    href: 'https://chat.wnwest.com',
   },
   {
     name: 'Home Systems',
     description: 'Grocy, Mealie, barcode flows, and future Home Assistant integrations connect the stack to real daily workflows.',
     accent: 'from-amber-300/25 via-orange-200/10 to-transparent',
+    href: 'https://pantry.wnwest.com',
   },
   {
     name: 'Media and Downloads',
     description: 'Plex, torrents, filebrowser, and Minecraft run as first-class services instead of disconnected experiments.',
     accent: 'from-fuchsia-400/25 via-pink-300/10 to-transparent',
+    href: 'https://files.wnwest.com',
   },
 ]
 
@@ -67,21 +71,226 @@ const highlights = [
   },
 ]
 
-const services = [
-  { name: 'wnwest.com', role: 'main app surface', detail: 'Product, docs, and portfolio frontend' },
-  { name: 'ai.wnwest.com', role: 'model gateway', detail: 'OpenAI-style internal API access' },
-  { name: 'chat.wnwest.com', role: 'AI workspace', detail: 'Browser UI for model interaction' },
-  { name: 'pantry.wnwest.com', role: 'inventory', detail: 'Grocy-powered household system' },
-  { name: 'recipes.wnwest.com', role: 'meal planning', detail: 'Recipe library and food workflows' },
-  { name: 'files.wnwest.com', role: 'storage browser', detail: 'Filebrowser for media and shared data' },
-]
-
 const metrics = [
   { value: '19', label: 'service directories' },
   { value: '10', label: 'durable data paths' },
   { value: '1', label: 'unified platform repo' },
   { value: '24/7', label: 'self-hosted mindset' },
 ]
+
+const featuredLinks = [
+  { label: 'Main site', href: 'https://wnwest.com' },
+  { label: 'AI chat', href: 'https://chat.wnwest.com' },
+  { label: 'Pantry', href: 'https://pantry.wnwest.com' },
+  { label: 'Recipes', href: 'https://recipes.wnwest.com' },
+]
+
+const serviceDirectory = [
+  {
+    id: 'lify',
+    name: 'lify',
+    status: 'public',
+    summary: 'Main app stack and public landing page.',
+    details: 'Serves wnwest.com and www.wnwest.com through the lify-frontend container, with API traffic available separately.',
+    role: 'main app surface',
+    uiUrl: 'https://wnwest.com',
+    extraUrl: 'https://www.wnwest.com',
+    apiUrl: 'https://api.wnwest.com',
+    docsUrl: '/services/lify/README.md',
+  },
+  {
+    id: 'caddy',
+    name: 'caddy',
+    status: 'infra',
+    summary: 'Reverse proxy and TLS edge for the platform.',
+    details: 'Handles browser-facing traffic and routes requests to the right service.',
+    role: 'edge routing',
+    docsUrl: '/services/caddy/README.md',
+  },
+  {
+    id: 'ai-gateway',
+    name: 'ai-gateway',
+    status: 'active',
+    summary: 'Internal OpenAI-style gateway.',
+    details: 'Provides model API access for internal apps and services.',
+    role: 'model gateway',
+    uiUrl: 'https://ai.wnwest.com',
+    docsUrl: '/services/ai-gateway/README.md',
+  },
+  {
+    id: 'openwebui',
+    name: 'openwebui',
+    status: 'public',
+    summary: 'Browser chat UI for AI interaction.',
+    details: 'Connects to ai-gateway for a cleaner model experience on the web.',
+    role: 'AI workspace',
+    uiUrl: 'https://chat.wnwest.com',
+    docsUrl: '/services/openwebui/README.md',
+  },
+  {
+    id: 'kitchen-ai',
+    name: 'kitchen-ai',
+    status: 'active',
+    summary: 'Custom kitchen and household automation service.',
+    details: 'A flexible custom app area for domain-specific AI and automation workflows.',
+    role: 'custom app',
+    uiUrl: 'https://kitchen-ai.wnwest.com',
+    docsUrl: '/services/kitchen-ai/README.md',
+  },
+  {
+    id: 'grocy',
+    name: 'grocy',
+    status: 'public',
+    summary: 'Household inventory and pantry management.',
+    details: 'Tracks pantry items and supports practical inventory workflows.',
+    role: 'inventory',
+    uiUrl: 'https://pantry.wnwest.com',
+    docsUrl: '/services/grocy/README.md',
+  },
+  {
+    id: 'mealie',
+    name: 'mealie',
+    status: 'public',
+    summary: 'Recipe management and meal planning.',
+    details: 'Stores recipes and supports planning around household food workflows.',
+    role: 'recipes',
+    uiUrl: 'https://recipes.wnwest.com',
+    docsUrl: '/services/mealie/README.md',
+  },
+  {
+    id: 'barcode-intake',
+    name: 'barcode-intake',
+    status: 'active',
+    summary: 'Barcode scanner ingestion service.',
+    details: 'Consumes host scanner input and pushes actions into Grocy.',
+    role: 'automation',
+    docsUrl: '/services/barcode-intake/README.md',
+  },
+  {
+    id: 'filebrowser',
+    name: 'filebrowser',
+    status: 'public',
+    summary: 'Web file browser for storage and media.',
+    details: 'Exposes mounted content through a simple browser interface.',
+    role: 'storage browser',
+    uiUrl: 'https://files.wnwest.com',
+    docsUrl: '/services/filebrowser/README.md',
+  },
+  {
+    id: 'plex',
+    name: 'plex',
+    status: 'public',
+    summary: 'Media server with persistent library state.',
+    details: 'Runs on host networking and remains part of the public service surface.',
+    role: 'media streaming',
+    uiUrl: 'https://plex.wnwest.com',
+    docsUrl: '/services/plex/README.md',
+  },
+  {
+    id: 'torrents',
+    name: 'torrents',
+    status: 'public',
+    summary: 'VPN-backed gluetun and qBittorrent stack.',
+    details: 'Handles downloads through a dedicated VPN-routed service pair.',
+    role: 'downloads',
+    uiUrl: 'https://torrent.wnwest.com',
+    docsUrl: '/services/torrents/README.md',
+  },
+  {
+    id: 'minecraft',
+    name: 'minecraft',
+    status: 'active',
+    summary: 'Forge server with persistent world data.',
+    details: 'Runs as a dedicated game service with durable storage and exposed game port.',
+    role: 'game server',
+    docsUrl: '/services/minecraft/README.md',
+  },
+  {
+    id: 'portainer',
+    name: 'portainer',
+    status: 'public',
+    summary: 'Docker management UI.',
+    details: 'Used for container, volume, and network visibility and control.',
+    role: 'ops UI',
+    uiUrl: 'https://portainer.wnwest.com',
+    docsUrl: '/services/portainer/README.md',
+  },
+  {
+    id: 'code-server',
+    name: 'code-server',
+    status: 'public',
+    summary: 'Browser-based development workspace.',
+    details: 'Provides direct access to a development environment against the host filesystem.',
+    role: 'dev environment',
+    uiUrl: 'https://code.wnwest.com',
+    docsUrl: '/services/code-server/README.md',
+  },
+  {
+    id: 'jupyter',
+    name: 'jupyter',
+    status: 'public',
+    summary: 'Notebook workspace for experiments.',
+    details: 'Supports scratch analysis, data work, and exploratory coding.',
+    role: 'notebooks',
+    uiUrl: 'https://jupyter.wnwest.com',
+    docsUrl: '/services/jupyter/README.md',
+  },
+  {
+    id: 'github-sync',
+    name: 'github-sync',
+    status: 'active',
+    summary: 'Scheduled repository mirror.',
+    details: 'Keeps configured Git content synced into local storage.',
+    role: 'automation',
+    docsUrl: '/services/github-sync/README.md',
+  },
+  {
+    id: 'homeassistant',
+    name: 'homeassistant',
+    status: 'scaffold',
+    summary: 'Reserved future Home Assistant boundary.',
+    details: 'The target layout exists, but the service is intentionally not live in this stack yet.',
+    role: 'future automation',
+    docsUrl: '/services/homeassistant/README.md',
+  },
+  {
+    id: 'samba',
+    name: 'samba',
+    status: 'scaffold',
+    summary: 'Reserved future SMB sharing service.',
+    details: 'Present as part of the platform plan, but not currently exposed as a live service.',
+    role: 'future storage',
+    docsUrl: '/services/samba/README.md',
+  },
+  {
+    id: 'dashy',
+    name: 'dashy',
+    status: 'scaffold',
+    summary: 'Reserved future dashboard surface.',
+    details: 'A placeholder for a future dashboard or launch surface within the platform.',
+    role: 'future dashboard',
+    docsUrl: '/services/dashy/README.md',
+  },
+]
+
+const statusStyles = {
+  public: 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100',
+  active: 'border-cyan-300/25 bg-cyan-300/10 text-cyan-100',
+  infra: 'border-violet-300/25 bg-violet-300/10 text-violet-100',
+  scaffold: 'border-white/15 bg-white/5 text-slate-300',
+}
+
+function ExternalArrow() {
+  return <span aria-hidden="true">↗</span>
+}
+
+function StatusPill({ status }) {
+  return (
+    <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${statusStyles[status] || statusStyles.active}`}>
+      {status}
+    </span>
+  )
+}
 
 function Logo() {
   return (
@@ -173,6 +382,20 @@ function Home() {
                   View repository
                 </a>
               </div>
+
+              <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-300">
+                {featuredLinks.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-cyan-200/35 hover:bg-white/[0.08] hover:text-white"
+                  >
+                    {item.label} <ExternalArrow />
+                  </a>
+                ))}
+              </div>
             </div>
 
             <div className="relative">
@@ -244,16 +467,22 @@ function Home() {
 
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
             {products.map((product) => (
-              <article
+              <a
                 key={product.name}
+                href={product.href}
+                target={product.href.startsWith('http') ? '_blank' : undefined}
+                rel={product.href.startsWith('http') ? 'noreferrer' : undefined}
                 className={`group relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/50 p-8 transition hover:-translate-y-1 hover:border-white/20`}
               >
                 <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-r ${product.accent}`} />
                 <div className="relative">
                   <h3 className="text-2xl font-medium text-white">{product.name}</h3>
                   <p className="mt-4 max-w-xl leading-7 text-slate-300">{product.description}</p>
+                  <div className="mt-5 text-sm font-medium text-cyan-200">
+                    Open {product.href.startsWith('http') ? <ExternalArrow /> : '->'}
+                  </div>
                 </div>
-              </article>
+              </a>
             ))}
           </div>
         </div>
@@ -329,26 +558,96 @@ function Stack() {
           <SectionHeading
             eyebrow="Stack"
             title="The current service layer"
-            body="A compact view of the public-facing routes and the jobs they do inside the platform. This stays intentionally selective so the page remains useful instead of turning into raw inventory."
+            body="Every service directory in westOS is listed here with its role, current state, docs, and UI link when a surface exists."
           />
 
           <div className="rounded-[32px] border border-white/10 bg-white/[0.035] p-4 backdrop-blur">
             <div className="grid gap-3">
-              {services.map((service) => (
+              {featuredLinks.map((item) => (
                 <article
-                  key={service.name}
+                  key={item.label}
                   className="grid gap-3 rounded-[24px] border border-white/8 bg-slate-950/45 px-5 py-5 sm:grid-cols-[1.1fr_0.7fr_1fr] sm:items-center"
                 >
                   <div>
-                    <p className="text-sm font-medium text-white">{service.name}</p>
-                    <p className="mt-1 text-sm text-slate-400">{service.detail}</p>
+                    <p className="text-sm font-medium text-white">{item.label}</p>
+                    <p className="mt-1 text-sm text-slate-400">{item.href.replace('https://', '')}</p>
                   </div>
-                  <div className="text-sm uppercase tracking-[0.22em] text-cyan-200/80">{service.role}</div>
-                  <div className="text-sm text-slate-300">part of the broader `westOS` service graph</div>
+                  <div className="text-sm uppercase tracking-[0.22em] text-cyan-200/80">public link</div>
+                  <a href={item.href} target="_blank" rel="noreferrer" className="text-sm text-slate-300 transition hover:text-white">
+                    Open <ExternalArrow />
+                  </a>
                 </article>
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="mt-2 grid gap-5">
+          {serviceDirectory.map((service) => (
+            <article key={service.id} className="rounded-[32px] border border-white/10 bg-white/[0.035] p-6 backdrop-blur">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-2xl font-medium text-white">{service.name}</h3>
+                    <StatusPill status={service.status} />
+                  </div>
+                  <p className="mt-4 text-base leading-7 text-slate-300">{service.summary}</p>
+                  <p className="mt-3 text-sm leading-7 text-slate-400">{service.details}</p>
+                </div>
+
+                <div className="rounded-[24px] border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-slate-300">
+                  <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Role</div>
+                  <div className="mt-2 text-white">{service.role}</div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {service.uiUrl ? (
+                  <a
+                    href={service.uiUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white transition hover:border-cyan-200/35 hover:bg-white/[0.1]"
+                  >
+                    Open UI <ExternalArrow />
+                  </a>
+                ) : (
+                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-400">
+                    No direct UI
+                  </span>
+                )}
+
+                {service.extraUrl ? (
+                  <a
+                    href={service.extraUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+                  >
+                    Alternate host <ExternalArrow />
+                  </a>
+                ) : null}
+
+                {service.apiUrl ? (
+                  <a
+                    href={service.apiUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+                  >
+                    API endpoint <ExternalArrow />
+                  </a>
+                ) : null}
+
+                <a
+                  href={service.docsUrl}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+                >
+                  Service docs
+                </a>
+              </div>
+            </article>
+          ))}
         </div>
 
         <div className="rounded-[36px] border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] px-8 py-10">
