@@ -1,0 +1,27 @@
+services:
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./data:/data
+      - ./config:/config
+    environment:
+      - TZ=America/Denver
+    networks:
+      - westOS
+      - homelab
+
+networks:
+  westOS:
+    external: true
+    name: westOS
+  homelab:
+    external: true
+    name: homelab

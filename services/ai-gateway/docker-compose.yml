@@ -1,0 +1,16 @@
+services:
+  ai-gateway:
+    container_name: ai-gateway
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5010:5000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

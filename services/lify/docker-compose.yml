@@ -1,0 +1,24 @@
+services:
+  lify:
+    container_name: lify
+    build:
+      context: ./backend
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    networks:
+      - westOS
+  lify-frontend:
+    container_name: lify-frontend
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

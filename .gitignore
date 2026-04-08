@@ -1,0 +1,10 @@
+node_modules/
+venv/
+.env
+.idea/
+.codex
+data/
+backups/
+services/caddy/data/
+services/caddy/config/
+services/portainer/data/

@@ -1,0 +1,15 @@
+services:
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+      - VERSION=docker
+    network_mode: host
+    volumes:
+      - ../../data/plex:/config
+      - /mnt/media:/media
+      - /home/will/homelab/torrents/downloads:/downloads

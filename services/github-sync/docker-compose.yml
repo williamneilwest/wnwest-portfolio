@@ -1,0 +1,21 @@
+services:
+  github-sync:
+    image: registry.k8s.io/git-sync/git-sync:v4.1.0
+    container_name: github-sync
+    restart: unless-stopped
+    environment:
+      - GIT_SYNC_REPO=https://github.com/williamneilwest/NullTechSolutions.git
+      - GIT_SYNC_BRANCH=main
+      - GIT_SYNC_ROOT=/repos
+      - GIT_SYNC_DEST=nulltech
+      - GIT_SYNC_WAIT=30
+      - GIT_SYNC_ONE_TIME=false
+    volumes:
+      - /home/will/repos:/repos
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

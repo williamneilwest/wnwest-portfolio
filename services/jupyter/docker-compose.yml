@@ -1,0 +1,18 @@
+services:
+  jupyter:
+    container_name: jupyter
+    image: jupyter/datascience-notebook:latest
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../../data/jupyter/notebooks:/home/jovyan/work
+    environment:
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

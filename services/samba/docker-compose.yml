@@ -1,0 +1,6 @@
+services: {}
+
+networks:
+  westOS:
+    external: true
+    name: westOS

@@ -1,0 +1,18 @@
+services:
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+    volumes:
+      - /home/will:/home/coder/project
+    expose:
+      - "8080"
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

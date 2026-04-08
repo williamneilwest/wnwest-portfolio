@@ -1,0 +1,81 @@
+home.wnwest.com {
+    reverse_proxy homepage:3000
+}
+
+ha.wnwest.com {
+    reverse_proxy 10.0.0.21:8123
+}
+
+plex.wnwest.com {
+    reverse_proxy host.docker.internal:32400
+}
+
+portainer.wnwest.com {
+    reverse_proxy portainer:9000
+}
+
+cockpit.wnwest.com {
+    reverse_proxy https://host.docker.internal:9090 {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+
+hb.wnwest.com {
+    reverse_proxy 10.0.0.10:8581
+}
+
+files.wnwest.com {
+    reverse_proxy filebrowser:80
+}
+
+jupyter.wnwest.com {
+    reverse_proxy jupyter:8888
+}
+
+api.wnwest.com {
+    reverse_proxy lify:5000
+}
+
+ai.wnwest.com {
+    reverse_proxy ai-gateway:5000
+}
+
+chat.wnwest.com {
+    reverse_proxy openwebui:8080
+}
+
+pantry.wnwest.com {
+    reverse_proxy grocy:80
+}
+
+kitchen-ai.wnwest.com {
+    reverse_proxy kitchen-ai:5000
+}
+
+recipes.wnwest.com {
+    reverse_proxy mealie:9000
+}
+
+torrent.wnwest.com {
+    reverse_proxy host.docker.internal:8085
+}
+
+wnwest.com, www.wnwest.com {
+    reverse_proxy lify-frontend:80
+}
+
+life.wnwest.com {
+    handle /api/* {
+        reverse_proxy lify:5000
+    }
+
+    handle {
+        reverse_proxy lify-frontend:80
+    }
+}
+
+code.wnwest.com {
+    reverse_proxy code-server:8080
+}

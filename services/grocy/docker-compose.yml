@@ -1,0 +1,20 @@
+services:
+  grocy:
+    image: lscr.io/linuxserver/grocy:latest
+    container_name: grocy
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+    volumes:
+      - ../../data/grocy:/config
+    expose:
+      - "80"
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

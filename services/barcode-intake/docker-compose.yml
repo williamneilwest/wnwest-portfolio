@@ -1,0 +1,20 @@
+services:
+  barcode-intake:
+    container_name: barcode-intake
+    build: .
+    restart: unless-stopped
+    environment:
+      GROCY_API_KEY: ${GROCY_API_KEY}
+      GROCY_URL: ${GROCY_URL:-http://grocy/api}
+    devices:
+      - /dev/input/event13:/dev/input/event13
+    volumes:
+      - /dev/input:/dev/input
+    privileged: true
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

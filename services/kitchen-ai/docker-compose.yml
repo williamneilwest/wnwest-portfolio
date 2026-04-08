@@ -1,0 +1,14 @@
+services:
+  kitchen-ai:
+    container_name: kitchen-ai
+    build: .
+    restart: unless-stopped
+    expose:
+      - "5000"
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

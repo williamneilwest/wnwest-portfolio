@@ -1,0 +1,18 @@
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    restart: unless-stopped
+    volumes:
+      - ../../data/openwebui:/app/backend/data
+    environment:
+      - OPENAI_API_BASE_URL=http://ai-gateway:5000
+    expose:
+      - "8080"
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

@@ -1,0 +1,19 @@
+services:
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:latest
+    container_name: mealie
+    restart: unless-stopped
+    volumes:
+      - ../../data/mealie:/app/data
+    environment:
+      - ALLOW_SIGNUP=false
+      - TZ=America/Denver
+    expose:
+      - "9000"
+    networks:
+      - westOS
+
+networks:
+  westOS:
+    external: true
+    name: westOS

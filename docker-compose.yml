@@ -1,0 +1,261 @@
+services:
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    user: "0:0"
+    expose:
+      - "3000"
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=*
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - homelab
+
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+      - VERSION=docker
+    volumes:
+      - ./plex/config:/config
+      - /mnt/media:/media
+      - /home/will/homelab/torrents/downloads:/downloads
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    expose:
+      - "9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer/data:/data
+    networks:
+      - homelab
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    environment:
+      - TZ=America/Denver
+    networks:
+      - homelab
+
+  grocy:
+    image: lscr.io/linuxserver/grocy:latest
+    container_name: grocy
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+    volumes:
+      - ./grocy/config:/config
+    expose:
+      - "80"
+    networks:
+      - homelab
+
+  kitchen-ai:
+    container_name: kitchen-ai
+    build: ./kitchen-ai
+    restart: unless-stopped
+    expose:
+      - "5000"
+    networks:
+      - homelab
+
+  barcode-intake:
+    container_name: barcode-intake
+    build: ./barcode-intake
+    restart: unless-stopped
+    environment:
+      GROCY_API_KEY: ${GROCY_API_KEY}
+      GROCY_URL: ${GROCY_URL:-http://grocy/api}
+    devices:
+      - /dev/input/event13:/dev/input/event13
+    volumes:
+      - /dev/input:/dev/input
+    privileged: true
+    networks:
+      - homelab
+
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "1000:1000"
+    volumes:
+      - /mnt/media:/srv
+      - ./filebrowser/database/filebrowser.db:/database.db
+      - ./filebrowser/config:/config
+    command: >
+      --database /database.db
+      --config /config/settings.json
+      --root /srv
+    expose:
+      - "80"
+    networks:
+      - homelab
+
+  jupyter:
+    container_name: jupyter
+    image: jupyter/datascience-notebook:latest
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./jupyter/notebooks:/home/jovyan/work
+    environment:
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
+    networks:
+      - homelab
+
+  flask:
+    container_name: flask
+    build: ./flask
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    networks:
+      - homelab
+
+  ai-gateway:
+    container_name: ai-gateway
+    build: ./ai-gateway
+    restart: unless-stopped
+    ports:
+      - "5010:5000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - homelab
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    restart: unless-stopped
+    volumes:
+      - ./openwebui:/app/backend/data
+    environment:
+      - OPENAI_API_BASE_URL=http://ai-gateway:5000
+    expose:
+      - "8080"
+    networks:
+      - homelab
+
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:latest
+    container_name: mealie
+    restart: unless-stopped
+    volumes:
+      - ./mealie/data:/app/data
+    environment:
+      - ALLOW_SIGNUP=false
+      - TZ=America/Denver
+    networks:
+      - homelab
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+      - "6881:6881"
+      - "6881:6881/udp"
+    volumes:
+      - /home/will/homelab/torrents/config:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - SERVER_COUNTRIES=United States
+      - TZ=America/Denver
+  qbittorrent:
+    image: ghcr.io/hotio/qbittorrent
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+      - WEBUI_PORT=8080
+
+    volumes:
+      - /home/will/homelab/torrents/config:/config
+      - /home/will/homelab/torrents/downloads:/downloads
+  github-sync:
+    image: registry.k8s.io/git-sync/git-sync:v4.1.0
+    container_name: github-sync
+    restart: unless-stopped
+    environment:
+      - GIT_SYNC_REPO=https://github.com/williamneilwest/NullTechSolutions.git
+      - GIT_SYNC_BRANCH=main
+      - GIT_SYNC_ROOT=/repos
+      - GIT_SYNC_DEST=nulltech
+      - GIT_SYNC_WAIT=30
+      - GIT_SYNC_ONE_TIME=false
+    volumes:
+      - /home/will/repos:/repos
+  minecraft:
+    image: itzg/minecraft-server:java17
+    container_name: minecraft
+    restart: unless-stopped
+
+    ports:
+      - "25565:25565"
+
+    environment:
+      EULA: "TRUE"
+
+      TYPE: "FORGE"
+      VERSION: "1.19.2"
+      FORGE_VERSION: "43.2.6"
+      MEMORY: "6G"
+      USE_AIKAR_FLAGS: "true"
+      SKIP_SERVER_PROPERTIES: "false"
+      ENABLE_ROLLING_LOGS: "true"
+
+    volumes:
+      - ./minecraft:/data
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+    volumes:
+      - /home/will:/home/coder/project
+    expose:
+      - "8080"
+    networks:
+      - homelab
+networks:
+  homelab:
+    name: homelab
+    driver: bridge
