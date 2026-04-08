@@ -495,6 +495,26 @@ function compareValues(left, right) {
   return String(left ?? '').localeCompare(String(right ?? ''), undefined, { numeric: true, sensitivity: 'base' })
 }
 
+function formatDateInputValue(value) {
+  const timestamp = parseDateValue(value)
+  if (timestamp === null) {
+    return ''
+  }
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function parseFilterDateValue(value, edge) {
+  if (!value) {
+    return null
+  }
+  const date = new Date(`${value}T${edge === 'end' ? '23:59:59' : '00:00:00'}`)
+  return Number.isNaN(date.getTime()) ? null : date.getTime()
+}
+
 function buildChartData(rows, column) {
   const counts = rows.reduce((accumulator, row) => {
     const key = String(row[column] || 'Blank').trim() || 'Blank'
@@ -985,6 +1005,7 @@ function Work() {
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
   const [filters, setFilters] = useState({})
+  const [dateFilters, setDateFilters] = useState({})
   const [selectedMetricColumn, setSelectedMetricColumn] = useState('')
   const [enabledMetrics, setEnabledMetrics] = useState(['count', 'unique', 'top'])
   const [chartColumn, setChartColumn] = useState('')
@@ -994,6 +1015,8 @@ function Work() {
   const [savedPresets, setSavedPresets] = useState([])
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState('')
+
+  const dateHeaders = headers.filter((header) => rows.some((row) => parseDateValue(row[header]) !== null))
 
   useEffect(() => {
     try {
@@ -1006,6 +1029,19 @@ function Work() {
 
   const filteredRows = rows.filter((row) =>
     headers.every((header) => {
+      if (dateHeaders.includes(header)) {
+        const timestamp = parseDateValue(row[header])
+        const from = parseFilterDateValue(dateFilters[header]?.from, 'start')
+        const to = parseFilterDateValue(dateFilters[header]?.to, 'end')
+
+        if (from !== null && (timestamp === null || timestamp < from)) {
+          return false
+        }
+        if (to !== null && (timestamp === null || timestamp > to)) {
+          return false
+        }
+      }
+
       const needle = String(filters[header] || '').trim().toLowerCase()
       if (!needle) {
         return true
@@ -1074,6 +1110,7 @@ function Work() {
         setHeaders(dataset.headers)
         setRows(dataset.rows)
         setFilters({})
+        setDateFilters({})
         setError('')
         setFileName(file.name)
         setSortColumn('')
@@ -1084,6 +1121,7 @@ function Work() {
         setHeaders([])
         setRows([])
         setFilters({})
+        setDateFilters({})
         setFileName('')
         setError(uploadError.message || 'Could not parse CSV file.')
       }
@@ -1107,7 +1145,7 @@ function Work() {
     }
 
     const nextPresets = [
-      { name, filters, sortColumn, sortDirection, chartColumn, selectedMetricColumn, enabledMetrics },
+      { name, filters, dateFilters, sortColumn, sortDirection, chartColumn, selectedMetricColumn, enabledMetrics },
       ...savedPresets.filter((preset) => preset.name !== name),
     ].slice(0, 8)
 
@@ -1118,6 +1156,7 @@ function Work() {
 
   function loadPreset(preset) {
     setFilters(preset.filters || {})
+    setDateFilters(preset.dateFilters || {})
     setSortColumn(preset.sortColumn || '')
     setSortDirection(preset.sortDirection || 'asc')
     setChartColumn(preset.chartColumn || '')
@@ -1142,6 +1181,18 @@ function Work() {
     }
     setSortColumn(header)
     setSortDirection('asc')
+  }
+
+  const agingSourceColumn = headers.includes('opened_at') ? 'opened_at' : dateHeaders[0] || ''
+  const ageDays = sortedRows
+    .map((row) => parseDateValue(row[agingSourceColumn]))
+    .filter((value) => value !== null)
+    .map((timestamp) => (Date.now() - timestamp) / (1000 * 60 * 60 * 24))
+
+  const agingMetrics = {
+    avg: ageDays.length ? (ageDays.reduce((sum, value) => sum + value, 0) / ageDays.length).toFixed(1) : 'n/a',
+    max: ageDays.length ? Math.max(...ageDays).toFixed(1) : 'n/a',
+    recent: ageDays.filter((value) => value <= 7).length.toLocaleString(),
   }
 
   return (
@@ -1211,36 +1262,6 @@ function Work() {
               <div className="rounded-[24px] border border-white/10 bg-white/[0.035] px-5 py-5 backdrop-blur">
                 <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Visible preview</div>
                 <div className="mt-3 text-3xl font-semibold text-white">{visibleRows.length.toLocaleString()}</div>
-              </div>
-            </div>
-
-            <div className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.035] p-6 backdrop-blur">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h3 className="text-2xl font-medium text-white">Filters</h3>
-                  <p className="mt-2 text-sm leading-7 text-slate-400">Filter the table by any column using partial text matches.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFilters({})}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
-                >
-                  Clear filters
-                </button>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {headers.map((header) => (
-                  <label key={header} className="block">
-                    <span className="mb-2 block text-sm text-slate-300">{header}</span>
-                    <input
-                      value={filters[header] || ''}
-                      onChange={(event) => setFilters((current) => ({ ...current, [header]: event.target.value }))}
-                      placeholder={`Filter ${header}`}
-                      className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-200/40"
-                    />
-                  </label>
-                ))}
               </div>
             </div>
 
@@ -1317,6 +1338,24 @@ function Work() {
                   ))}
                 </div>
               ) : null}
+            </div>
+
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.035] px-5 py-5 backdrop-blur">
+                <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Average age</div>
+                <div className="mt-3 text-3xl font-semibold text-white">{agingMetrics.avg}</div>
+                <div className="mt-2 text-sm text-slate-400">days since {agingSourceColumn || 'date source'}</div>
+              </div>
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.035] px-5 py-5 backdrop-blur">
+                <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Oldest item</div>
+                <div className="mt-3 text-3xl font-semibold text-white">{agingMetrics.max}</div>
+                <div className="mt-2 text-sm text-slate-400">days open in filtered set</div>
+              </div>
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.035] px-5 py-5 backdrop-blur">
+                <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Opened in last 7 days</div>
+                <div className="mt-3 text-3xl font-semibold text-white">{agingMetrics.recent}</div>
+                <div className="mt-2 text-sm text-slate-400">filtered items</div>
+              </div>
             </div>
 
             <div className="mt-8 rounded-[32px] border border-white/10 bg-white/[0.035] p-6 backdrop-blur">
@@ -1433,15 +1472,50 @@ function Work() {
                   <thead>
                     <tr>
                       {headers.map((header) => (
-                        <th key={header} className="px-4 py-2 text-xs uppercase tracking-[0.24em] text-slate-500">
-                          <button
-                            type="button"
-                            onClick={() => toggleSort(header)}
-                            className="flex items-center gap-2 whitespace-nowrap transition hover:text-white"
-                          >
-                            {header}
-                            {sortColumn === header ? (sortDirection === 'asc' ? '↑' : '↓') : null}
-                          </button>
+                        <th key={header} className="px-4 py-2 align-top text-xs uppercase tracking-[0.24em] text-slate-500">
+                          <div className="min-w-[180px]">
+                            <button
+                              type="button"
+                              onClick={() => toggleSort(header)}
+                              className="flex items-center gap-2 whitespace-nowrap transition hover:text-white"
+                            >
+                              {header}
+                              {sortColumn === header ? (sortDirection === 'asc' ? '↑' : '↓') : null}
+                            </button>
+                            {dateHeaders.includes(header) ? (
+                              <div className="mt-3 grid gap-2">
+                                <input
+                                  type="date"
+                                  value={dateFilters[header]?.from || ''}
+                                  onChange={(event) =>
+                                    setDateFilters((current) => ({
+                                      ...current,
+                                      [header]: { ...current[header], from: event.target.value },
+                                    }))
+                                  }
+                                  className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] normal-case tracking-normal text-white outline-none transition focus:border-cyan-200/40"
+                                />
+                                <input
+                                  type="date"
+                                  value={dateFilters[header]?.to || ''}
+                                  onChange={(event) =>
+                                    setDateFilters((current) => ({
+                                      ...current,
+                                      [header]: { ...current[header], to: event.target.value },
+                                    }))
+                                  }
+                                  className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] normal-case tracking-normal text-white outline-none transition focus:border-cyan-200/40"
+                                />
+                              </div>
+                            ) : (
+                              <input
+                                value={filters[header] || ''}
+                                onChange={(event) => setFilters((current) => ({ ...current, [header]: event.target.value }))}
+                                placeholder="Filter"
+                                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] normal-case tracking-normal text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-200/40"
+                              />
+                            )}
+                          </div>
                         </th>
                       ))}
                     </tr>
