@@ -1,22 +1,23 @@
-.env
 .env.local
 .env.*.local
 
 .DS_Store
 .codex
+*.swp
 
-services/frontend/node_modules/
-services/frontend/dist/
+frontend/node_modules/
+frontend/dist/
 
-services/backend/__pycache__/
-services/backend/app/__pycache__/
-services/backend/app/routes/__pycache__/
-services/backend/app/services/__pycache__/
+backend/__pycache__/
+backend/app/__pycache__/
+backend/app/routes/__pycache__/
+backend/app/services/__pycache__/
+backend/data/
 
-services/ai-gateway/__pycache__/
-services/ai-gateway/app/__pycache__/
-services/ai-gateway/app/routes/__pycache__/
-services/ai-gateway/app/services/__pycache__/
+ai-gateway/__pycache__/
+ai-gateway/app/__pycache__/
+ai-gateway/app/routes/__pycache__/
+ai-gateway/app/services/__pycache__/
 
 caddy/data/
 caddy/config/

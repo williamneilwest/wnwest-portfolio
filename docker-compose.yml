@@ -1,34 +1,42 @@
 services:
   frontend:
+    env_file:
+      - ./.env
     build:
-      context: ./services/frontend
+      context: ./frontend
     container_name: frontend
     restart: unless-stopped
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://westos.dev}
-      VITE_AI_BASE_URL: ${VITE_AI_BASE_URL:-https://westos.dev}
     expose:
-      - "5173"
+      - "${FRONTEND_PORT:-5173}"
     networks:
       - westos
 
   backend:
+    env_file:
+      - ./.env
     build:
-      context: ./services/backend
+      context: ./backend
     container_name: backend
     restart: unless-stopped
     environment:
       FLASK_ENV: ${BACKEND_FLASK_ENV:-production}
       GUNICORN_BIND: ${BACKEND_GUNICORN_BIND:-0.0.0.0:5000}
       APP_NAME: ${BACKEND_APP_NAME:-westOS API}
+      BACKEND_DATA_DIR: ${BACKEND_DATA_DIR:-/app/data}
+      FRONTEND_STATUS_URL: http://frontend:${FRONTEND_PORT:-5173}
+      AI_GATEWAY_STATUS_URL: http://ai-gateway:${AI_GATEWAY_PORT:-5001}/ai/health
     expose:
-      - "5000"
+      - "${BACKEND_PORT:-5000}"
+    volumes:
+      - backend_data:/app/data
     networks:
       - westos
 
   ai-gateway:
+    env_file:
+      - ./.env
     build:
-      context: ./services/ai-gateway
+      context: ./ai-gateway
     container_name: ai-gateway
     restart: unless-stopped
     environment:
@@ -36,11 +44,13 @@ services:
       GUNICORN_BIND: ${AI_GUNICORN_BIND:-0.0.0.0:5001}
       APP_NAME: ${AI_APP_NAME:-westOS AI Gateway}
     expose:
-      - "5001"
+      - "${AI_GATEWAY_PORT:-5001}"
     networks:
       - westos
 
   caddy:
+    env_file:
+      - ./.env
     image: caddy:2.8.4
     container_name: caddy
     restart: unless-stopped
@@ -53,10 +63,16 @@ services:
       - "443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./caddy/data:/data
-      - ./caddy/config:/config
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - westos
+
 networks:
   westos:
     external: true
+
+volumes:
+  backend_data:
+  caddy_data:
+  caddy_config:

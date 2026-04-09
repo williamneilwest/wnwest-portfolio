@@ -1,21 +1,29 @@
 westos.dev {
-    handle /api/* {
-        reverse_proxy backend:5000
-    }
 
+    # AI routes
     handle /ai/* {
         reverse_proxy ai-gateway:5001
     }
 
+    # Backend routes (define explicit prefixes)
+    handle /flows* {
+        reverse_proxy backend:5000
+    }
+
+    handle /plaid* {
+        reverse_proxy backend:5000
+    }
+
+    handle /auth* {
+        reverse_proxy backend:5000
+    }
+
+    handle /health {
+        reverse_proxy backend:5000
+    }
+
+    # Everything else → frontend
     handle {
         reverse_proxy frontend:5173
     }
-}
-
-backend.westos.dev {
-    reverse_proxy backend:5000
-}
-
-ai.westos.dev {
-    reverse_proxy ai-gateway:5001
 }
