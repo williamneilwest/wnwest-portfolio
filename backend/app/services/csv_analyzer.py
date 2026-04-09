@@ -4,6 +4,8 @@ from collections import Counter
 
 from .data_processing import detect_category_column, normalize_headers, summarize_non_empty_values
 
+PREVIEW_ROW_LIMIT = 25
+
 
 def build_csv_analysis(filename, content):
     if not filename.lower().endswith('.csv'):
@@ -63,6 +65,8 @@ def build_csv_analysis(filename, content):
         'topCategories': top_categories,
         'columnCompleteness': completeness[:6],
         'sampleRows': rows[:3],
+        'previewRows': rows[:PREVIEW_ROW_LIMIT],
+        'previewRowCount': min(len(rows), PREVIEW_ROW_LIMIT),
         'insights': insights,
     }
 
