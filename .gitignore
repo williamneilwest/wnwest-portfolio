@@ -22,3 +22,7 @@ ai-gateway/app/services/__pycache__/
 caddy/data/
 caddy/config/
 caddy/Caddy_Local_Root.crt
+services/ollama/id_ed25519
+*.pem
+*.key
+id_ed25519
