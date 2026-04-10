@@ -17,6 +17,7 @@ def build_csv_analysis(filename, content):
     decoded = content.decode('utf-8-sig', errors='replace')
     reader = csv.DictReader(io.StringIO(decoded))
     headers = normalize_headers(reader.fieldnames)
+    reader.fieldnames = headers
 
     if not headers:
         raise ValueError('The CSV file must include a header row.')

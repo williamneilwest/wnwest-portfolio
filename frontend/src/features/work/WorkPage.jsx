@@ -15,14 +15,15 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { analyzeCsvFile, getRecentCsvAnalyses, sendAiChat } from '../../app/services/api';
-import { Button } from '../../app/ui/Button';
+import { Link, useNavigate } from 'react-router-dom';
+import { analyzeCsvFile, getRecentCsvAnalyses, getRecentCsvAnalysisFile, sendAiChat } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
+import { TicketCard } from './components/TicketCard';
 import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
 import { buildInsights, buildInsightsSummaryPrompt } from './workInsightsMetrics';
+import { getTicketColumns, getTicketId, isActiveTicket, isSuppressedTicketColumn } from './utils/aiAnalysis';
 
 function inferColumnType(rows, column) {
   const values = rows
@@ -122,9 +123,11 @@ function getDefaultVisibleColumns(analysis) {
 
   const priorityColumns = [
     analysis.categoryColumn,
-    ...analysis.columns.filter((column) => /id|name|title|status|date|created|updated|owner|email/i.test(column)),
+    ...analysis.columns.filter(
+      (column) => !isSuppressedTicketColumn(column) && /id|name|title|status|date|created|updated|owner|email/i.test(column)
+    ),
     ...analysis.columns,
-  ].filter(Boolean);
+  ].filter((column) => Boolean(column) && !isSuppressedTicketColumn(column));
 
   return Array.from(new Set(priorityColumns)).slice(0, Math.min(8, analysis.columns.length));
 }
@@ -174,7 +177,7 @@ function getDescriptionColumn(columns = []) {
 }
 
 function getNoteColumns(columns = []) {
-  return columns.filter((column) => /comments?|work.?notes?|notes?|journal|activity|updates?|messages?|log/i.test(column));
+  return getTicketColumns(columns).noteColumns;
 }
 
 function splitNoteEntries(value) {
@@ -206,7 +209,7 @@ function buildRowDetail(row, columns) {
   };
 
   for (const column of columns) {
-    if (excluded.has(column)) {
+    if (excluded.has(column) || isSuppressedTicketColumn(column)) {
       continue;
     }
 
@@ -232,7 +235,7 @@ function buildRowDetail(row, columns) {
       label: column,
       value: entry,
     }))
-  );
+  ).reverse();
 
   return {
     primary: primaryColumns.map((column) => ({ label: column, value: getCellText(row, column).trim() })).filter((item) => item.value),
@@ -451,6 +454,7 @@ const DataTable = memo(function DataTable({
 });
 
 export function WorkPage() {
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [recentAnalyses, setRecentAnalyses] = useState([]);
@@ -469,6 +473,7 @@ export function WorkPage() {
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
+  const [isLoadingSavedRun, setIsLoadingSavedRun] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -593,20 +598,31 @@ export function WorkPage() {
     () => (selectedRow && analysis?.columns?.length ? buildRowDetail(selectedRow, analysis.columns) : null),
     [analysis, selectedRow]
   );
+  const ticketDataset = useMemo(() => {
+    const cachedDataset = getCachedWorkDataset();
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    if (!selectedFile) {
-      setError('Select a CSV file before running the analyzer.');
-      return;
+    if (
+      cachedDataset?.rows?.length &&
+      analysis &&
+      ((cachedDataset.analysisId && cachedDataset.analysisId === analysis.analysisId) ||
+        cachedDataset.fileName === analysis.fileName)
+    ) {
+      return cachedDataset;
     }
 
+    return null;
+  }, [analysis]);
+  const activeTickets = useMemo(
+    () => ticketDataset?.rows?.filter((row) => isActiveTicket(row, ticketDataset.columns)) || [],
+    [ticketDataset]
+  );
+
+  async function runAnalysis(file) {
     setError('');
     setIsSubmitting(true);
 
     try {
-      const result = await analyzeCsvFile(selectedFile);
+      const result = await analyzeCsvFile(file);
       setAnalysis(result.data);
       setSelectedRow(null);
       setRecentAnalyses((current) => {
@@ -623,7 +639,7 @@ export function WorkPage() {
         return next.slice(0, 10);
       });
 
-      selectedFile
+      file
         .text()
         .then((text) => {
           const parsedDataset = parseCsvText(text);
@@ -638,11 +654,57 @@ export function WorkPage() {
         .catch(() => {
           setCachedWorkDataset(null);
         });
+
+      return result.data;
     } catch (requestError) {
       setAnalysis(null);
       setError(requestError.message);
+      return null;
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleFileSelection(file) {
+    setSelectedFile(file);
+    setIsHistoryExpanded(false);
+
+    if (!file) {
+      return;
+    }
+
+    await runAnalysis(file);
+  }
+
+  async function handleRecentRunSelection(entry) {
+    setAnalysis(entry.analysis);
+    setSelectedRow(null);
+    setSelectedFile(null);
+    setIsHistoryExpanded(false);
+    setError('');
+    setIsLoadingSavedRun(true);
+
+    try {
+      const csvText = await getRecentCsvAnalysisFile(entry.id);
+      const parsedDataset = parseCsvText(csvText);
+      const nextAnalysis = {
+        ...entry.analysis,
+        analysisId: entry.id,
+        savedAt: entry.savedAt,
+      };
+
+      setAnalysis(nextAnalysis);
+      setCachedWorkDataset({
+        analysisId: entry.id,
+        fileName: entry.fileName,
+        columns: parsedDataset.columns,
+        rows: parsedDataset.rows,
+      });
+    } catch (requestError) {
+      setCachedWorkDataset(null);
+      setError(requestError.message || 'Saved CSV data could not be loaded.');
+    } finally {
+      setIsLoadingSavedRun(false);
     }
   }
 
@@ -684,6 +746,17 @@ export function WorkPage() {
     setSortConfig({ column: '', direction: 'asc' });
   }
 
+  function handlePreviewRowSelect(row) {
+    const ticketId = getTicketId(row, analysis?.columns || []);
+
+    if (!ticketId || ticketId === 'Untitled ticket') {
+      setSelectedRow(row);
+      return;
+    }
+
+    navigate(`/tickets/${encodeURIComponent(ticketId)}`);
+  }
+
   async function handleAiAnalysis() {
     if (!analysis) {
       return;
@@ -708,7 +781,11 @@ export function WorkPage() {
       `Insights: ${analysis.insights.join('; ') || 'None'}`,
     ].join('\n');
 
-    if (cachedDataset?.fileName === analysis.fileName && cachedDataset.rows?.length) {
+    if (
+      cachedDataset?.rows?.length &&
+      ((cachedDataset.analysisId && cachedDataset.analysisId === analysis.analysisId) ||
+        cachedDataset.fileName === analysis.fileName)
+    ) {
       prompt = buildInsightsSummaryPrompt(cachedDataset, buildInsights(cachedDataset));
     }
 
@@ -743,7 +820,7 @@ export function WorkPage() {
         }
       />
 
-      <form className="csv-control-bar" onSubmit={handleSubmit}>
+      <div className="csv-control-bar">
         <label className="csv-control-bar__file">
           <span className="csv-control-bar__file-icon">
             <Upload size={15} />
@@ -755,21 +832,20 @@ export function WorkPage() {
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(event) => {
-              setSelectedFile(event.target.files?.[0] || null);
-              setIsHistoryExpanded(false);
-            }}
+            onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
           />
         </label>
 
         <div className="csv-control-bar__actions">
-          <Button disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Analyzing...' : 'Analyze CSV'}
-          </Button>
-          <Button disabled={!analysis || loadingAI} onClick={handleAiAnalysis} type="button" variant="secondary">
+          <button
+            className="ui-button ui-button--primary"
+            disabled={!analysis || loadingAI || isLoadingSavedRun}
+            onClick={handleAiAnalysis}
+            type="button"
+          >
             <MessageSquareText size={16} />
-            {loadingAI ? 'Analyzing with AI...' : 'Analyze with AI'}
-          </Button>
+            {isSubmitting ? 'Analyzing...' : loadingAI ? 'Analyzing with AI...' : 'Analyze with AI'}
+          </button>
           <div className="history-dropdown">
             <button
               aria-expanded={isHistoryExpanded}
@@ -794,12 +870,7 @@ export function WorkPage() {
                       <button
                         key={entry.id}
                         className="stack-row stack-row--interactive"
-                        onClick={() => {
-                          setAnalysis(entry.analysis);
-                          setIsHistoryExpanded(false);
-                          setSelectedRow(null);
-                          setCachedWorkDataset(null);
-                        }}
+                        onClick={() => handleRecentRunSelection(entry)}
                         type="button"
                       >
                         <span className="stack-row__label">
@@ -829,10 +900,11 @@ export function WorkPage() {
             ) : null}
           </div>
         </div>
-      </form>
+      </div>
 
       {error ? <p className="status-text status-text--error">{error}</p> : null}
       {aiError ? <p className="status-text status-text--error">{aiError}</p> : null}
+      {isLoadingSavedRun ? <p className="status-text">Loading saved run dataset...</p> : null}
 
       {analysis ? (
         <>
@@ -902,7 +974,7 @@ export function WorkPage() {
 
             {isColumnPanelOpen ? (
               <div className="column-visibility-panel column-visibility-panel--popover">
-                {analysis.columns.map((column) => (
+                {analysis.columns.filter((column) => !isSuppressedTicketColumn(column)).map((column) => (
                   <label className="column-visibility-option" key={column}>
                     <input
                       checked={visibleColumns.includes(column)}
@@ -967,6 +1039,38 @@ export function WorkPage() {
             </div>
           ) : null}
 
+          <section className="analysis-grid">
+            <Card className="analysis-grid__wide">
+              <CardHeader
+                eyebrow="Tickets"
+                title="Active ticket queue"
+                description="Only records where active=true are shown here as clickable ticket cards."
+              />
+
+              {ticketDataset ? (
+                activeTickets.length ? (
+                  <div className="ticket-card-grid">
+                    {activeTickets.map((ticket) => (
+                      <TicketCard key={getTicketId(ticket, ticketDataset.columns)} columns={ticketDataset.columns} ticket={ticket} />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={<FileSpreadsheet size={20} />}
+                    title="No active tickets found"
+                    description="The loaded dataset does not contain any records where active=true."
+                  />
+                )
+              ) : (
+                <EmptyState
+                  icon={<FileSpreadsheet size={20} />}
+                  title="Full ticket list unavailable"
+                  description="Load a CSV or reopen a saved run with full row data to browse tickets as cards."
+                />
+              )}
+            </Card>
+          </section>
+
           <section className="analysis-grid analysis-grid--tight">
             <div className="analysis-grid__wide table-surface">
               <div className="table-surface__meta">
@@ -978,7 +1082,7 @@ export function WorkPage() {
                 columnTypeMap={columnTypeMap}
                 fileName={analysis.fileName}
                 onColumnFilterChange={updateColumnFilter}
-                onRowSelect={setSelectedRow}
+                onRowSelect={handlePreviewRowSelect}
                 onSort={handleSort}
                 rows={filteredPreviewRows}
                 selectedRow={selectedRow}

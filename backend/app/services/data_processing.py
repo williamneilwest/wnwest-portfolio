@@ -1,17 +1,25 @@
 from collections import Counter
+import re
+
+
+def _normalize_header(fieldname):
+    value = str(fieldname or '').strip().lower()
+
+    if '.' in value:
+        value = value.rsplit('.', 1)[-1]
+
+    value = re.sub(r'\s+', '_', value)
+    value = re.sub(r'[^a-z0-9_]+', '', value)
+    value = value.strip('_')
+
+    return value or 'unnamed_column'
 
 
 def normalize_headers(fieldnames):
     if not fieldnames:
         return []
 
-    normalized = []
-
-    for fieldname in fieldnames:
-        value = (fieldname or '').strip()
-        normalized.append(value or 'unnamed_column')
-
-    return normalized
+    return [_normalize_header(fieldname) for fieldname in fieldnames]
 
 
 def summarize_non_empty_values(rows, headers):

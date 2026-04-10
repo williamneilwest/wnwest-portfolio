@@ -1,11 +1,22 @@
 const STORAGE_KEY = 'westos.work.fullDataset';
 const SUMMARY_STORAGE_KEY = 'westos.work.aiMetricSummaries';
 
+function normalizeHeader(fieldname) {
+  let value = String(fieldname ?? '').trim().toLowerCase();
+
+  if (value.includes('.')) {
+    value = value.split('.').pop() || '';
+  }
+
+  value = value.replace(/\s+/g, '_');
+  value = value.replace(/[^a-z0-9_]+/g, '');
+  value = value.replace(/^_+|_+$/g, '');
+
+  return value || 'unnamed_column';
+}
+
 function normalizeHeaders(fieldnames = []) {
-  return fieldnames.map((fieldname) => {
-    const value = String(fieldname ?? '').trim();
-    return value || 'unnamed_column';
-  });
+  return fieldnames.map((fieldname) => normalizeHeader(fieldname));
 }
 
 function parseCsvRows(text) {

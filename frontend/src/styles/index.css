@@ -1416,6 +1416,213 @@ textarea {
   gap: 0.55rem;
 }
 
+.ticket-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.ticket-card-link {
+  display: block;
+}
+
+.ticket-card {
+  display: grid;
+  gap: 1rem;
+  min-height: 100%;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.ticket-card-link:hover .ticket-card,
+.ticket-card-link:focus-visible .ticket-card {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.28);
+  box-shadow: var(--shadow-glow);
+}
+
+.ticket-card__header,
+.ticket-card__footer,
+.ticket-card__meta,
+.ticket-detail-hero,
+.ticket-note__meta,
+.ticket-detail__topbar,
+.ticket-detail-layout {
+  display: flex;
+  align-items: center;
+}
+
+.ticket-card__header,
+.ticket-card__footer,
+.ticket-detail-layout {
+  justify-content: space-between;
+}
+
+.ticket-card__header {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ticket-card__header h3,
+.ticket-detail-grid__item strong {
+  margin: 0.45rem 0 0;
+}
+
+.ticket-card__header p,
+.ticket-analysis-grid__item p,
+.ticket-note p,
+.ticket-detail-grid__item span,
+.ticket-analysis-grid__item span,
+.ticket-card__meta-item span {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.ticket-analysis-grid__item p,
+.ticket-note p {
+  white-space: pre-line;
+}
+
+.ticket-card__ai-chip,
+.ticket-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: rgba(16, 185, 129, 0.08);
+  color: #b7f7cf;
+  font-size: 0.78rem;
+}
+
+.ticket-card__meta {
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ticket-card__meta-item,
+.ticket-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ticket-card__action {
+  color: #d1fae5;
+}
+
+.ticket-detail__topbar {
+  margin-bottom: 1rem;
+}
+
+.ticket-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ticket-detail-main {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.ticket-detail-card,
+.ticket-notes-card {
+  min-height: 100%;
+}
+
+.ticket-notes-card {
+  width: 100%;
+  position: sticky;
+  top: 1rem;
+}
+
+.ticket-detail-hero {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.ticket-detail-hero__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.ticket-detail-grid,
+.ticket-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.ticket-detail-grid__item,
+.ticket-analysis-grid__item {
+  padding: 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ticket-detail-grid__item span,
+.ticket-analysis-grid__item span {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  margin-bottom: 0.45rem;
+}
+
+.ticket-analysis-card {
+  border-color: rgba(16, 185, 129, 0.22);
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.06), transparent 25%),
+    var(--bg-panel);
+}
+
+.ticket-analysis-grid__item--wide {
+  grid-column: 1 / -1;
+}
+
+.ticket-notes-stream {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.ticket-note {
+  padding: 0.95rem 0 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+}
+
+.ticket-note:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ticket-note__lead {
+  margin: 0 0 0.5rem;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.ticket-note__lead span {
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
 .row-notes-timeline {
   display: grid;
   gap: 0.6rem;
@@ -1662,6 +1869,20 @@ textarea {
 
   .row-detail-drawer {
     width: min(76vw, 980px);
+  }
+
+  .ticket-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-notes-card {
+    width: 100%;
+    position: static;
+  }
+
+  .ticket-detail-grid,
+  .ticket-analysis-grid {
+    grid-template-columns: 1fr;
   }
 }
 

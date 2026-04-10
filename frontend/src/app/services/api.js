@@ -20,6 +20,25 @@ async function request(baseUrl, path, options = {}) {
   return response.json();
 }
 
+async function requestText(baseUrl, path, options = {}) {
+  const response = await fetch(`${baseUrl}${path}`, options);
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+
+    try {
+      const errorPayload = await response.json();
+      message = errorPayload.error || message;
+    } catch {
+      // Keep the default message when the response body is not JSON.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.text();
+}
+
 export function getBackendHealth() {
   return request(backendBaseUrl, '/health');
 }
@@ -40,6 +59,10 @@ export function analyzeCsvFile(file) {
 
 export function getRecentCsvAnalyses() {
   return request(backendBaseUrl, '/flows/work/recent-analyses');
+}
+
+export function getRecentCsvAnalysisFile(analysisId) {
+  return requestText(backendBaseUrl, `/flows/work/recent-analyses/${analysisId}/file`);
 }
 
 export function getAiHealth() {

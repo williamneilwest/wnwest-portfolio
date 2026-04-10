@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { LandingPage } from '../features/landing/LandingPage';
+import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { AppShell } from './shell/AppShell';
 
@@ -43,6 +44,16 @@ export const router = createBrowserRouter([
       {
         path: 'insights',
         Component: WorkInsightsPage
+      }
+    ]
+  },
+  {
+    path: '/tickets',
+    Component: AppShell,
+    children: [
+      {
+        path: ':ticketId',
+        Component: TicketDetail
       }
     ]
   },

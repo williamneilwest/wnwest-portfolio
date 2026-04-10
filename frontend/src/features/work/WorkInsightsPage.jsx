@@ -43,44 +43,33 @@ export function WorkInsightsPage() {
   const summaryCacheKey = dataset?.analysisId || dataset?.fileName || '';
   const [aiSummary, setAiSummary] = useState(() => getCachedAiMetricSummary(summaryCacheKey));
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
 
   useEffect(() => {
     setAiSummary(getCachedAiMetricSummary(summaryCacheKey));
+    setSummaryError('');
   }, [summaryCacheKey]);
 
-  useEffect(() => {
-    if (!dataset?.rows?.length || !insights || !summaryCacheKey || getCachedAiMetricSummary(summaryCacheKey)) {
+  async function handleGenerateSummary() {
+    if (!dataset?.rows?.length || !insights || !summaryCacheKey) {
       return;
     }
 
-    let isMounted = true;
+    setSummaryError('');
     setIsSummaryLoading(true);
 
-    sendAiChat(buildInsightsSummaryPrompt(dataset, insights))
-      .then((result) => {
-        if (!isMounted) {
-          return;
-        }
-
-        const message = result.message || '';
-        setAiSummary(message);
-        setCachedAiMetricSummary(summaryCacheKey, message);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setAiSummary('');
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsSummaryLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [dataset, insights, summaryCacheKey]);
+    try {
+      const result = await sendAiChat(buildInsightsSummaryPrompt(dataset, insights));
+      const message = result.message || '';
+      setAiSummary(message);
+      setCachedAiMetricSummary(summaryCacheKey, message);
+    } catch (error) {
+      setAiSummary('');
+      setSummaryError(error.message || 'Summary could not be generated.');
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  }
 
   if (!dataset?.rows?.length) {
     return (
@@ -119,11 +108,17 @@ export function WorkInsightsPage() {
 
       <section className="insights-section">
         <div className="insights-summary-box">
-          <div className="insights-section__title">
-            <MessageSquareText size={16} />
-            <h3>AI Summary</h3>
+          <div className="insights-section__header">
+            <div className="insights-section__title">
+              <MessageSquareText size={16} />
+              <h3>AI Summary</h3>
+            </div>
+            <button className="compact-toggle" disabled={isSummaryLoading} onClick={handleGenerateSummary} type="button">
+              {isSummaryLoading ? 'Generating...' : aiSummary ? 'Re-run Summary' : 'Generate Summary'}
+            </button>
           </div>
           <p>{isSummaryLoading ? 'Generating summary from metrics...' : aiSummary || 'Summary unavailable.'}</p>
+          {summaryError ? <p className="status-text status-text--error">{summaryError}</p> : null}
         </div>
       </section>
 

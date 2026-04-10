@@ -95,3 +95,26 @@ def list_recent_analyses():
         }
         for entry in entries[:MAX_RECENT_ANALYSES]
     ]
+
+
+def get_analysis_file(analysis_id):
+    entries = _read_index()
+
+    for entry in entries:
+        if entry.get('id') != analysis_id:
+            continue
+
+        stored_file = entry.get('storedFile')
+        if not stored_file:
+            return None
+
+        file_path = _analysis_root() / stored_file
+        if not file_path.exists():
+            return None
+
+        return {
+            'fileName': entry.get('fileName') or stored_file,
+            'content': file_path.read_bytes(),
+        }
+
+    return None
