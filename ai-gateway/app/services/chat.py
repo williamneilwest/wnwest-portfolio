@@ -1,6 +1,10 @@
 from litellm import completion
 
 
+def _uses_ollama(model, api_base):
+    return bool(api_base) and (model == 'mistral' or model.startswith('ollama/'))
+
+
 def _extract_message_content(message):
     content = message.get('content', '')
 
@@ -41,21 +45,40 @@ def run_chat_completion(payload, model, temperature, max_tokens, api_base):
         'messages': messages,
         'temperature': request_temperature,
         'max_tokens': request_max_tokens,
+        'extra_body': {'keep_alive': -1},
     }
 
-    if model.startswith('ollama/'):
+    if _uses_ollama(model, api_base):
         request_kwargs['api_base'] = api_base
 
     try:
         response = completion(**request_kwargs)
     except Exception as error:
-        if model.startswith('ollama/'):
+        if _uses_ollama(model, api_base):
             raise RuntimeError(
                 'LiteLLM could not reach Ollama. Verify OLLAMA_API_BASE and that the Ollama server is running.'
             ) from error
         raise RuntimeError(f'LiteLLM request failed: {error}') from error
 
     return response.model_dump() if hasattr(response, 'model_dump') else response
+
+
+def warmup_chat_completion(model, temperature, max_tokens, api_base):
+    if not model:
+        return
+
+    request_kwargs = {
+        'model': model,
+        'messages': [{'role': 'user', 'content': 'warmup'}],
+        'temperature': temperature,
+        'max_tokens': 1,
+        'extra_body': {'keep_alive': -1},
+    }
+
+    if _uses_ollama(model, api_base):
+        request_kwargs['api_base'] = api_base
+
+    completion(**request_kwargs)
 
 
 def build_compat_chat_response(payload, result):

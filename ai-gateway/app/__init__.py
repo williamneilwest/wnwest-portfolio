@@ -4,6 +4,7 @@ from flask import Flask
 from dotenv import load_dotenv
 
 from .routes import register_routes
+from .services.chat import warmup_chat_completion
 
 
 def create_app():
@@ -11,11 +12,21 @@ def create_app():
     app = Flask(__name__)
     app.config.from_mapping(
         APP_NAME=os.getenv('APP_NAME', 'westOS AI Gateway'),
-        LITELLM_MODEL=os.getenv('LITELLM_MODEL', 'ollama/llama3.2'),
+        LITELLM_MODEL=os.getenv('LITELLM_MODEL', 'ollama/mistral'),
         LITELLM_TEMPERATURE=float(os.getenv('LITELLM_TEMPERATURE', '0.2')),
         LITELLM_MAX_TOKENS=int(os.getenv('LITELLM_MAX_TOKENS', '512')),
         OLLAMA_API_BASE=os.getenv('OLLAMA_API_BASE', 'http://host.docker.internal:11434'),
     )
+
+    try:
+        warmup_chat_completion(
+            app.config['LITELLM_MODEL'],
+            app.config['LITELLM_TEMPERATURE'],
+            app.config['LITELLM_MAX_TOKENS'],
+            app.config['OLLAMA_API_BASE'],
+        )
+    except Exception as error:
+        app.logger.warning('LiteLLM warmup failed: %s', error)
 
     register_routes(app)
 
