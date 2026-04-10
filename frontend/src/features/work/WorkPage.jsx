@@ -1,21 +1,17 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   ChevronDown,
   Clock3,
-  FileSearch,
   FileSpreadsheet,
-  Filter,
   History,
-  Layers3,
   MessageSquareText,
   RotateCcw,
-  Sparkles,
   TableProperties,
   Upload,
   X,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   analyzeCsvFile,
   getLatestTickets,
@@ -26,7 +22,6 @@ import {
 } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
-import { SectionHeader } from '../../app/ui/SectionHeader';
 import { TicketCard } from './components/TicketCard';
 import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
 import { buildInsights, buildInsightsSummaryPrompt } from './workInsightsMetrics';
@@ -192,10 +187,6 @@ function getColumnFilterDefaults(columnType) {
 
 function getCellText(row, column) {
   return String(row[column] ?? '');
-}
-
-function getTopCategory(analysis) {
-  return analysis?.topCategories?.[0] || null;
 }
 
 function getPrimaryColumns(columns = []) {
@@ -488,30 +479,6 @@ const DataTable = memo(function DataTable({
                 tabIndex={0}
               >
                 {visibleColumns.map((column) => {
-                  const ticketId = getTicketId(row, visibleColumns);
-
-                  if (column === assigneeColumn) {
-                    return (
-                      <td key={`${rowIndex}-${column}`}>
-                        <input
-                          className="data-table__inline-input"
-                          onBlur={() => onAssigneeCommit?.(ticketId, assigneeDrafts[ticketId] ?? getCellText(row, column))}
-                          onChange={(event) => onAssigneeChange?.(ticketId, event.target.value)}
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => {
-                            event.stopPropagation();
-
-                            if (event.key === 'Enter') {
-                              event.currentTarget.blur();
-                            }
-                          }}
-                          type="text"
-                          value={assigneeDrafts[ticketId] ?? getCellText(row, column)}
-                        />
-                      </td>
-                    );
-                  }
-
                   return <td key={`${rowIndex}-${column}`}>{getCellText(row, column) || '—'}</td>;
                 })}
               </tr>
@@ -531,15 +498,18 @@ const DataTable = memo(function DataTable({
 
 export function WorkPage() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [latestDataset, setLatestDataset] = useState({ columns: [], rows: [] });
   const [latestSource, setLatestSource] = useState('');
   const [latestUpdatedAt, setLatestUpdatedAt] = useState('');
+  const [latestAnalysisId, setLatestAnalysisId] = useState('');
+  const [latestFileName, setLatestFileName] = useState('');
   const [latestMessage, setLatestMessage] = useState('');
   const [isLoadingLatest, setIsLoadingLatest] = useState(true);
   const [ticketView, setTicketView] = useState(() => window.localStorage.getItem(VIEW_STORAGE_KEY) || 'card');
-  const [assigneeFilter, setAssigneeFilter] = useState(DEFAULT_CARD_ASSIGNEE);
+  const [assigneeFilter, setAssigneeFilter] = useState('');
   const [assigneeDrafts, setAssigneeDrafts] = useState({});
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [error, setError] = useState('');
@@ -560,6 +530,47 @@ export function WorkPage() {
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
   const [isLoadingSavedRun, setIsLoadingSavedRun] = useState(false);
+
+  async function loadSavedAnalysisEntry(entry, { showLoading = true } = {}) {
+    if (!entry?.id) {
+      return;
+    }
+
+    setError('');
+    setSelectedRow(null);
+    setSelectedFile(null);
+
+    if (showLoading) {
+      setIsHistoryExpanded(false);
+      setIsLoadingSavedRun(true);
+    }
+
+    try {
+      const csvText = await getRecentCsvAnalysisFile(entry.id);
+      const parsedDataset = parseCsvText(csvText);
+      const nextAnalysis = {
+        ...entry.analysis,
+        analysisId: entry.id,
+        fileName: entry.fileName,
+        savedAt: entry.savedAt,
+      };
+
+      setAnalysis(nextAnalysis);
+      setCachedWorkDataset({
+        analysisId: entry.id,
+        fileName: entry.fileName,
+        columns: parsedDataset.columns,
+        rows: parsedDataset.rows,
+      });
+    } catch (requestError) {
+      setCachedWorkDataset(null);
+      setError(requestError.message || 'Saved CSV data could not be loaded.');
+    } finally {
+      if (showLoading) {
+        setIsLoadingSavedRun(false);
+      }
+    }
+  }
 
   async function loadLatestDataset() {
     setIsLoadingLatest(true);
@@ -592,6 +603,8 @@ export function WorkPage() {
       setLatestDataset(nextDataset);
       setLatestSource(payload.source || '');
       setLatestUpdatedAt(payload.last_updated || '');
+      setLatestAnalysisId(payload.analysisId || '');
+      setLatestFileName(payload.fileName || '');
       setLatestMessage(payload.message || '');
       setCachedWorkDataset(nextDataset);
       setAssigneeDrafts(
@@ -603,6 +616,8 @@ export function WorkPage() {
       setLatestDataset({ columns: [], rows: [] });
       setLatestSource('');
       setLatestUpdatedAt('');
+      setLatestAnalysisId('');
+      setLatestFileName('');
       setLatestMessage(requestError.message || 'Latest tickets could not be loaded.');
     } finally {
       setIsLoadingLatest(false);
@@ -640,6 +655,27 @@ export function WorkPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!recentAnalyses.length || isLoadingSavedRun) {
+      return;
+    }
+
+    const activeEntry = recentAnalyses.find((entry) => entry.id === latestAnalysisId);
+
+    if (activeEntry) {
+      if (analysis?.analysisId === activeEntry.id) {
+        return;
+      }
+
+      void loadSavedAnalysisEntry(activeEntry, { showLoading: false });
+      return;
+    }
+
+    if (!latestAnalysisId && !analysis?.analysisId) {
+      void loadSavedAnalysisEntry(recentAnalyses[0], { showLoading: false });
+    }
+  }, [analysis?.analysisId, isLoadingSavedRun, latestAnalysisId, recentAnalyses]);
 
   useEffect(() => {
     window.localStorage.setItem(VIEW_STORAGE_KEY, ticketView);
@@ -747,7 +783,6 @@ export function WorkPage() {
   }, [columnFilters, columnTypeMap, debouncedRowFilter, previewRows, sortConfig, visibleColumns]);
 
   const aiSections = useMemo(() => parseAiSections(aiAnalysis), [aiAnalysis]);
-  const topCategory = useMemo(() => getTopCategory(analysis), [analysis]);
   const rowDetail = useMemo(
     () => (selectedRow && analysis?.columns?.length ? buildRowDetail(selectedRow, analysis.columns) : null),
     [analysis, selectedRow]
@@ -781,6 +816,24 @@ export function WorkPage() {
       }),
     [assigneeFilter, latestColumns, latestDataset.rows]
   );
+  const assigneeOptions = useMemo(() => {
+    const uniqueAssignees = Array.from(
+      new Set(
+        ((latestDataset?.rows || []).filter((row) => isActiveTicket(row, latestColumns)))
+          .map((row) => getTicketAssignee(row, latestColumns).trim())
+          .filter(Boolean)
+      )
+    );
+
+    uniqueAssignees.sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
+    return uniqueAssignees;
+  }, [latestColumns, latestDataset?.rows]);
+
+  useEffect(() => {
+    if (assigneeFilter && !assigneeOptions.includes(assigneeFilter)) {
+      setAssigneeFilter('');
+    }
+  }, [assigneeFilter, assigneeOptions]);
   const latestColumnTypeMap = useMemo(
     () => Object.fromEntries(latestVisibleColumns.map((column) => [column, inferColumnType(latestTickets, column)])),
     [latestTickets, latestVisibleColumns]
@@ -808,6 +861,7 @@ export function WorkPage() {
         compareValues(leftRow[latestSortConfig.column], rightRow[latestSortConfig.column], columnType) * sortDirection
     );
   }, [latestColumnFilters, latestColumnTypeMap, latestSortConfig, latestTickets, latestVisibleColumns]);
+  const visibleLatestTickets = ticketView === 'card' ? latestTickets : filteredLatestRows;
 
   async function runAnalysis(file) {
     setError('');
@@ -871,35 +925,7 @@ export function WorkPage() {
   }
 
   async function handleRecentRunSelection(entry) {
-    setAnalysis(entry.analysis);
-    setSelectedRow(null);
-    setSelectedFile(null);
-    setIsHistoryExpanded(false);
-    setError('');
-    setIsLoadingSavedRun(true);
-
-    try {
-      const csvText = await getRecentCsvAnalysisFile(entry.id);
-      const parsedDataset = parseCsvText(csvText);
-      const nextAnalysis = {
-        ...entry.analysis,
-        analysisId: entry.id,
-        savedAt: entry.savedAt,
-      };
-
-      setAnalysis(nextAnalysis);
-      setCachedWorkDataset({
-        analysisId: entry.id,
-        fileName: entry.fileName,
-        columns: parsedDataset.columns,
-        rows: parsedDataset.rows,
-      });
-    } catch (requestError) {
-      setCachedWorkDataset(null);
-      setError(requestError.message || 'Saved CSV data could not be loaded.');
-    } finally {
-      setIsLoadingSavedRun(false);
-    }
+    await loadSavedAnalysisEntry(entry);
   }
 
   function handleAssigneeDraftChange(ticketId, value) {
@@ -1019,192 +1045,12 @@ export function WorkPage() {
 
   return (
     <section className="module">
-      <SectionHeader
-        tag="/csv"
-        title="Work"
-        description="Use the CSV analyzer to turn operational exports into a quick read on volume, categories, and data quality."
-        actions={
-          <>
-            <span className="module__action-pill">
-              <Sparkles size={15} />
-              Fast summary
-            </span>
-            <span className="module__action-pill">
-              <Layers3 size={15} />
-              Structured review
-            </span>
-          </>
-        }
-      />
-
-      <div className="csv-control-bar">
-        <label className="csv-control-bar__file">
-          <span className="csv-control-bar__file-icon">
-            <Upload size={15} />
-          </span>
-          <span className="csv-control-bar__file-copy">
-            <strong>{selectedFile ? selectedFile.name : 'Choose a CSV file'}</strong>
-            <small>Accepted format: `.csv`</small>
-          </span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
-          />
-        </label>
-
-        <div className="csv-control-bar__actions">
-          <button
-            className="ui-button ui-button--primary"
-            disabled={!analysis || loadingAI || isLoadingSavedRun}
-            onClick={handleAiAnalysis}
-            type="button"
-          >
-            <MessageSquareText size={16} />
-            {isSubmitting ? 'Analyzing...' : loadingAI ? 'Analyzing with AI...' : 'Analyze with AI'}
-          </button>
-          <div className="history-dropdown">
-            <button
-              aria-expanded={isHistoryExpanded}
-              className="compact-toggle"
-              onClick={() => setIsHistoryExpanded((current) => !current)}
-              type="button"
-            >
-              <History size={15} />
-              Recent Runs
-              <ChevronDown
-                aria-hidden="true"
-                className={isHistoryExpanded ? 'compact-toggle__icon compact-toggle__icon--open' : 'compact-toggle__icon'}
-                size={15}
-              />
-            </button>
-
-            {isHistoryExpanded ? (
-              <div className="history-dropdown__menu">
-                {recentAnalyses.length ? (
-                  <div className="stack-list">
-                    {recentAnalyses.map((entry) => (
-                      <button
-                        key={entry.id}
-                        className="stack-row stack-row--interactive"
-                        onClick={() => handleRecentRunSelection(entry)}
-                        type="button"
-                      >
-                        <span className="stack-row__label">
-                          <History size={16} />
-                          <span>
-                            <strong>{entry.fileName}</strong>
-                            <small>{new Date(entry.savedAt).toLocaleString()}</small>
-                          </span>
-                        </span>
-                        <strong>{entry.analysis.rowCount} rows</strong>
-                      </button>
-                    ))}
-                  </div>
-                ) : isLoadingRecent ? (
-                  <div className="skeleton-stack">
-                    <div className="skeleton-line" />
-                    <div className="skeleton-line" />
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={<Clock3 size={20} />}
-                    title="No saved analyses yet"
-                    description="Analyze a CSV once and the most recent 10 results will stay available here."
-                  />
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
       {error ? <p className="status-text status-text--error">{error}</p> : null}
       {aiError ? <p className="status-text status-text--error">{aiError}</p> : null}
       {isLoadingSavedRun ? <p className="status-text">Loading saved run dataset...</p> : null}
 
       {analysis ? (
         <>
-          <section className="analysis-grid analysis-grid--tight">
-            <div className="insight-bar">
-              <div className="insight-pill">
-                <span>Rows</span>
-                <strong>{analysis.rowCount}</strong>
-              </div>
-              <div className="insight-pill">
-                <span>Columns</span>
-                <strong>{analysis.columnCount}</strong>
-              </div>
-              <div className="insight-pill">
-                <span>Top Category</span>
-                <strong>{topCategory ? `${topCategory.label} (${topCategory.count})` : 'None'}</strong>
-              </div>
-              <Link className="insight-pill insight-pill--wide insight-pill--link" to="/work/insights">
-                <span>Insight</span>
-                <strong>{analysis.insights?.[0] || 'No insight available.'}</strong>
-              </Link>
-            </div>
-
-            <div className="table-toolbar table-toolbar--compact table-toolbar--tool">
-              <label className="table-filter table-filter--compact">
-                <FileSearch size={15} />
-                <input
-                  onChange={(event) => setRowFilter(event.target.value)}
-                  placeholder="Search visible columns..."
-                  type="search"
-                  value={rowFilter}
-                />
-              </label>
-
-              <div className="table-actions">
-                <button
-                  aria-expanded={isColumnPanelOpen}
-                  className="compact-toggle"
-                  onClick={() => setIsColumnPanelOpen((current) => !current)}
-                  type="button"
-                >
-                  <Filter size={15} />
-                  Columns
-                  <ChevronDown
-                    aria-hidden="true"
-                    className={isColumnPanelOpen ? 'compact-toggle__icon compact-toggle__icon--open' : 'compact-toggle__icon'}
-                    size={15}
-                  />
-                </button>
-
-                <button className="compact-toggle" onClick={resetTableControls} type="button">
-                  <RotateCcw size={15} />
-                  Reset Filters
-                </button>
-
-                <button
-                  aria-expanded={isDatasetInfoOpen}
-                  className="compact-toggle"
-                  onClick={() => setIsDatasetInfoOpen((current) => !current)}
-                  type="button"
-                >
-                  <TableProperties size={15} />
-                  Dataset Info
-                </button>
-              </div>
-            </div>
-
-            {isColumnPanelOpen ? (
-              <div className="column-visibility-panel column-visibility-panel--popover">
-                {analysis.columns.filter((column) => !isSuppressedTicketColumn(column)).map((column) => (
-                  <label className="column-visibility-option" key={column}>
-                    <input
-                      checked={visibleColumns.includes(column)}
-                      onChange={() => toggleColumn(column)}
-                      type="checkbox"
-                    />
-                    <span>{column}</span>
-                  </label>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
           {isDatasetInfoOpen ? (
             <div className="dataset-panel-backdrop" onClick={() => setIsDatasetInfoOpen(false)} role="presentation">
               <aside
@@ -1258,62 +1104,154 @@ export function WorkPage() {
 
           <section className="analysis-grid">
             <Card className="analysis-grid__wide">
-              <CardHeader
-                eyebrow="Tickets"
-                title="Active ticket queue"
-                description="The latest persisted ticket dataset is shown here and refreshes automatically."
-                action={
-                  <div className="ticket-queue__actions">
-                    <input
-                      className="ticket-queue__filter"
-                      onChange={(event) => setAssigneeFilter(event.target.value)}
-                      placeholder="Filter by assignee"
-                      type="text"
-                      value={assigneeFilter}
-                    />
+              <div className="ticket-toolbar ticket-toolbar--compact">
+                <div className="ticket-toolbar__header">
+                  <span className="ui-eyebrow">Tickets</span>
+                  <h3 className="ui-card__title">Active ticket queue</h3>
+                  <span className="ticket-source-banner__pill">
+                    {visibleLatestTickets.length} {visibleLatestTickets.length === 1 ? 'ticket' : 'tickets'}
+                  </span>
+                </div>
+
+                <div className="ticket-toolbar__actions">
+                  <input
+                    ref={fileInputRef}
+                    accept=".csv,text/csv"
+                    className="ticket-toolbar__file-input"
+                    onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
+                    type="file"
+                  />
+                  <button
+                    className="compact-toggle"
+                    onClick={() => fileInputRef.current?.click()}
+                    type="button"
+                  >
+                    <Upload size={15} />
+                    Upload
+                  </button>
+                  <button
+                    className="ui-button ui-button--primary"
+                    disabled={!analysis || loadingAI || isLoadingSavedRun}
+                    onClick={handleAiAnalysis}
+                    type="button"
+                  >
+                    <MessageSquareText size={16} />
+                    {isSubmitting ? 'Analyzing...' : loadingAI ? 'AI...' : 'AI'}
+                  </button>
+                  <select
+                    className="ticket-queue__filter"
+                    onChange={(event) => setAssigneeFilter(event.target.value)}
+                    value={assigneeFilter}
+                  >
+                    <option value="">All assignees</option>
+                    {assigneeOptions.map((assignee) => (
+                      <option key={assignee} value={assignee}>
+                        {assignee}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="ticket-view-toggle" role="tablist" aria-label="Ticket view">
                     <button
+                      aria-pressed={ticketView === 'card'}
                       className={ticketView === 'card' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
                       onClick={() => setTicketView('card')}
                       type="button"
                     >
-                      Card View
+                      Cards
                     </button>
                     <button
+                      aria-pressed={ticketView === 'table'}
                       className={ticketView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
                       onClick={() => setTicketView('table')}
                       type="button"
                     >
-                      Table View
-                    </button>
-                    <button className="compact-toggle" onClick={() => void loadLatestDataset()} type="button">
-                      <RotateCcw size={15} />
-                      Refresh
+                      Table
                     </button>
                   </div>
-                }
-              />
+                  <button className="compact-toggle" onClick={() => void loadLatestDataset()} type="button">
+                    <RotateCcw size={15} />
+                    Refresh
+                  </button>
+                </div>
+              </div>
 
-              <div className="ticket-source-banner">
-                <span className="ticket-source-banner__pill">
-                  Source: {latestSource === 'email' ? 'Email Upload' : latestSource === 'manual' ? 'Manual Upload' : 'Unknown'}
-                </span>
-                <span>Last Updated: {formatRelativeTimestamp(latestUpdatedAt)}</span>
+              <div className="ticket-source-banner ticket-source-banner--compact">
+                <span>Active File: {latestFileName || 'Unknown'}</span>
+                <button
+                  aria-expanded={isDatasetInfoOpen}
+                  className="compact-toggle"
+                  onClick={() => setIsDatasetInfoOpen((current) => !current)}
+                  type="button"
+                >
+                  <TableProperties size={15} />
+                  Dataset Info
+                </button>
+                <div className="history-dropdown">
+                  <button
+                    aria-expanded={isHistoryExpanded}
+                    className="compact-toggle"
+                    onClick={() => setIsHistoryExpanded((current) => !current)}
+                    type="button"
+                  >
+                    <History size={15} />
+                    Recent Runs
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={isHistoryExpanded ? 'compact-toggle__icon compact-toggle__icon--open' : 'compact-toggle__icon'}
+                      size={15}
+                    />
+                  </button>
+
+                  {isHistoryExpanded ? (
+                    <div className="history-dropdown__menu">
+                      {recentAnalyses.length ? (
+                        <div className="stack-list">
+                          {recentAnalyses.map((entry) => (
+                            <button
+                              key={entry.id}
+                              className="stack-row stack-row--interactive"
+                              onClick={() => handleRecentRunSelection(entry)}
+                              type="button"
+                            >
+                              <span className="stack-row__label">
+                                <History size={16} />
+                                <span>
+                                  <strong>{entry.fileName}</strong>
+                                  <small>{new Date(entry.savedAt).toLocaleString()}</small>
+                                </span>
+                              </span>
+                              <strong>{entry.analysis.rowCount} rows</strong>
+                            </button>
+                          ))}
+                        </div>
+                      ) : isLoadingRecent ? (
+                        <div className="skeleton-stack">
+                          <div className="skeleton-line" />
+                          <div className="skeleton-line" />
+                        </div>
+                      ) : (
+                        <EmptyState
+                          icon={<Clock3 size={20} />}
+                          title="No saved analyses yet"
+                          description="Analyze a CSV once and the most recent 10 results will stay available here."
+                        />
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               {latestMessage ? <p className="status-text">{latestMessage}</p> : null}
               {isLoadingLatest ? <p className="status-text">Refreshing latest tickets...</p> : null}
 
-              {latestDataset.rows.length ? (
+              {latestDataset?.rows?.length ? (
                 latestTickets.length ? (
                   ticketView === 'card' ? (
                   <div className="ticket-card-grid">
-                    {latestTickets.map((ticket) => (
+                    {visibleLatestTickets.map((ticket) => (
                       <TicketCard
                         key={getTicketId(ticket, latestColumns)}
-                        assigneeDraft={assigneeDrafts[getTicketId(ticket, latestColumns)]}
                         columns={latestColumns}
-                        onAssigneeChange={handleAssigneeDraftChange}
-                        onAssigneeCommit={handleAssigneeCommit}
                         ticket={ticket}
                       />
                     ))}
@@ -1325,8 +1263,6 @@ export function WorkPage() {
                       columnFilters={latestColumnFilters}
                       columnTypeMap={latestColumnTypeMap}
                       fileName="latest"
-                      onAssigneeChange={handleAssigneeDraftChange}
-                      onAssigneeCommit={handleAssigneeCommit}
                       onColumnFilterChange={(column, key, value) =>
                         setLatestColumnFilters((current) => ({
                           ...current,
@@ -1358,12 +1294,16 @@ export function WorkPage() {
                     />
                   )
                 ) : (
-                  <EmptyState
-                    icon={<FileSpreadsheet size={20} />}
-                    title="No assigned active tickets found"
-                    description={`The latest dataset does not contain any active tickets assigned to ${assigneeFilter || DEFAULT_CARD_ASSIGNEE}.`}
-                  />
-                )
+        <EmptyState
+          icon={<FileSpreadsheet size={20} />}
+          title="No assigned active tickets found"
+          description={
+            assigneeFilter
+              ? `The latest dataset does not contain any active tickets assigned to ${assigneeFilter}.`
+              : 'The latest dataset does not contain any active assigned tickets.'
+          }
+        />
+      )
               ) : (
                 <EmptyState
                   icon={<FileSpreadsheet size={20} />}
@@ -1372,27 +1312,6 @@ export function WorkPage() {
                 />
               )}
             </Card>
-          </section>
-
-          <section className="analysis-grid analysis-grid--tight">
-            <div className="analysis-grid__wide table-surface">
-              <div className="table-surface__meta">
-                <span>{filteredPreviewRows.length} visible</span>
-                <span>{previewRows.length} preview rows</span>
-              </div>
-              <DataTable
-                columnFilters={columnFilters}
-                columnTypeMap={columnTypeMap}
-                fileName={analysis.fileName}
-                onColumnFilterChange={updateColumnFilter}
-                onRowSelect={handlePreviewRowSelect}
-                onSort={handleSort}
-                rows={filteredPreviewRows}
-                selectedRow={selectedRow}
-                sortConfig={sortConfig}
-                visibleColumns={visibleColumns}
-              />
-            </div>
           </section>
 
           {rowDetail ? (

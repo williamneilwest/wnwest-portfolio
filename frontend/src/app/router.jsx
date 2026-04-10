@@ -29,6 +29,10 @@ export const router = createBrowserRouter([
         lazy: routeModules['../features/console/routes.jsx']
       },
       {
+        path: 'uploads',
+        lazy: routeModules['../features/uploads/routes.jsx']
+      },
+      {
         path: 'work',
         element: <Navigate replace to="/work" />
       }
@@ -79,6 +83,10 @@ export const router = createBrowserRouter([
   {
     path: '/console',
     element: <Navigate replace to="/app/console" />
+  },
+  {
+    path: '/uploads',
+    element: <Navigate replace to="/app/uploads" />
   },
   {
     path: '*',

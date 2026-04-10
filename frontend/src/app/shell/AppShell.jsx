@@ -1,20 +1,23 @@
 import {
   Activity,
-  ArrowUpRight,
   Blocks,
   BrainCircuit,
+  ChevronDown,
   HeartPulse,
   Info,
   LayoutDashboard,
   LibraryBig,
+  Mail,
   Sparkles,
   TerminalSquare
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
 const modules = [
   { href: '/app/life', label: 'Life', summary: 'Personal systems', icon: HeartPulse, readmeHref: '/readme#life' },
   { href: '/work', label: 'Work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
+  { href: '/app/uploads', label: 'Uploads', summary: 'Email CSV inbox', icon: Mail, readmeHref: '/readme' },
   { href: 'https://webui.westos.dev', label: 'AI', summary: 'Open WebUI workspace', icon: BrainCircuit, external: true, readmeHref: '/readme#ai' },
   { href: '/app/console', label: 'Console', summary: 'Service status', icon: TerminalSquare, readmeHref: '/readme#console' }
 ];
@@ -29,11 +32,16 @@ const docsModule = {
 
 export function AppShell() {
   const location = useLocation();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const shellPath = location.pathname.startsWith('/tickets') ? '/work' : location.pathname;
   const activeModule =
     (shellPath.startsWith('/readme') && docsModule) ||
     modules.find((module) => !module.external && shellPath.startsWith(module.href)) ||
     modules[0];
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="shell">
@@ -100,7 +108,7 @@ export function AppShell() {
 
       <main className="shell__content">
         <header className="shell__topbar">
-          <div>
+          <div className="shell__topbar-summary">
             <p className="shell__topbar-label">Active module</p>
             <div className="shell__topbar-title">
               <LayoutDashboard size={18} />
@@ -109,31 +117,29 @@ export function AppShell() {
           </div>
 
           <div className="shell__topbar-actions">
+            <button
+              aria-expanded={isMobileNavOpen}
+              className="compact-toggle shell__mobile-nav-toggle"
+              onClick={() => setIsMobileNavOpen((current) => !current)}
+              type="button"
+            >
+              Pages
+              <ChevronDown
+                aria-hidden="true"
+                className={isMobileNavOpen ? 'compact-toggle__icon compact-toggle__icon--open' : 'compact-toggle__icon'}
+                size={15}
+              />
+            </button>
             <Link className="ui-button ui-button--secondary shell__link-button" to={activeModule.readmeHref}>
               <Info size={15} />
               Info
             </Link>
-            <a
-              className="ui-button ui-button--secondary shell__link-button"
-              href="/health"
-              rel="noreferrer"
-              target="_blank"
-            >
-              Backend
-              <ArrowUpRight size={15} />
-            </a>
-            <a
-              className="ui-button ui-button--secondary shell__link-button"
-              href="/api/ai/health"
-              rel="noreferrer"
-              target="_blank"
-            >
-              AI Status
-              <ArrowUpRight size={15} />
-            </a>
           </div>
 
-          <nav className="shell__mobile-nav" aria-label="Primary">
+          <nav
+            className={isMobileNavOpen ? 'shell__mobile-nav shell__mobile-nav--open' : 'shell__mobile-nav'}
+            aria-label="Primary"
+          >
             {modules.map((module) =>
               module.external ? (
                 <a className="shell__mobile-nav-link" href={module.href} key={module.href} rel="noreferrer">

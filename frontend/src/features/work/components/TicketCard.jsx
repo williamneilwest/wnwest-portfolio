@@ -12,7 +12,6 @@ import {
 export function TicketCard({ ticket, columns, assigneeDraft, onAssigneeChange, onAssigneeCommit }) {
   const ticketId = getTicketId(ticket, columns);
   const hasAiAnalysis = Boolean(ticket?.ai_analysis?.result);
-  const assigneeValue = assigneeDraft ?? getTicketAssignee(ticket, columns);
 
   return (
     <Card className="ticket-card">
@@ -50,24 +49,6 @@ export function TicketCard({ ticket, columns, assigneeDraft, onAssigneeChange, o
           </span>
         </div>
       </Link>
-
-      <div className="ticket-card__assignee-editor">
-        <label>
-          <span>Assignee</span>
-          <input
-            onBlur={() => onAssigneeCommit?.(ticketId, assigneeValue)}
-            onChange={(event) => onAssigneeChange?.(ticketId, event.target.value)}
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.currentTarget.blur();
-              }
-            }}
-            type="text"
-            value={assigneeValue}
-          />
-        </label>
-      </div>
     </Card>
   );
 }

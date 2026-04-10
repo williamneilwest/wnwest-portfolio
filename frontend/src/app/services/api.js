@@ -73,6 +73,10 @@ export function getLatestTickets() {
   return request(backendBaseUrl, '/api/tickets/latest');
 }
 
+export function getUploads() {
+  return request(backendBaseUrl, '/uploads');
+}
+
 export function updateTicketAssignee(ticketId, assignee) {
   return request(backendBaseUrl, '/api/tickets/update-assignee', {
     method: 'POST',

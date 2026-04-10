@@ -3,6 +3,7 @@ import os
 from flask import Flask
 from dotenv import load_dotenv
 
+from .routes.email_upload import email_upload_bp
 from .routes import register_routes
 
 
@@ -19,5 +20,6 @@ def create_app():
     )
 
     register_routes(app)
+    app.register_blueprint(email_upload_bp)
 
     return app
