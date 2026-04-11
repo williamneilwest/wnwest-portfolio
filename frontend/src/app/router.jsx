@@ -4,8 +4,10 @@ import { ReadmePage } from '../features/readme/ReadmePage';
 import { AISettingsPage } from '../features/settings/AISettingsPage';
 import { TablePage } from '../features/tables/TablePage';
 import { WorkPage } from '../features/work/WorkPage';
+import { GroupSearchToolPage } from '../features/work/GroupSearchToolPage';
 import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
+import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
 import { AppShell } from './shell/AppShell';
 
 const routeModules = import.meta.glob('../features/*/routes.jsx');
@@ -54,8 +56,20 @@ export const router = createBrowserRouter([
         lazy: getRoute('../features/settings/routes.jsx')
       },
       {
+        path: 'data',
+        lazy: getRoute('../features/data/routes.jsx')
+      },
+      {
+        path: 'reference',
+        lazy: getRoute('../features/reference/routes.jsx')
+      },
+      {
         path: 'ai',
         Component: AISettingsPage
+      },
+      {
+        path: 'admin',
+        lazy: getRoute('../features/admin/routes.jsx')
       },
       {
         path: 'settings/ai',
@@ -82,6 +96,14 @@ export const router = createBrowserRouter([
         Component: WorkInsightsPage
       },
       {
+        path: 'work/group-search',
+        Component: GroupSearchToolPage
+      },
+      {
+        path: 'work/user-group-association',
+        Component: UserGroupAssociationPage
+      },
+      {
         path: 'work/insights',
         element: <Navigate replace to="/app/work/ai-metrics" />
       }
@@ -102,6 +124,14 @@ export const router = createBrowserRouter([
   {
     path: '/work/table',
     element: <Navigate replace to="/app/work/table" />
+  },
+  {
+    path: '/work/group-search',
+    element: <Navigate replace to="/app/work/group-search" />
+  },
+  {
+    path: '/work/user-group-association',
+    element: <Navigate replace to="/app/work/user-group-association" />
   },
   {
     path: '/work/insights',
@@ -144,6 +174,10 @@ export const router = createBrowserRouter([
     element: <Navigate replace to="/app/ai" />
   },
   {
+    path: '/admin',
+    element: <Navigate replace to="/app/admin" />
+  },
+  {
     path: '/settings',
     element: <Navigate replace to="/app/settings" />
   },
@@ -154,6 +188,14 @@ export const router = createBrowserRouter([
   {
     path: '/uploads',
     element: <Navigate replace to="/app/uploads" />
+  },
+  {
+    path: '/data',
+    element: <Navigate replace to="/app/data" />
+  },
+  {
+    path: '/reference',
+    element: <Navigate replace to="/app/reference" />
   },
   {
     path: '*',

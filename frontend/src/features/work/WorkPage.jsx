@@ -1441,7 +1441,8 @@ export function WorkPage() {
               />
 
               {aiAnalysis ? (
-                <div className="analysis-grid">
+                <div className="card__scroll">
+                  <div className="analysis-grid">
                   <Card>
                     <CardHeader eyebrow="Section 1" title="Summary" />
                     <p>{aiSections.summary || 'No summary returned.'}</p>
@@ -1485,6 +1486,7 @@ export function WorkPage() {
                       <p>No recommendations returned.</p>
                     )}
                   </Card>
+                  </div>
                 </div>
               ) : (
                 <EmptyState

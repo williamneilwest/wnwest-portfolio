@@ -1,4 +1,4 @@
-import { BarChart3, FileSpreadsheet, Mail } from 'lucide-react';
+import { BarChart3, FileSpreadsheet, Mail, Search, UsersRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { SectionHeader } from '../../app/ui/SectionHeader';
@@ -25,6 +25,20 @@ const workModules = [
     icon: Mail,
     cta: 'Open Uploads',
   },
+  {
+    title: 'User-Group Association',
+    description: 'Open a dedicated workspace to select a reference user, map target groups, and generate a reusable association script.',
+    href: '/app/work/user-group-association',
+    icon: UsersRound,
+    cta: 'Open Association Tool',
+  },
+  {
+    title: 'Group Search Tool',
+    description: 'Run the cache-first group search workflow from Work and inspect results without going through the Reference Data page.',
+    href: '/app/work/group-search',
+    icon: Search,
+    cta: 'Open Group Search',
+  },
 ];
 
 export function WorkHubPage() {
@@ -33,7 +47,7 @@ export function WorkHubPage() {
       <SectionHeader
         tag="/app/work"
         title="Work Hub"
-        description="Central routing for work-related tools. Open the ticket workspace, inspect AI metrics, or review archived inbound uploads."
+        description="Central routing for work-related tools. Open the ticket workspace, inspect AI metrics, search groups, generate user-group association scripts, or review archived inbound uploads."
       />
 
       <div className="card-grid">

@@ -77,6 +77,22 @@ export function getUploads() {
   return request(backendBaseUrl, '/uploads');
 }
 
+export function lookupReferenceGroups(searchText) {
+  return request(backendBaseUrl, `/api/reference/groups/lookup?q=${encodeURIComponent(searchText)}`);
+}
+
+export function lookupReferenceGroupsFromFlow(searchText) {
+  return request(backendBaseUrl, `/api/reference/groups/lookup-flow?q=${encodeURIComponent(searchText)}`);
+}
+
+export function getReferenceGroups() {
+  return request(backendBaseUrl, '/api/reference/groups');
+}
+
+export function getReferenceUsers() {
+  return request(backendBaseUrl, '/api/reference/users');
+}
+
 export function getUploadFile(fileUrl) {
   return requestText(backendBaseUrl, fileUrl);
 }

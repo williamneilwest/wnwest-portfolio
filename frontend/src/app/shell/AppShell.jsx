@@ -1,27 +1,13 @@
 import {
   Activity,
   ArrowLeft,
-  Blocks,
-  BrainCircuit,
   ChevronDown,
   ChevronUp,
-  Cog,
-  HeartPulse,
-  Mail,
   Sparkles,
-  TerminalSquare
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-
-const modules = [
-  { href: '/app/life', label: 'Life', summary: 'Personal systems', icon: HeartPulse, readmeHref: '/readme#life' },
-  { href: '/app/work', label: 'Work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
-  { href: '/app/uploads', label: 'Uploads', summary: 'Email CSV inbox', icon: Mail, readmeHref: '/readme' },
-  { href: '/app/ai', label: 'AI', summary: 'Models and workspace', icon: BrainCircuit, readmeHref: '/readme#ai' },
-  { href: '/app/settings', label: 'Settings', summary: 'App configuration', icon: Cog, readmeHref: '/readme' },
-  { href: '/app/console', label: 'Console', summary: 'Service status', icon: TerminalSquare, readmeHref: '/readme#console' }
-];
+import { modules } from './modules';
 
 function safeDecodeURIComponent(value) {
   try {
@@ -49,12 +35,28 @@ function getContextTitle(pathname) {
     return 'Work / AI Metrics';
   }
 
+  if (pathname.startsWith('/app/work/group-search')) {
+    return 'Work / Group Search';
+  }
+
+  if (pathname.startsWith('/app/work/user-group-association')) {
+    return 'Work / User-Group Association';
+  }
+
   if (pathname.startsWith('/app/work/table')) {
     return 'Work / Table';
   }
 
   if (pathname.startsWith('/app/work')) {
     return 'Work';
+  }
+
+  if (pathname.startsWith('/app/data')) {
+    return 'Data';
+  }
+
+  if (pathname.startsWith('/app/admin')) {
+    return 'Admin';
   }
 
   if (pathname.startsWith('/app/uploads')) {
