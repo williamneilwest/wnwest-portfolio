@@ -5,9 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/smart_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/smart_analysis.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/landing/LandingPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/landing/LandingPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/utils/aiAnalysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/utils/aiAnalysis.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -83,7 +87,8 @@
       <option name="presentableId" value="Default" />
       <updated>1775888566406</updated>
       <workItem from="1775888567428" duration="3032000" />
-      <workItem from="1775895619028" duration="1316000" />
+      <workItem from="1775895619028" duration="2317000" />
+      <workItem from="1775898448247" duration="4361000" />
     </task>
     <servers />
   </component>

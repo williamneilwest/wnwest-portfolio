@@ -1248,8 +1248,6 @@ export function WorkPage() {
             <Card className="analysis-grid__wide">
               <div className="ticket-toolbar ticket-toolbar--compact">
                 <div className="ticket-toolbar__header">
-                  <span className="ui-eyebrow">Dataset</span>
-                  <h3 className="ui-card__title">Selected file view</h3>
                   <span className="ticket-source-banner__pill">
                     {visibleDatasetRows.length} {visibleDatasetRows.length === 1 ? 'row' : 'rows'}
                   </span>

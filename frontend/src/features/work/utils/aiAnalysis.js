@@ -8,7 +8,20 @@ const PRIMARY_NOTE_COLUMN = 'comments_and_work_notes';
 const SUPPRESSED_COLUMNS = new Set(['comments', 'work_notes']);
 const IGNORED_NOTE_CONTENTS = new Set(['text has been sent']);
 const ACKNOWLEDGEMENT_PATTERN = /\back?no?w?l?e?d?g(?:e|ed|ement|ing)\b|\backnolwedge\b/i;
-const HELPDESK_THANK_YOU_PATTERN = /thank you for taking the time to submit a ticket to the helpdesk/i;
+const HELPDESK_THANK_YOU_PATTERN = /thank you (?:for )?(?:placing|submitting) (?:a )?ticket(?: to the helpdesk)?/i;
+// Common boilerplate messages that add no analytical value and should be removed early
+const BOILERPLATE_NOTE_PATTERNS = [
+  /\btext has been sent\.?/i,
+  /\bsms (?:has been )?sent\.?/i,
+  /\btext sent\.?/i,
+  /\bmessage sent\.?/i,
+  /\bnotification sent\.?/i,
+  /\b(auto[- ]?reply|automatic notification)\b/i,
+  /\bthank you .* (?:submit(?:ting)?|placing) .*ticket\b/i,
+  /\bthank you for (?:placing|submitting) (?:a )?ticket\b/i,
+  /\b(ticket )?acknowledge(?:d|ment)\b/i,
+  /\byour ticket (?:has been )?(?:received|created)\b/i,
+];
 const HEADER_AUTHOR_TYPE_PATTERN = /^([^\n(]+?)\s*\(([^)]+)\)\s*/i;
 const DATE_PATTERN =
   /(\d{4}-\d{2}-\d{2}(?:[ t]\d{2}:\d{2}(?::\d{2})?)?(?:z|[+-]\d{2}:?\d{2})?|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}(?:[ t]\d{1,2}:\d{2}(?::\d{2})?)?)/i;
@@ -32,7 +45,17 @@ function normalizeNoteContent(value) {
 }
 
 function shouldIgnoreNote(value) {
-  return IGNORED_NOTE_CONTENTS.has(normalizeNoteContent(value));
+  const normalized = normalizeNoteContent(value);
+  if (!normalized) return true;
+
+  if (IGNORED_NOTE_CONTENTS.has(normalized)) return true;
+
+  // Filter common boilerplate phrases
+  if (ACKNOWLEDGEMENT_PATTERN.test(value)) return true;
+  if (HELPDESK_THANK_YOU_PATTERN.test(value)) return true;
+  if (BOILERPLATE_NOTE_PATTERNS.some((re) => re.test(value))) return true;
+
+  return false;
 }
 
 function normalizeNoteDisplayContent(value) {
@@ -42,13 +65,7 @@ function normalizeNoteDisplayContent(value) {
     return '';
   }
 
-  if (HELPDESK_THANK_YOU_PATTERN.test(content)) {
-    return 'User submitted helpdesk ticket.';
-  }
-
-  if (ACKNOWLEDGEMENT_PATTERN.test(content)) {
-    return 'User acknowledged ticket.';
-  }
+  // If content matches boilerplate it will be removed by shouldIgnoreNote before display
 
   return content;
 }

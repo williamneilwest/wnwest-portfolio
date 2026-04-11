@@ -194,35 +194,7 @@ export function TicketDetail() {
             <div className="ticket-summary-popup__content">
               <div className="ticket-summary-popup__section">
                 <span>Summary</span>
-                <p>{parsedAnalysis.summary || 'No summary returned.'}</p>
-              </div>
-              <div className="ticket-summary-popup__section">
-                <span>Work Notes</span>
-                {parsedAnalysis.workNotes.length ? (
-                  <ul>
-                    {parsedAnalysis.workNotes.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No work notes returned.</p>
-                )}
-              </div>
-              <div className="ticket-summary-popup__section">
-                <span>Comments</span>
-                {parsedAnalysis.comments.length ? (
-                  <ul>
-                    {parsedAnalysis.comments.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No comments returned.</p>
-                )}
-              </div>
-              <div className="ticket-summary-popup__section">
-                <span>Status</span>
-                <p>{parsedAnalysis.status || 'No status returned.'}</p>
+                  <p>{analysisResult}</p>
               </div>
             </div>
           ) : null}

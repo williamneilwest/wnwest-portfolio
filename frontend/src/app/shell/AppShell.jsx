@@ -207,28 +207,26 @@ export function AppShell() {
             <ArrowLeft size={14} />
           </NavLink>
           <h2 className="shell__context-title">{contextTitle}</h2>
+          <div className="shell__mobile-topbar" role="navigation" aria-label="Mobile page selector">
+            <select
+              className="shell__mobile-select"
+              value={currentModule?.href || ''}
+              onChange={onMobileNavChange}
+              aria-label="Select page"
+            >
+              {!currentModule && (
+                <option value="" disabled>
+                  {contextTitle}
+                </option>
+              )}
+              {modules.map((m) => (
+                <option key={m.href} value={m.href}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </header>
-
-        {/* Mobile-only compact top bar with dropdown navigation */}
-        <div className="shell__mobile-topbar" role="navigation" aria-label="Mobile page selector">
-          <select
-            className="shell__mobile-select"
-            value={currentModule?.href || ''}
-            onChange={onMobileNavChange}
-            aria-label="Select page"
-          >
-            {!currentModule && (
-              <option value="" disabled>
-                {contextTitle}
-              </option>
-            )}
-            {modules.map((m) => (
-              <option key={m.href} value={m.href}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
 
         <div className="shell__viewport">
           <Outlet />

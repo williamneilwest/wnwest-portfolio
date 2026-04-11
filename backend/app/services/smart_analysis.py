@@ -9,7 +9,7 @@ from .data_processing import normalize_headers
 
 
 DEFAULT_MAX_INPUT_CHARS = 4000
-MAX_TEXT_FIELD_CHARS = 500
+MAX_TEXT_FIELD_CHARS = 5000
 DEFAULT_PREVIEW_ROW_LIMIT = 10
 DEFAULT_FOCUSED_ROW_LIMIT = 5
 FULL_DATASET_CHUNK_SIZE = 10
@@ -20,6 +20,14 @@ SIGNATURE_PATTERNS = [
     r'regards,?.*',
     r'thanks,?.*',
     r'sent from my iphone.*',
+]
+
+# Patterns for removing non-technical noise messages during ingestion
+NOISE_PATTERNS = [
+    r'text has been sent.*',
+    r'user acknowledged.*',
+    r'user submitted helpdesk ticket.*',
+    r'sent on assigned user phone number.*',
 ]
 
 
@@ -52,6 +60,9 @@ def _clean_text(value, max_chars=MAX_TEXT_FIELD_CHARS):
 
     for pattern in SIGNATURE_PATTERNS:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL)
+
+    for pattern in NOISE_PATTERNS:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
 
     text = re.sub(r'\s+', ' ', text).strip()
     if len(text) > max_chars:
@@ -286,14 +297,14 @@ def _focused_prompt(prepared):
         ]
     )
 
-
 def _deep_prompt(prepared):
     record = prepared['selectedRecords'][0] if prepared['selectedRecords'] else {}
     return '\n'.join(
         [
             'Analyze this IT support ticket and provide a concise, useful summary.',
             '',
-            'Write ONLY 3–6 sentences.',
+            'Write a clear, detailed summary in 7–10 sentences.',
+            'Ensure the response is not shorter than 7 sentences and not longer than 10 sentences.',
             '',
             'Focus on:',
             '* what the actual issue is',
@@ -307,13 +318,9 @@ def _deep_prompt(prepared):
             '* real signals (errors, failures, physical issues)',
             '',
             'Avoid:',
-            '* generic guesses (e.g., \'battery issue\' unless clearly supported)',
+            '* generic guesses',
             '* repeating the same idea multiple ways',
             '* unnecessary formatting or labels',
-            '',
-            'Do NOT return JSON.',
-            'Do NOT use bullet points.',
-            'Do NOT include section headers.',
             '',
             'Write it as a clean paragraph that is immediately useful to an IT technician.',
             '',
@@ -440,7 +447,6 @@ def build_output_payload(mode, parsed, meta):
     else:
         bullet_lines = '\n'.join([f'- {item}' for item in insights[:5]])
         output['message'] = '\n'.join([summary, bullet_lines]).strip()
-
     return output
 
 
