@@ -1,4 +1,4 @@
-import { Bot, Cpu, Save, SlidersHorizontal } from 'lucide-react';
+import { Bot, BrainCircuit, Cpu, ExternalLink, Save, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getAISettings, updateAISettings } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
@@ -151,7 +151,7 @@ export function AISettingsPage() {
   if (!settings) {
     return (
       <section className="module">
-        <SectionHeader tag="/app/settings/ai" title="AI Settings" description="Model routing and pipeline controls." />
+        <SectionHeader tag="/app/ai" title="AI" description="Model routing and pipeline controls." />
         <EmptyState
           icon={<SlidersHorizontal size={20} />}
           title="Loading AI settings"
@@ -164,15 +164,38 @@ export function AISettingsPage() {
   return (
     <section className="module">
       <SectionHeader
-        tag="/app/settings/ai"
-        title="AI Settings"
-        description="Select models per analysis stage and tune lightweight pipeline behavior."
+        tag="/app/ai"
+        title="AI"
+        description="Configure stage-specific AI models and tune the analysis pipeline."
       />
 
       {error ? <p className="status-text status-text--error">{error}</p> : null}
       {successMessage ? <p className="status-text">{successMessage}</p> : null}
 
       <div className="card-grid">
+        <Card className="landing__card">
+          <CardHeader
+            eyebrow="Workspace"
+            title="Open WebUI"
+            description="Launch the external AI workspace without leaving the AI module context."
+          />
+          <div className="landing__actions">
+            <a className="ui-button ui-button--secondary" href="https://webui.westos.dev" rel="noreferrer">
+              <ExternalLink size={16} />
+              Open WebUI
+            </a>
+          </div>
+          <div className="signal-panel__item">
+            <span className="icon-badge">
+              <BrainCircuit size={16} />
+            </span>
+            <div>
+              <strong>AI Workspace</strong>
+              <p>External chat workspace stays separate from app-driven analysis requests.</p>
+            </div>
+          </div>
+        </Card>
+
         <Card className="landing__card">
           <CardHeader
             eyebrow="Model Selection"

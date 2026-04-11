@@ -1,4 +1,17 @@
 services:
+  db:
+    image: postgres:15
+    container_name: database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: westos
+      POSTGRES_USER: westos
+      POSTGRES_PASSWORD: westos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - westos
+
   backend:
     build:
       context: ./backend
@@ -102,3 +115,4 @@ volumes:
   caddy_data:
   caddy_config:
   open_webui_data:
+  postgres_data:

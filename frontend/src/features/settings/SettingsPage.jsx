@@ -1,7 +1,6 @@
-import { Bot, Database, Shield, SlidersHorizontal } from 'lucide-react';
+import { Database, Shield, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getSettings, updateAiSettings } from '../../app/services/api';
+import { getSettings } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
@@ -21,9 +20,7 @@ function PlaceholderSettingCard({ icon: Icon, title, description }) {
 
 export function SettingsPage() {
   const [settings, setSettings] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('');
   const [error, setError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -36,7 +33,6 @@ export function SettingsPage() {
 
         const nextSettings = result;
         setSettings(nextSettings);
-        setSelectedModel(nextSettings.ai?.currentModel || '');
       })
       .catch((requestError) => {
         if (isMounted) {
@@ -48,21 +44,6 @@ export function SettingsPage() {
       isMounted = false;
     };
   }, []);
-
-  async function handleAiModelSave() {
-    setError('');
-    setIsSaving(true);
-
-    try {
-      const result = await updateAiSettings(selectedModel);
-      setSettings(result);
-      setSelectedModel(result.ai?.currentModel || '');
-    } catch (requestError) {
-      setError(requestError.message || 'AI model could not be updated.');
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   if (!settings) {
     return (
@@ -88,39 +69,6 @@ export function SettingsPage() {
       {error ? <p className="status-text status-text--error">{error}</p> : null}
 
       <div className="card-grid">
-        <Card className="landing__card">
-          <CardHeader
-            eyebrow="Live"
-            title="AI Model"
-            description={`Current provider: ${settings.ai?.provider || 'unknown'}. Switch the model used by app AI requests.`}
-          />
-          <div className="upload-form">
-            <label className="column-filter__label" htmlFor="ai-model-select">
-              Active model
-            </label>
-            <select
-              className="ticket-queue__filter"
-              id="ai-model-select"
-              onChange={(event) => setSelectedModel(event.target.value)}
-              value={selectedModel}
-            >
-              {(settings.ai?.availableModels || []).map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
-              ))}
-            </select>
-            <button className="ui-button ui-button--primary" disabled={isSaving || !selectedModel} onClick={handleAiModelSave} type="button">
-              <Bot size={16} />
-              {isSaving ? 'Saving...' : 'Save AI Model'}
-            </button>
-            <Link className="ui-button ui-button--secondary" to="/app/settings/ai">
-              Open AI Settings
-            </Link>
-            <p className="ui-card__description">{settings.ai?.note}</p>
-          </div>
-        </Card>
-
         <PlaceholderSettingCard
           description="Future controls for upload retention windows, archive pruning, and per-module storage limits."
           icon={Database}

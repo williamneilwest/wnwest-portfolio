@@ -44,11 +44,7 @@ def _resolve_frontend_build_dir():
 def create_app():
     load_dotenv()
     frontend_build_dir = _resolve_frontend_build_dir()
-    app = Flask(
-        __name__,
-        static_folder=str(frontend_build_dir) if frontend_build_dir else None,
-        static_url_path='',
-    )
+    app = Flask(__name__)
     app.config.from_mapping(
         APP_NAME=os.getenv('APP_NAME', 'westOS API'),
         USE_AI_GATEWAY=os.getenv('USE_AI_GATEWAY', 'false').lower() == 'true',

@@ -54,8 +54,12 @@ export const router = createBrowserRouter([
         lazy: getRoute('../features/settings/routes.jsx')
       },
       {
-        path: 'settings/ai',
+        path: 'ai',
         Component: AISettingsPage
+      },
+      {
+        path: 'settings/ai',
+        element: <Navigate replace to="/app/ai" />
       },
       {
         path: 'uploads',
@@ -136,12 +140,16 @@ export const router = createBrowserRouter([
     element: <Navigate replace to="/app/console" />
   },
   {
+    path: '/ai',
+    element: <Navigate replace to="/app/ai" />
+  },
+  {
     path: '/settings',
     element: <Navigate replace to="/app/settings" />
   },
   {
     path: '/settings/ai',
-    element: <Navigate replace to="/app/settings/ai" />
+    element: <Navigate replace to="/app/ai" />
   },
   {
     path: '/uploads',

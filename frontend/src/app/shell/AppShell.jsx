@@ -19,8 +19,8 @@ const modules = [
   { href: '/app/life', label: 'Life', summary: 'Personal systems', icon: HeartPulse, readmeHref: '/readme#life' },
   { href: '/app/work', label: 'Work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
   { href: '/app/uploads', label: 'Uploads', summary: 'Email CSV inbox', icon: Mail, readmeHref: '/readme' },
-  { href: '/app/settings/ai', label: 'Settings', summary: 'AI configuration', icon: Cog, readmeHref: '/readme' },
-  { href: 'https://webui.westos.dev', label: 'AI', summary: 'Open WebUI workspace', icon: BrainCircuit, external: true, readmeHref: '/readme#ai' },
+  { href: '/app/ai', label: 'AI', summary: 'Models and workspace', icon: BrainCircuit, readmeHref: '/readme#ai' },
+  { href: '/app/settings', label: 'Settings', summary: 'App configuration', icon: Cog, readmeHref: '/readme' },
   { href: '/app/console', label: 'Console', summary: 'Service status', icon: TerminalSquare, readmeHref: '/readme#console' }
 ];
 
@@ -72,9 +72,6 @@ export function AppShell() {
                     <span>{module.summary}</span>
                   </span>
                 </a>
-                <Link aria-label={`${module.label} info`} className="shell__info-link" to={module.readmeHref}>
-                  <Info size={15} />
-                </Link>
               </div>
             ) : (
               <div className="shell__nav-row" key={module.href}>
@@ -92,9 +89,6 @@ export function AppShell() {
                     <span>{module.summary}</span>
                   </span>
                 </NavLink>
-                <Link aria-label={`${module.label} info`} className="shell__info-link" to={module.readmeHref}>
-                  <Info size={15} />
-                </Link>
               </div>
             )
           )}
