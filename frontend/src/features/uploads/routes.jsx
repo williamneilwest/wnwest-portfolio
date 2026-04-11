@@ -1,5 +1,5 @@
 import { UploadsPage } from './UploadsPage';
 
-export function Component() {
-  return <UploadsPage />;
-}
+export default async () => ({
+  Component: UploadsPage
+});

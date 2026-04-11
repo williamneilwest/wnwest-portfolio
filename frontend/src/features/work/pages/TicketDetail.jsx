@@ -6,7 +6,6 @@ import { Card, CardHeader } from '../../../app/ui/Card';
 import { EmptyState } from '../../../app/ui/EmptyState';
 import { getCachedWorkDataset, setCachedWorkDataset } from '../workDatasetCache';
 import {
-  build_prompt,
   findTicketById,
   getTicketAssignee,
   getTicketId,
@@ -110,9 +109,12 @@ export function TicketDetail() {
     const startedAt = performance.now();
 
     try {
-      const prompt = build_prompt(ticket);
-      const result = await sendAiChat(prompt);
-      const message = result.message || '';
+      const result = await sendAiChat({
+        analysis_mode: 'deep',
+        ticket,
+        fileName: dataset?.fileName,
+      });
+      const message = result.message || result.summary || '';
       const durationSeconds = Number(((performance.now() - startedAt) / 1000).toFixed(2));
       const nextAnalysis = {
         result: message,
@@ -177,9 +179,9 @@ export function TicketDetail() {
   return (
     <section className="module">
       <div className="ticket-detail__topbar">
-        <Link className="compact-toggle" to="/work">
+        <Link className="compact-toggle" to="/app/work/active-tickets">
           <ArrowLeft size={15} />
-          Back to Work
+          Back to Active Tickets
         </Link>
       </div>
 

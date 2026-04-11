@@ -24,12 +24,7 @@ def normalize_headers(fieldnames):
         return []
 
     normalized = [_normalize_header(fieldname) for fieldname in fieldnames]
-    mapped = [HEADER_MAPPING.get(header, header) for header in normalized]
-
-    if 'Ticket' not in mapped:
-        raise ValueError('The CSV file must include a Ticket column. Expected source field: u_task_1.')
-
-    return mapped
+    return [HEADER_MAPPING.get(header, header) for header in normalized]
 
 
 def summarize_non_empty_values(rows, headers):

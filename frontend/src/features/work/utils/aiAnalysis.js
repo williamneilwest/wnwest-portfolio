@@ -6,6 +6,9 @@ const ACTIVE_PATTERNS = [/^active$/i, /is_active/i, /open/i];
 const UPDATED_PATTERNS = [/sys_updated_on/i, /updated/i, /last.?updated/i, /modified/i];
 const PRIMARY_NOTE_COLUMN = 'comments_and_work_notes';
 const SUPPRESSED_COLUMNS = new Set(['comments', 'work_notes']);
+const IGNORED_NOTE_CONTENTS = new Set(['text has been sent']);
+const ACKNOWLEDGEMENT_PATTERN = /\back?no?w?l?e?d?g(?:e|ed|ement|ing)\b|\backnolwedge\b/i;
+const HELPDESK_THANK_YOU_PATTERN = /thank you for taking the time to submit a ticket to the helpdesk/i;
 const HEADER_AUTHOR_TYPE_PATTERN = /^([^\n(]+?)\s*\(([^)]+)\)\s*/i;
 const DATE_PATTERN =
   /(\d{4}-\d{2}-\d{2}(?:[ t]\d{2}:\d{2}(?::\d{2})?)?(?:z|[+-]\d{2}:?\d{2})?|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}(?:[ t]\d{1,2}:\d{2}(?::\d{2})?)?)/i;
@@ -26,6 +29,28 @@ function normalizeNoteContent(value) {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function shouldIgnoreNote(value) {
+  return IGNORED_NOTE_CONTENTS.has(normalizeNoteContent(value));
+}
+
+function normalizeNoteDisplayContent(value) {
+  const content = normalizeValue(value);
+
+  if (!content) {
+    return '';
+  }
+
+  if (HELPDESK_THANK_YOU_PATTERN.test(content)) {
+    return 'User submitted helpdesk ticket.';
+  }
+
+  if (ACKNOWLEDGEMENT_PATTERN.test(content)) {
+    return 'User acknowledged ticket.';
+  }
+
+  return content;
 }
 
 function truncateNoteContent(value, maxLength = 100) {
@@ -191,18 +216,35 @@ export function isActiveTicket(ticket, columns = Object.keys(ticket || {})) {
 export function getTicketNotes(ticket, columns = Object.keys(ticket || {})) {
   const fieldMap = getTicketColumns(columns);
   const notes = fieldMap.noteColumns.flatMap((column) =>
-    splitNoteEntries(ticket?.[column]).map((entry, index) => ({
-      id: `${column}-${index}`,
-      label: formatLabel(column),
-      type: extractNoteType(entry, formatLabel(column)),
-      value: cleanNoteBody(entry),
-      content: cleanNoteBody(entry),
-      timestamp: extractDate(entry),
-      author: extractAuthor(entry),
-    }))
+    splitNoteEntries(ticket?.[column])
+      .map((entry, index) => {
+        const cleanedBody = normalizeNoteDisplayContent(cleanNoteBody(entry));
+        const author = extractAuthor(entry);
+        const type = extractNoteType(entry, formatLabel(column));
+
+        return {
+          id: `${column}-${index}`,
+          label: author ? `${author} · ${type}` : type,
+          type,
+          value: cleanedBody,
+          content: cleanedBody,
+          timestamp: extractDate(entry),
+          author,
+        };
+      })
+      .filter((note) => !shouldIgnoreNote(note.content))
   );
 
-  return dedupeNotes([...notes].reverse());
+  return dedupeNotes(notes).sort((left, right) => {
+    const leftTime = left.timestamp instanceof Date ? left.timestamp.getTime() : -Infinity;
+    const rightTime = right.timestamp instanceof Date ? right.timestamp.getTime() : -Infinity;
+
+    if (leftTime !== rightTime) {
+      return rightTime - leftTime;
+    }
+
+    return String(left.label || '').localeCompare(String(right.label || ''));
+  });
 }
 
 export function compress_notes(notes, limit = 3) {

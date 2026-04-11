@@ -1,5 +1,5 @@
 import { LifePage } from './LifePage';
 
-export function Component() {
-  return <LifePage />;
-}
+export default async () => ({
+  Component: LifePage
+});

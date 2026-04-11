@@ -1,12 +1,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
-  ChevronDown,
   Clock3,
   FileSpreadsheet,
   History,
   MessageSquareText,
-  RotateCcw,
   TableProperties,
   Upload,
   X,
@@ -14,21 +12,32 @@ import {
 import { useNavigate } from 'react-router-dom';
 import {
   analyzeCsvFile,
-  getLatestTickets,
   getRecentCsvAnalyses,
   getRecentCsvAnalysisFile,
+  getUploadFile,
+  getUploads,
   sendAiChat,
-  updateTicketAssignee,
 } from '../../app/services/api';
+import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
+import { getStoredVisibleColumns, setStoredVisibleColumns } from '../tables/tableUtils';
 import { TicketCard } from './components/TicketCard';
 import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
-import { buildInsights, buildInsightsSummaryPrompt } from './workInsightsMetrics';
-import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isActiveTicket, isSuppressedTicketColumn } from './utils/aiAnalysis';
+import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
 
 const DEFAULT_CARD_ASSIGNEE = 'William West';
 const VIEW_STORAGE_KEY = 'westos.work.ticketView';
+const TABLE_PAGE_SIZE = 50;
+const PREVIEW_COLUMN_PREFERENCE_KEY = 'westos.work.previewColumns';
+const DATASET_COLUMN_PREFERENCE_KEY = 'westos.work.datasetColumns';
+
+function formatColumnLabel(column) {
+  return String(column ?? '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function inferColumnType(rows, column) {
   const values = rows
@@ -158,19 +167,44 @@ function formatRelativeTimestamp(value) {
 }
 
 function getDefaultVisibleColumns(analysis) {
-  if (!analysis?.columns?.length) {
-    return [];
-  }
+  return getStoredVisibleColumns(PREVIEW_COLUMN_PREFERENCE_KEY, analysis?.columns || []);
+}
 
-  const priorityColumns = [
-    analysis.categoryColumn,
-    ...analysis.columns.filter(
-      (column) => !isSuppressedTicketColumn(column) && /id|name|title|status|date|created|updated|owner|email/i.test(column)
-    ),
-    ...analysis.columns,
-  ].filter((column) => Boolean(column) && !isSuppressedTicketColumn(column));
+function findLatestActiveTicketsUpload(files = []) {
+  return files.find((file) => file?.filename?.toLowerCase().endsWith('.csv') && file.filename.toLowerCase().includes('activetickets')) || null;
+}
 
-  return Array.from(new Set(priorityColumns)).slice(0, Math.min(8, analysis.columns.length));
+function buildLocalAnalysis(fileName, dataset) {
+  const columns = dataset.columns || [];
+  const rows = dataset.rows || [];
+  const summaryCounts = columns.map((column) => {
+    const filled = rows.reduce((count, row) => count + (String(row?.[column] ?? '').trim() ? 1 : 0), 0);
+    return {
+      column,
+      filled,
+      empty: Math.max(rows.length - filled, 0),
+    };
+  });
+
+  const categoryColumn = ['category', 'type', 'status', 'department', 'team', 'group', 'owner'].find((name) =>
+    columns.some((column) => column.toLowerCase() === name)
+  ) || columns[0] || '';
+
+  return {
+    fileName,
+    rowCount: rows.length,
+    columnCount: columns.length,
+    columns,
+    categoryColumn,
+    topCategories: [],
+    columnCompleteness: summaryCounts.slice(0, 6),
+    sampleRows: rows.slice(0, 3),
+    previewRows: rows.slice(0, 25),
+    previewRowCount: Math.min(rows.length, 25),
+    insights: rows.length
+      ? [`${rows.length} rows loaded across ${columns.length} columns.`]
+      : ['Header row detected but no data rows were present.'],
+  };
 }
 
 function getColumnFilterDefaults(columnType) {
@@ -370,17 +404,16 @@ const DataTable = memo(function DataTable({
   rows,
   visibleColumns,
   columnTypeMap,
-  columnFilters,
+  globalSearch,
+  page,
   sortConfig,
-  onColumnFilterChange,
+  onGlobalSearchChange,
+  onNextPage,
+  onPreviousPage,
   onSort,
   fileName,
   onRowSelect,
   selectedRow,
-  assigneeColumn = '',
-  assigneeDrafts = {},
-  onAssigneeChange,
-  onAssigneeCommit,
 }) {
   if (!visibleColumns.length) {
     return (
@@ -394,6 +427,16 @@ const DataTable = memo(function DataTable({
 
   return (
     <div className="data-table-wrap">
+      <div className="data-table__toolbar">
+        <input
+          aria-label="Search table"
+          className="data-table__search"
+          onChange={(event) => onGlobalSearchChange(event.target.value)}
+          placeholder="Search all visible columns..."
+          type="text"
+          value={globalSearch}
+        />
+      </div>
       <table className="data-table">
         <thead>
           <tr>
@@ -403,61 +446,9 @@ const DataTable = memo(function DataTable({
               return (
                 <th key={column}>
                   <button className="data-table__sort" onClick={() => onSort(column)} type="button">
-                    <span>{column}</span>
+                    <span>{formatColumnLabel(column)}</span>
                     <span aria-hidden="true">{isSorted ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
                   </button>
-                </th>
-              );
-            })}
-          </tr>
-          <tr>
-            {visibleColumns.map((column) => {
-              const columnType = columnTypeMap[column] || 'text';
-              const filter = columnFilters[column] || getColumnFilterDefaults(columnType);
-
-              return (
-                <th className="data-table__filter-cell" key={`${column}-filter`}>
-                  {columnType === 'number' ? (
-                    <div className="column-range-filter">
-                      <input
-                        aria-label={`${column} minimum`}
-                        onChange={(event) => onColumnFilterChange(column, 'min', event.target.value)}
-                        placeholder="Min"
-                        type="number"
-                        value={filter.min || ''}
-                      />
-                      <input
-                        aria-label={`${column} maximum`}
-                        onChange={(event) => onColumnFilterChange(column, 'max', event.target.value)}
-                        placeholder="Max"
-                        type="number"
-                        value={filter.max || ''}
-                      />
-                    </div>
-                  ) : columnType === 'date' ? (
-                    <div className="column-range-filter">
-                      <input
-                        aria-label={`${column} start date`}
-                        onChange={(event) => onColumnFilterChange(column, 'start', event.target.value)}
-                        type="date"
-                        value={filter.start || ''}
-                      />
-                      <input
-                        aria-label={`${column} end date`}
-                        onChange={(event) => onColumnFilterChange(column, 'end', event.target.value)}
-                        type="date"
-                        value={filter.end || ''}
-                      />
-                    </div>
-                  ) : (
-                    <input
-                      aria-label={`Filter ${column}`}
-                      onChange={(event) => onColumnFilterChange(column, 'text', event.target.value)}
-                      placeholder="Filter..."
-                      type="text"
-                      value={filter.text || ''}
-                    />
-                  )}
                 </th>
               );
             })}
@@ -492,6 +483,19 @@ const DataTable = memo(function DataTable({
           )}
         </tbody>
       </table>
+      <div className="data-table__pagination">
+        <span>
+          Page {page + 1}
+        </span>
+        <div className="data-table__pagination-actions">
+          <button className="compact-toggle" disabled={page === 0} onClick={onPreviousPage} type="button">
+            Previous
+          </button>
+          <button className="compact-toggle" disabled={rows.length < TABLE_PAGE_SIZE} onClick={onNextPage} type="button">
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 });
@@ -499,32 +503,38 @@ const DataTable = memo(function DataTable({
 export function WorkPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const hasAutoLoadedLatestUpload = useRef(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
-  const [latestDataset, setLatestDataset] = useState({ columns: [], rows: [] });
-  const [latestSource, setLatestSource] = useState('');
-  const [latestUpdatedAt, setLatestUpdatedAt] = useState('');
-  const [latestAnalysisId, setLatestAnalysisId] = useState('');
-  const [latestFileName, setLatestFileName] = useState('');
+  const initialDataset = getCachedWorkDataset();
+  const [analysis, setAnalysis] = useState(() =>
+    initialDataset ? buildLocalAnalysis(initialDataset.fileName || 'Cached dataset', initialDataset) : null
+  );
+  const [latestDataset, setLatestDataset] = useState(() =>
+    initialDataset ? { columns: initialDataset.columns || [], rows: initialDataset.rows || [] } : { columns: [], rows: [] }
+  );
+  const [latestFileName, setLatestFileName] = useState(initialDataset?.fileName || '');
   const [latestMessage, setLatestMessage] = useState('');
-  const [isLoadingLatest, setIsLoadingLatest] = useState(true);
-  const [ticketView, setTicketView] = useState(() => window.localStorage.getItem(VIEW_STORAGE_KEY) || 'card');
+  const [ticketView, setTicketView] = useState('card');
   const [assigneeFilter, setAssigneeFilter] = useState('');
-  const [assigneeDrafts, setAssigneeDrafts] = useState({});
   const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingRecent, setIsLoadingRecent] = useState(true);
+  const [isLoadingUploads, setIsLoadingUploads] = useState(true);
   const [visibleColumns, setVisibleColumns] = useState([]);
-  const [latestColumnFilters, setLatestColumnFilters] = useState({});
-  const [latestSortConfig, setLatestSortConfig] = useState({ column: '', direction: 'asc' });
+  const [datasetGlobalSearch, setDatasetGlobalSearch] = useState('');
+  const [datasetPage, setDatasetPage] = useState(0);
+  const [datasetSortConfig, setDatasetSortConfig] = useState({ column: '', direction: 'asc' });
   const [rowFilter, setRowFilter] = useState('');
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [aiError, setAiError] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isUploadsExpanded, setIsUploadsExpanded] = useState(false);
   const [isDatasetInfoOpen, setIsDatasetInfoOpen] = useState(false);
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
+  const [datasetVisibleColumns, setDatasetVisibleColumns] = useState([]);
   const [columnFilters, setColumnFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
@@ -556,71 +566,24 @@ export function WorkPage() {
       };
 
       setAnalysis(nextAnalysis);
-      setCachedWorkDataset({
+      const nextDataset = {
         analysisId: entry.id,
         fileName: entry.fileName,
         columns: parsedDataset.columns,
         rows: parsedDataset.rows,
-      });
+      };
+      setLatestDataset({ columns: parsedDataset.columns, rows: parsedDataset.rows });
+      setLatestFileName(entry.fileName);
+      setLatestMessage('');
+      setCachedWorkDataset(nextDataset);
     } catch (requestError) {
       setCachedWorkDataset(null);
+      setLatestDataset({ columns: [], rows: [] });
       setError(requestError.message || 'Saved CSV data could not be loaded.');
     } finally {
       if (showLoading) {
         setIsLoadingSavedRun(false);
       }
-    }
-  }
-
-  async function loadLatestDataset() {
-    setIsLoadingLatest(true);
-
-    try {
-      const result = await getLatestTickets();
-      const payload = result.data || {};
-      const columns = payload.columns || Object.keys(payload.tickets?.[0] || {});
-      const cachedRows = getCachedWorkDataset()?.rows || [];
-      const cachedByTicketId = new Map(
-        cachedRows.map((row) => [getTicketId(row, Object.keys(row || {})), row])
-      );
-      const rows = (payload.tickets || []).map((row) => {
-        const cachedRow = cachedByTicketId.get(getTicketId(row, columns));
-
-        if (!cachedRow?.ai_analysis) {
-          return row;
-        }
-
-        return {
-          ...row,
-          ai_analysis: cachedRow.ai_analysis,
-        };
-      });
-      const nextDataset = {
-        columns,
-        rows,
-      };
-
-      setLatestDataset(nextDataset);
-      setLatestSource(payload.source || '');
-      setLatestUpdatedAt(payload.last_updated || '');
-      setLatestAnalysisId(payload.analysisId || '');
-      setLatestFileName(payload.fileName || '');
-      setLatestMessage(payload.message || '');
-      setCachedWorkDataset(nextDataset);
-      setAssigneeDrafts(
-        Object.fromEntries(
-          rows.map((row) => [getTicketId(row, columns), getTicketAssignee(row, columns)])
-        )
-      );
-    } catch (requestError) {
-      setLatestDataset({ columns: [], rows: [] });
-      setLatestSource('');
-      setLatestUpdatedAt('');
-      setLatestAnalysisId('');
-      setLatestFileName('');
-      setLatestMessage(requestError.message || 'Latest tickets could not be loaded.');
-    } finally {
-      setIsLoadingLatest(false);
     }
   }
 
@@ -657,45 +620,60 @@ export function WorkPage() {
   }, []);
 
   useEffect(() => {
-    if (!recentAnalyses.length || isLoadingSavedRun) {
-      return;
-    }
+    let isMounted = true;
 
-    const activeEntry = recentAnalyses.find((entry) => entry.id === latestAnalysisId);
-
-    if (activeEntry) {
-      if (analysis?.analysisId === activeEntry.id) {
-        return;
+    async function loadUploadedFiles() {
+      try {
+        const files = await getUploads();
+        if (isMounted) {
+          setUploadedFiles(Array.isArray(files) ? files : []);
+        }
+      } catch {
+        if (isMounted) {
+          setUploadedFiles([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingUploads(false);
+        }
       }
+    }
 
-      void loadSavedAnalysisEntry(activeEntry, { showLoading: false });
+    void loadUploadedFiles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!recentAnalyses.length || isLoadingSavedRun || latestFileName || findLatestActiveTicketsUpload(uploadedFiles)) {
       return;
     }
 
-    if (!latestAnalysisId && !analysis?.analysisId) {
+    if (!analysis?.analysisId) {
       void loadSavedAnalysisEntry(recentAnalyses[0], { showLoading: false });
     }
-  }, [analysis?.analysisId, isLoadingSavedRun, latestAnalysisId, recentAnalyses]);
+  }, [analysis?.analysisId, isLoadingSavedRun, latestFileName, recentAnalyses, uploadedFiles]);
+
+  useEffect(() => {
+    if (isLoadingUploads || hasAutoLoadedLatestUpload.current) {
+      return;
+    }
+
+    const latestActiveTicketsUpload = findLatestActiveTicketsUpload(uploadedFiles);
+    if (!latestActiveTicketsUpload) {
+      hasAutoLoadedLatestUpload.current = true;
+      return;
+    }
+
+    hasAutoLoadedLatestUpload.current = true;
+    void handleUploadedFileSelection(latestActiveTicketsUpload);
+  }, [isLoadingUploads, uploadedFiles]);
 
   useEffect(() => {
     window.localStorage.setItem(VIEW_STORAGE_KEY, ticketView);
   }, [ticketView]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    void loadLatestDataset();
-    const intervalId = window.setInterval(() => {
-      if (isMounted) {
-        void loadLatestDataset();
-      }
-    }, 30000);
-
-    return () => {
-      isMounted = false;
-      window.clearInterval(intervalId);
-    };
-  }, []);
 
   const previewRows = analysis?.previewRows || analysis?.sampleRows || [];
 
@@ -719,6 +697,9 @@ export function WorkPage() {
       setIsDatasetInfoOpen(false);
       setIsColumnPanelOpen(false);
       setSelectedRow(null);
+      setDatasetGlobalSearch('');
+      setDatasetPage(0);
+      setDatasetVisibleColumns([]);
       return;
     }
 
@@ -732,7 +713,18 @@ export function WorkPage() {
     setIsDatasetInfoOpen(false);
     setIsColumnPanelOpen(false);
     setSelectedRow(null);
+    setDatasetGlobalSearch('');
+    setDatasetPage(0);
+    setDatasetVisibleColumns(getStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, analysis.columns || []));
   }, [analysis]);
+
+  useEffect(() => {
+    setStoredVisibleColumns(PREVIEW_COLUMN_PREFERENCE_KEY, visibleColumns);
+  }, [visibleColumns]);
+
+  useEffect(() => {
+    setStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, datasetVisibleColumns);
+  }, [datasetVisibleColumns]);
 
   const columnSummaries = useMemo(() => {
     if (!analysis?.columns?.length) {
@@ -787,81 +779,107 @@ export function WorkPage() {
     () => (selectedRow && analysis?.columns?.length ? buildRowDetail(selectedRow, analysis.columns) : null),
     [analysis, selectedRow]
   );
-  const latestColumns = latestDataset.columns || [];
-  const latestVisibleColumns = useMemo(() => {
-    if (!latestColumns.length) {
-      return [];
-    }
-
-    const fieldMap = getTicketColumns(latestColumns);
-    return Array.from(
-      new Set(
-        [fieldMap.id, fieldMap.title, fieldMap.assignee, fieldMap.updated, fieldMap.status].filter(Boolean)
-      )
-    );
-  }, [latestColumns]);
-  const latestAssigneeColumn = useMemo(() => getTicketColumns(latestColumns).assignee, [latestColumns]);
-  const latestTickets = useMemo(
+  const datasetColumns = latestDataset.columns || [];
+  const datasetAssigneeColumn = useMemo(() => getTicketColumns(datasetColumns).assignee, [datasetColumns]);
+  const datasetRows = useMemo(
     () =>
       (latestDataset.rows || []).filter((row) => {
-        if (!isActiveTicket(row, latestColumns)) {
-          return false;
-        }
-
         if (!assigneeFilter.trim()) {
           return true;
         }
 
-        return getTicketAssignee(row, latestColumns).trim().toLowerCase().includes(assigneeFilter.trim().toLowerCase());
+        if (!datasetAssigneeColumn) {
+          return true;
+        }
+
+        return getTicketAssignee(row, datasetColumns).trim().toLowerCase().includes(assigneeFilter.trim().toLowerCase());
       }),
-    [assigneeFilter, latestColumns, latestDataset.rows]
+    [assigneeFilter, datasetAssigneeColumn, datasetColumns, latestDataset.rows]
   );
   const assigneeOptions = useMemo(() => {
+    if (!datasetAssigneeColumn) {
+      return [];
+    }
+
     const uniqueAssignees = Array.from(
       new Set(
-        ((latestDataset?.rows || []).filter((row) => isActiveTicket(row, latestColumns)))
-          .map((row) => getTicketAssignee(row, latestColumns).trim())
+        (latestDataset?.rows || [])
+          .map((row) => getTicketAssignee(row, datasetColumns).trim())
           .filter(Boolean)
       )
     );
 
     uniqueAssignees.sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
     return uniqueAssignees;
-  }, [latestColumns, latestDataset?.rows]);
+  }, [datasetAssigneeColumn, datasetColumns, latestDataset?.rows]);
 
   useEffect(() => {
     if (assigneeFilter && !assigneeOptions.includes(assigneeFilter)) {
       setAssigneeFilter('');
     }
   }, [assigneeFilter, assigneeOptions]);
-  const latestColumnTypeMap = useMemo(
-    () => Object.fromEntries(latestVisibleColumns.map((column) => [column, inferColumnType(latestTickets, column)])),
-    [latestTickets, latestVisibleColumns]
+  const datasetColumnTypeMap = useMemo(
+    () => Object.fromEntries(datasetVisibleColumns.map((column) => [column, inferColumnType(datasetRows, column)])),
+    [datasetRows, datasetVisibleColumns]
   );
-  const filteredLatestRows = useMemo(() => {
-    if (!latestTickets.length) {
+  const filteredDatasetRows = useMemo(() => {
+    if (!datasetRows.length) {
       return [];
     }
 
-    const filteredRows = latestTickets.filter((row) =>
-      latestVisibleColumns.every((column) =>
-        matchesColumnFilter(row[column], latestColumnTypeMap[column] || 'text', latestColumnFilters[column])
-      )
-    );
+    const searchQuery = datasetGlobalSearch.trim().toLowerCase();
+    const filteredRows = datasetRows.filter((row) => {
+      if (!searchQuery) {
+        return true;
+      }
 
-    if (!latestSortConfig.column) {
+      return datasetVisibleColumns.some((column) => getCellText(row, column).toLowerCase().includes(searchQuery));
+    });
+
+    if (!datasetSortConfig.column) {
       return filteredRows;
     }
 
-    const sortDirection = latestSortConfig.direction === 'asc' ? 1 : -1;
-    const columnType = latestColumnTypeMap[latestSortConfig.column] || 'text';
+    const sortDirection = datasetSortConfig.direction === 'asc' ? 1 : -1;
+    const columnType = datasetColumnTypeMap[datasetSortConfig.column] || 'text';
 
     return [...filteredRows].sort(
       (leftRow, rightRow) =>
-        compareValues(leftRow[latestSortConfig.column], rightRow[latestSortConfig.column], columnType) * sortDirection
+        compareValues(leftRow[datasetSortConfig.column], rightRow[datasetSortConfig.column], columnType) * sortDirection
     );
-  }, [latestColumnFilters, latestColumnTypeMap, latestSortConfig, latestTickets, latestVisibleColumns]);
-  const visibleLatestTickets = ticketView === 'card' ? latestTickets : filteredLatestRows;
+  }, [datasetColumnTypeMap, datasetGlobalSearch, datasetSortConfig, datasetRows, datasetVisibleColumns]);
+  const visibleDatasetRows = datasetRows;
+  const paginatedDatasetRows = useMemo(() => {
+    const start = datasetPage * TABLE_PAGE_SIZE;
+    return filteredDatasetRows.slice(start, start + TABLE_PAGE_SIZE);
+  }, [datasetPage, filteredDatasetRows]);
+
+  useEffect(() => {
+    setDatasetPage(0);
+  }, [datasetGlobalSearch, datasetSortConfig, latestFileName]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(filteredDatasetRows.length / TABLE_PAGE_SIZE) - 1);
+    if (datasetPage > maxPage) {
+      setDatasetPage(maxPage);
+    }
+  }, [datasetPage, filteredDatasetRows.length]);
+
+  useEffect(() => {
+    if (!datasetColumns.length) {
+      setDatasetVisibleColumns([]);
+      return;
+    }
+
+    setDatasetVisibleColumns((current) => {
+      const next = current.filter((column) => datasetColumns.includes(column));
+      if (next.length) {
+        return next;
+      }
+
+      return getStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, datasetColumns);
+    });
+  }, [datasetColumns]);
 
   async function runAnalysis(file) {
     setError('');
@@ -870,6 +888,17 @@ export function WorkPage() {
     try {
       const result = await analyzeCsvFile(file);
       setAnalysis(result.data);
+      const parsedDataset = parseCsvText(await file.text());
+      const nextDataset = {
+        analysisId: result.data.analysisId,
+        fileName: result.data.fileName,
+        columns: parsedDataset.columns,
+        rows: parsedDataset.rows,
+      };
+      setLatestDataset({ columns: parsedDataset.columns, rows: parsedDataset.rows });
+      setLatestFileName(result.data.fileName);
+      setLatestMessage('');
+      setCachedWorkDataset(nextDataset);
       setSelectedRow(null);
       setRecentAnalyses((current) => {
         const next = [
@@ -884,24 +913,6 @@ export function WorkPage() {
 
         return next.slice(0, 10);
       });
-
-      file
-        .text()
-        .then((text) => {
-          const parsedDataset = parseCsvText(text);
-
-          setCachedWorkDataset({
-            analysisId: result.data.analysisId,
-            fileName: result.data.fileName,
-            columns: parsedDataset.columns,
-            rows: parsedDataset.rows,
-          });
-        })
-        .catch(() => {
-          setCachedWorkDataset(null);
-        });
-
-      await loadLatestDataset();
 
       return result.data;
     } catch (requestError) {
@@ -925,38 +936,40 @@ export function WorkPage() {
   }
 
   async function handleRecentRunSelection(entry) {
+    setIsDatasetInfoOpen(false);
     await loadSavedAnalysisEntry(entry);
   }
 
-  function handleAssigneeDraftChange(ticketId, value) {
-    if (!latestAssigneeColumn) {
-      return;
-    }
+  async function handleUploadedFileSelection(file) {
+    setError('');
+    setIsUploadsExpanded(false);
+    setIsDatasetInfoOpen(false);
 
-    setAssigneeDrafts((current) => ({
-      ...current,
-      [ticketId]: value,
-    }));
-    setLatestDataset((current) => ({
-      ...current,
-      rows: current.rows.map((row) =>
-        getTicketId(row, current.columns) === ticketId
-          ? {
-              ...row,
-              [latestAssigneeColumn]: value,
-            }
-          : row
-      ),
-    }));
+    try {
+      const csvText = await getUploadFile(file.url);
+      const parsedDataset = parseCsvText(csvText);
+      const nextAnalysis = buildLocalAnalysis(file.filename, parsedDataset);
+      const nextDataset = {
+        fileName: file.filename,
+        columns: parsedDataset.columns,
+        rows: parsedDataset.rows,
+      };
+
+      setAnalysis(nextAnalysis);
+      setLatestDataset({ columns: parsedDataset.columns, rows: parsedDataset.rows });
+      setLatestFileName(file.filename);
+      setLatestMessage(parsedDataset.rows.length ? '' : 'The selected upload contains no data rows.');
+      setCachedWorkDataset(nextDataset);
+      setSelectedRow(null);
+    } catch (requestError) {
+      setError(requestError.message || 'Uploaded file could not be loaded.');
+    }
   }
 
-  async function handleAssigneeCommit(ticketId, assignee) {
-    try {
-      await updateTicketAssignee(ticketId, assignee);
-      await loadLatestDataset();
-    } catch (requestError) {
-      setError(requestError.message || 'Assignee could not be updated.');
-    }
+  function toggleDatasetColumn(column) {
+    setDatasetVisibleColumns((current) =>
+      current.includes(column) ? current.filter((item) => item !== column) : [...current, column]
+    );
   }
 
   function toggleColumn(column) {
@@ -1016,25 +1029,29 @@ export function WorkPage() {
     setAiError('');
     setLoadingAI(true);
     const cachedDataset = getCachedWorkDataset();
-    let prompt = [
-      'Summarize in 2 sentences:',
-      `Category column: ${analysis.categoryColumn || 'None'}`,
-      `Top categories: ${analysis.topCategories.map((item) => `${item.label} (${item.count})`).join('; ') || 'None'}`,
-      `Column completeness: ${analysis.columnCompleteness.map((item) => `${item.column}=${item.filled} filled`).join('; ') || 'None'}`,
-      `Insights: ${analysis.insights.join('; ') || 'None'}`,
-    ].join('\n');
-
-    if (
+    const analysisDataset =
       cachedDataset?.rows?.length &&
       ((cachedDataset.analysisId && cachedDataset.analysisId === analysis.analysisId) ||
         cachedDataset.fileName === analysis.fileName)
-    ) {
-      prompt = buildInsightsSummaryPrompt(cachedDataset, buildInsights(cachedDataset));
-    }
+        ? cachedDataset
+        : latestDataset;
 
     try {
-      const result = await sendAiChat(prompt);
-      setAiAnalysis(result.message || '');
+      const result = await sendAiChat({
+        analysis_mode: 'preview',
+        dataset: analysisDataset
+          ? {
+              fileName: analysisDataset.fileName || analysis.fileName,
+              columns: analysisDataset.columns || analysis.columns,
+              rows: analysisDataset.rows || [],
+            }
+          : {
+              fileName: analysis.fileName,
+              columns: analysis.columns || [],
+              rows: analysis.previewRows || [],
+            },
+      });
+      setAiAnalysis(result.message || result.summary || '');
     } catch (requestError) {
       setAiAnalysis('');
       setAiError(requestError.message);
@@ -1090,14 +1107,139 @@ export function WorkPage() {
 
                 <div className="feature-list feature-list--compact">
                   {columnSummaries.map((column) => (
-                    <div className="feature-list__item" key={column.name}>
-                      <BarChart3 size={16} />
+                    <label className="column-visibility-option dataset-panel__column-option" key={column.name}>
+                      <input
+                        checked={datasetVisibleColumns.includes(column.name)}
+                        onChange={() => toggleDatasetColumn(column.name)}
+                        type="checkbox"
+                      />
                       <span>
-                        <strong>{column.name}</strong> · {column.type}
+                        <strong>{formatColumnLabel(column.name)}</strong> · {column.type}
                       </span>
-                    </div>
+                    </label>
                   ))}
                 </div>
+
+                <div className="dataset-panel__section">
+                  <div className="dataset-panel__section-header">
+                    <h4>Change File</h4>
+                    <p>Load a dataset from a new CSV, a recent analysis run, or an uploaded archive file.</p>
+                  </div>
+
+                  <div className="dataset-panel__action-grid">
+                    <button
+                      className="compact-toggle dataset-panel__action"
+                      onClick={() => fileInputRef.current?.click()}
+                      type="button"
+                    >
+                      <Upload size={15} />
+                      Upload New File
+                    </button>
+                    <button
+                      className="compact-toggle dataset-panel__action"
+                      onClick={() => {
+                        setIsHistoryExpanded((current) => !current);
+                        setIsUploadsExpanded(false);
+                      }}
+                      type="button"
+                    >
+                      <History size={15} />
+                      Choose Recent Run
+                    </button>
+                    <button
+                      className="compact-toggle dataset-panel__action"
+                      onClick={() => {
+                        setIsUploadsExpanded((current) => !current);
+                        setIsHistoryExpanded(false);
+                      }}
+                      type="button"
+                    >
+                      <FileSpreadsheet size={15} />
+                      Choose Upload
+                    </button>
+                  </div>
+                </div>
+
+                {isHistoryExpanded ? (
+                  <div className="dataset-panel__section">
+                    <div className="dataset-panel__section-header">
+                      <h4>Recent Runs</h4>
+                    </div>
+                    {recentAnalyses.length ? (
+                      <div className="stack-list">
+                        {recentAnalyses.map((entry) => (
+                          <button
+                            key={entry.id}
+                            className="stack-row stack-row--interactive"
+                            onClick={() => handleRecentRunSelection(entry)}
+                            type="button"
+                          >
+                            <span className="stack-row__label">
+                              <History size={16} />
+                              <span>
+                                <strong>{formatDataFileName(entry.fileName)}</strong>
+                                <small>{new Date(entry.savedAt).toLocaleString()}</small>
+                              </span>
+                            </span>
+                            <strong>{entry.analysis.rowCount} rows</strong>
+                          </button>
+                        ))}
+                      </div>
+                    ) : isLoadingRecent ? (
+                      <div className="skeleton-stack">
+                        <div className="skeleton-line" />
+                        <div className="skeleton-line" />
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={<Clock3 size={20} />}
+                        title="No saved analyses yet"
+                        description="Analyze a CSV once and the most recent 10 results will stay available here."
+                      />
+                    )}
+                  </div>
+                ) : null}
+
+                {isUploadsExpanded ? (
+                  <div className="dataset-panel__section">
+                    <div className="dataset-panel__section-header">
+                      <h4>Uploaded CSV Files</h4>
+                    </div>
+                    {uploadedFiles.filter((file) => file.filename.toLowerCase().endsWith('.csv')).length ? (
+                      <div className="stack-list">
+                        {uploadedFiles
+                          .filter((file) => file.filename.toLowerCase().endsWith('.csv'))
+                          .map((file) => (
+                            <button
+                              key={file.filename}
+                              className="stack-row stack-row--interactive"
+                              onClick={() => void handleUploadedFileSelection(file)}
+                              type="button"
+                            >
+                              <span className="stack-row__label">
+                                <Upload size={16} />
+                                <span>
+                                  <strong>{formatDataFileName(file.filename)}</strong>
+                                  <small>{file.url}</small>
+                                </span>
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    ) : isLoadingUploads ? (
+                      <div className="skeleton-stack">
+                        <div className="skeleton-line" />
+                        <div className="skeleton-line" />
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={<Upload size={20} />}
+                        title="No uploaded CSV files yet"
+                        description="Email intake is archive-only now. Choose a saved CSV here when you want to load it into the table."
+                      />
+                    )}
+                  </div>
+                ) : null}
               </aside>
             </div>
           ) : null}
@@ -1106,10 +1248,10 @@ export function WorkPage() {
             <Card className="analysis-grid__wide">
               <div className="ticket-toolbar ticket-toolbar--compact">
                 <div className="ticket-toolbar__header">
-                  <span className="ui-eyebrow">Tickets</span>
-                  <h3 className="ui-card__title">Active ticket queue</h3>
+                  <span className="ui-eyebrow">Dataset</span>
+                  <h3 className="ui-card__title">Selected file view</h3>
                   <span className="ticket-source-banner__pill">
-                    {visibleLatestTickets.length} {visibleLatestTickets.length === 1 ? 'ticket' : 'tickets'}
+                    {visibleDatasetRows.length} {visibleDatasetRows.length === 1 ? 'row' : 'rows'}
                   </span>
                 </div>
 
@@ -1121,13 +1263,9 @@ export function WorkPage() {
                     onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
                     type="file"
                   />
-                  <button
-                    className="compact-toggle"
-                    onClick={() => fileInputRef.current?.click()}
-                    type="button"
-                  >
-                    <Upload size={15} />
-                    Upload
+                  <button className="compact-toggle" onClick={() => setIsDatasetInfoOpen(true)} type="button">
+                    <TableProperties size={15} />
+                    Dataset Panel
                   </button>
                   <button
                     className="ui-button ui-button--primary"
@@ -1138,18 +1276,20 @@ export function WorkPage() {
                     <MessageSquareText size={16} />
                     {isSubmitting ? 'Analyzing...' : loadingAI ? 'AI...' : 'AI'}
                   </button>
-                  <select
-                    className="ticket-queue__filter"
-                    onChange={(event) => setAssigneeFilter(event.target.value)}
-                    value={assigneeFilter}
-                  >
-                    <option value="">All assignees</option>
-                    {assigneeOptions.map((assignee) => (
-                      <option key={assignee} value={assignee}>
-                        {assignee}
-                      </option>
-                    ))}
-                  </select>
+                  {datasetAssigneeColumn ? (
+                    <select
+                      className="ticket-queue__filter"
+                      onChange={(event) => setAssigneeFilter(event.target.value)}
+                      value={assigneeFilter}
+                    >
+                      <option value="">All assignees</option>
+                      {assigneeOptions.map((assignee) => (
+                        <option key={assignee} value={assignee}>
+                          {assignee}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                   <div className="ticket-view-toggle" role="tablist" aria-label="Ticket view">
                     <button
                       aria-pressed={ticketView === 'card'}
@@ -1160,155 +1300,60 @@ export function WorkPage() {
                       Cards
                     </button>
                     <button
-                      aria-pressed={ticketView === 'table'}
-                      className={ticketView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                      onClick={() => setTicketView('table')}
+                      aria-pressed="false"
+                      className="compact-toggle"
+                      onClick={() => navigate('/app/work/table')}
                       type="button"
                     >
                       Table
                     </button>
+                    <button
+                      className="compact-toggle"
+                      onClick={() => navigate('/app/work/ai-metrics')}
+                      type="button"
+                    >
+                      <BarChart3 size={15} />
+                      AI Metrics
+                    </button>
                   </div>
-                  <button className="compact-toggle" onClick={() => void loadLatestDataset()} type="button">
-                    <RotateCcw size={15} />
-                    Refresh
-                  </button>
                 </div>
               </div>
 
               <div className="ticket-source-banner ticket-source-banner--compact">
-                <span>Active File: {latestFileName || 'Unknown'}</span>
-                <button
-                  aria-expanded={isDatasetInfoOpen}
-                  className="compact-toggle"
-                  onClick={() => setIsDatasetInfoOpen((current) => !current)}
-                  type="button"
-                >
-                  <TableProperties size={15} />
-                  Dataset Info
-                </button>
-                <div className="history-dropdown">
-                  <button
-                    aria-expanded={isHistoryExpanded}
-                    className="compact-toggle"
-                    onClick={() => setIsHistoryExpanded((current) => !current)}
-                    type="button"
-                  >
-                    <History size={15} />
-                    Recent Runs
-                    <ChevronDown
-                      aria-hidden="true"
-                      className={isHistoryExpanded ? 'compact-toggle__icon compact-toggle__icon--open' : 'compact-toggle__icon'}
-                      size={15}
-                    />
-                  </button>
-
-                  {isHistoryExpanded ? (
-                    <div className="history-dropdown__menu">
-                      {recentAnalyses.length ? (
-                        <div className="stack-list">
-                          {recentAnalyses.map((entry) => (
-                            <button
-                              key={entry.id}
-                              className="stack-row stack-row--interactive"
-                              onClick={() => handleRecentRunSelection(entry)}
-                              type="button"
-                            >
-                              <span className="stack-row__label">
-                                <History size={16} />
-                                <span>
-                                  <strong>{entry.fileName}</strong>
-                                  <small>{new Date(entry.savedAt).toLocaleString()}</small>
-                                </span>
-                              </span>
-                              <strong>{entry.analysis.rowCount} rows</strong>
-                            </button>
-                          ))}
-                        </div>
-                      ) : isLoadingRecent ? (
-                        <div className="skeleton-stack">
-                          <div className="skeleton-line" />
-                          <div className="skeleton-line" />
-                        </div>
-                      ) : (
-                        <EmptyState
-                          icon={<Clock3 size={20} />}
-                          title="No saved analyses yet"
-                          description="Analyze a CSV once and the most recent 10 results will stay available here."
-                        />
-                      )}
-                    </div>
-                  ) : null}
-                </div>
+                <span>Active File: {formatDataFileName(latestFileName) || 'Unknown'}</span>
+                <span>{datasetVisibleColumns.length} columns visible</span>
               </div>
 
               {latestMessage ? <p className="status-text">{latestMessage}</p> : null}
-              {isLoadingLatest ? <p className="status-text">Refreshing latest tickets...</p> : null}
 
               {latestDataset?.rows?.length ? (
-                latestTickets.length ? (
-                  ticketView === 'card' ? (
+                visibleDatasetRows.length ? (
                   <div className="ticket-card-grid">
-                    {visibleLatestTickets.map((ticket) => (
+                    {visibleDatasetRows.map((ticket, index) => (
                       <TicketCard
-                        key={getTicketId(ticket, latestColumns)}
-                        columns={latestColumns}
+                        key={`${getTicketId(ticket, datasetColumns)}-${index}`}
+                        columns={datasetColumns}
+                        onOpen={handlePreviewRowSelect}
                         ticket={ticket}
                       />
                     ))}
                   </div>
-                  ) : (
-                    <DataTable
-                      assigneeColumn={latestAssigneeColumn}
-                      assigneeDrafts={assigneeDrafts}
-                      columnFilters={latestColumnFilters}
-                      columnTypeMap={latestColumnTypeMap}
-                      fileName="latest"
-                      onColumnFilterChange={(column, key, value) =>
-                        setLatestColumnFilters((current) => ({
-                          ...current,
-                          [column]: {
-                            ...getColumnFilterDefaults(latestColumnTypeMap[column] || 'text'),
-                            ...current[column],
-                            [key]: value,
-                          },
-                        }))
-                      }
-                      onRowSelect={handlePreviewRowSelect}
-                      onSort={(column) =>
-                        setLatestSortConfig((current) => {
-                          if (current.column !== column) {
-                            return { column, direction: 'asc' };
-                          }
-
-                          if (current.direction === 'asc') {
-                            return { column, direction: 'desc' };
-                          }
-
-                          return { column: '', direction: 'asc' };
-                        })
-                      }
-                      rows={filteredLatestRows}
-                      selectedRow={null}
-                      sortConfig={latestSortConfig}
-                      visibleColumns={latestVisibleColumns}
-                    />
-                  )
                 ) : (
         <EmptyState
           icon={<FileSpreadsheet size={20} />}
-          title="No assigned active tickets found"
+          title="No rows match the current view"
           description={
             assigneeFilter
-              ? `The latest dataset does not contain any active tickets assigned to ${assigneeFilter}.`
-              : 'The latest dataset does not contain any active assigned tickets.'
+              ? `The selected dataset does not contain any rows assigned to ${assigneeFilter}.`
+              : 'The selected dataset does not contain any rows that match the current filters.'
           }
         />
       )
               ) : (
                 <EmptyState
                   icon={<FileSpreadsheet size={20} />}
-                  title="No latest ticket dataset"
-                  description="Upload a CSV manually or deliver one by email to populate the live ticket dataset."
+                  title="No dataset loaded"
+                  description="Upload a CSV manually or choose one from Uploaded Files to render it in cards or table view."
                 />
               )}
             </Card>

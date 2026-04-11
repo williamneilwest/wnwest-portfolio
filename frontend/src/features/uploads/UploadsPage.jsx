@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { FileSpreadsheet } from 'lucide-react';
+import { Eye, FileSpreadsheet } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getUploads } from '../../app/services/api';
+import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 
@@ -42,27 +44,33 @@ export function UploadsPage() {
         {files.length ? (
           <div className="stack-list">
             {files.map((file) => (
-              <a
-                className="stack-row stack-row--interactive"
-                href={file.url}
-                key={file.filename}
-                rel="noreferrer"
-                target="_blank"
-              >
+              <div className="stack-row" key={file.filename}>
                 <span className="stack-row__label">
                   <FileSpreadsheet size={16} />
                   <span>
-                    <strong>{file.filename}</strong>
+                    <strong>{formatDataFileName(file.filename)}</strong>
                   </span>
                 </span>
-              </a>
+                <div className="stack-row__actions">
+                  <Link
+                    className="compact-toggle"
+                    to={`/app/work/table?url=${encodeURIComponent(file.url)}&fileName=${encodeURIComponent(file.filename)}`}
+                  >
+                    <Eye size={14} />
+                    View
+                  </Link>
+                  <a className="compact-toggle" download={file.filename} href={file.url}>
+                    Download
+                  </a>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
           <EmptyState
             icon={<FileSpreadsheet size={20} />}
             title="No CSV uploads yet"
-            description="Incoming Mailgun CSV attachments will show up here once delivered."
+            description="Incoming SendGrid CSV attachments will show up here once delivered."
           />
         )}
       </Card>

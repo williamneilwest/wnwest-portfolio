@@ -1,12 +1,18 @@
 import logging
+from io import BytesIO
 
 from flask import Blueprint, Response, request
 
 from ..api_response import error_response, success_response
+from .email_upload import (
+    MAX_ATTACHMENT_BYTES,
+    is_allowed_attachment,
+    iter_sendgrid_attachments,
+    save_uploaded_attachment,
+    save_uploaded_attachment_bytes,
+)
 from ..services.active_tickets import (
     SOURCE_EMAIL,
-    SOURCE_MANUAL,
-    cache_active_ticket_dataset,
     get_ticket_by_id,
     load_latest_ticket_payload,
     update_ticket_assignee,
@@ -51,7 +57,6 @@ def analyze_csv():
 
         content = uploaded_file.stream.read()
         result = build_csv_analysis(uploaded_file.filename, content)
-        cache_active_ticket_dataset(content, SOURCE_MANUAL)
         record = save_analysis(uploaded_file.filename, content, result)
 
         return success_response(
@@ -68,34 +73,64 @@ def analyze_csv():
 @work_bp.post('/api/email/upload')
 def upload_email_csv():
     try:
-        csv_upload = None
+        saved_files = []
 
         for uploaded_file in request.files.values():
             filename = (uploaded_file.filename or '').strip()
-            if filename.lower().endswith('.csv'):
-                csv_upload = uploaded_file
-                break
+            if not is_allowed_attachment(filename):
+                LOGGER.info('Ignoring unsupported email attachment: %s', filename or 'unnamed attachment')
+                continue
 
-            LOGGER.info('Ignoring non-CSV email attachment: %s', filename or 'unnamed attachment')
+            uploaded_file.stream.seek(0, 2)
+            size = uploaded_file.stream.tell()
+            uploaded_file.stream.seek(0)
+            if size > MAX_ATTACHMENT_BYTES:
+                LOGGER.info('Ignoring oversized email attachment: %s (%s bytes)', filename or 'unnamed attachment', size)
+                continue
 
-        if csv_upload is None:
-            return success_response(
+            content = uploaded_file.stream.read()
+            uploaded_file.stream = BytesIO(content)
+            saved_record = save_uploaded_attachment(uploaded_file)
+            saved_files.append(
                 {
-                    'saved': False,
-                    'message': 'No CSV attachments were found.',
+                    'originalFileName': filename,
+                    'savedFileName': saved_record['filename'],
+                    'savedFileUrl': saved_record['url'],
                 }
             )
 
-        content = csv_upload.stream.read()
-        cache_active_ticket_dataset(content, SOURCE_EMAIL)
+        transport = None
+        if not saved_files:
+            for attachment in iter_sendgrid_attachments():
+                saved_record = save_uploaded_attachment_bytes(attachment['filename'], attachment['content'])
+                saved_files.append(
+                    {
+                        'originalFileName': attachment['filename'],
+                        'savedFileName': saved_record['filename'],
+                        'savedFileUrl': saved_record['url'],
+                    }
+                )
+                transport = 'base64'
 
-        return success_response(
-            {
-                'saved': True,
-                'fileName': csv_upload.filename,
-                'source': SOURCE_EMAIL,
-            }
-        )
+        if not saved_files:
+            return success_response(
+                {
+                    'saved': False,
+                    'message': 'No valid attachments were found.',
+                }
+            )
+
+        response_payload = {
+            'saved': True,
+            'savedFiles': saved_files,
+            'source': SOURCE_EMAIL,
+            'datasetUpdated': False,
+        }
+
+        if transport:
+            response_payload['transport'] = transport
+
+        return success_response(response_payload)
     except ValueError as error:
         LOGGER.warning('Email CSV upload rejected: %s', error)
         return success_response(

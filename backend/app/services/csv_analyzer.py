@@ -22,9 +22,6 @@ def build_csv_analysis(filename, content):
     if not headers:
         raise ValueError('The CSV file must include a header row.')
 
-    if 'Ticket' not in headers:
-        raise ValueError('The CSV file must include a Ticket column. Expected source field: u_task_1.')
-
     rows = [dict(row) for row in reader]
     category_column = detect_category_column(headers)
     category_counts = Counter()

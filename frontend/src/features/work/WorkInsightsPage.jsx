@@ -5,7 +5,7 @@ import { sendAiChat } from '../../app/services/api';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { getCachedAiMetricSummary, getCachedWorkDataset, setCachedAiMetricSummary } from './workDatasetCache';
-import { buildInsights, buildInsightsSummaryPrompt } from './workInsightsMetrics';
+import { buildInsights } from './workInsightsMetrics';
 
 function MetricTile({ label, value, detail }) {
   return (
@@ -59,8 +59,15 @@ export function WorkInsightsPage() {
     setIsSummaryLoading(true);
 
     try {
-      const result = await sendAiChat(buildInsightsSummaryPrompt(dataset, insights));
-      const message = result.message || '';
+      const result = await sendAiChat({
+        analysis_mode: 'full_dataset',
+        dataset: {
+          fileName: dataset.fileName,
+          columns: dataset.columns,
+          rows: dataset.rows,
+        },
+      });
+      const message = result.message || result.summary || '';
       setAiSummary(message);
       setCachedAiMetricSummary(summaryCacheKey, message);
     } catch (error) {
@@ -75,8 +82,8 @@ export function WorkInsightsPage() {
     return (
       <section className="module">
         <SectionHeader
-          tag="/work/insights"
-          title="Insights"
+          tag="/app/work/ai-metrics"
+          title="AI Metrics"
           description="Advanced ticket metrics from the full CSV dataset."
         />
         <div className="insights-empty">
@@ -85,8 +92,8 @@ export function WorkInsightsPage() {
             title="Full dataset not loaded"
             description="Upload and analyze a CSV from the Work page first to build advanced insights from the full dataset."
           />
-          <Link className="ui-button ui-button--secondary" to="/work">
-            Back to Work
+          <Link className="ui-button ui-button--secondary" to="/app/work/active-tickets">
+            Back to Active Tickets
           </Link>
         </div>
       </section>
@@ -96,12 +103,12 @@ export function WorkInsightsPage() {
   return (
     <section className="module">
       <SectionHeader
-        tag="/work/insights"
-        title="Insights"
+        tag="/app/work/ai-metrics"
+        title="AI Metrics"
         description={`Advanced ticket metrics from ${dataset.fileName}.`}
         actions={
-          <Link className="ui-button ui-button--secondary" to="/work">
-            Back to Work
+          <Link className="ui-button ui-button--secondary" to="/app/work/active-tickets">
+            Back to Active Tickets
           </Link>
         }
       />

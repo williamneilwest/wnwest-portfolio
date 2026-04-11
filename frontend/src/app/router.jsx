@@ -1,11 +1,32 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { LandingPage } from '../features/landing/LandingPage';
 import { ReadmePage } from '../features/readme/ReadmePage';
+import { AISettingsPage } from '../features/settings/AISettingsPage';
+import { TablePage } from '../features/tables/TablePage';
+import { WorkPage } from '../features/work/WorkPage';
 import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { AppShell } from './shell/AppShell';
 
 const routeModules = import.meta.glob('../features/*/routes.jsx');
+const missingRoute = async () => ({ Component: () => null });
+
+const getRoute = (path) => {
+  if (!routeModules[path]) {
+    console.error(`Missing route module: ${path}`);
+    return missingRoute;
+  }
+
+  return async () => {
+    const module = await routeModules[path]();
+    if (typeof module.default !== 'function') {
+      console.error(`Invalid route module: ${path}`);
+      return { Component: () => null };
+    }
+
+    return module.default();
+  };
+};
 
 export const router = createBrowserRouter([
   {
@@ -22,35 +43,65 @@ export const router = createBrowserRouter([
       },
       {
         path: 'life',
-        lazy: routeModules['../features/life/routes.jsx']
+        lazy: getRoute('../features/life/routes.jsx')
       },
       {
         path: 'console',
-        lazy: routeModules['../features/console/routes.jsx']
+        lazy: getRoute('../features/console/routes.jsx')
+      },
+      {
+        path: 'settings',
+        lazy: getRoute('../features/settings/routes.jsx')
+      },
+      {
+        path: 'settings/ai',
+        Component: AISettingsPage
       },
       {
         path: 'uploads',
-        lazy: routeModules['../features/uploads/routes.jsx']
+        lazy: getRoute('../features/uploads/routes.jsx')
       },
       {
         path: 'work',
-        element: <Navigate replace to="/work" />
+        lazy: getRoute('../features/work/routes.jsx')
+      },
+      {
+        path: 'work/active-tickets',
+        Component: WorkPage
+      },
+      {
+        path: 'work/table',
+        Component: TablePage
+      },
+      {
+        path: 'work/ai-metrics',
+        Component: WorkInsightsPage
+      },
+      {
+        path: 'work/insights',
+        element: <Navigate replace to="/app/work/ai-metrics" />
       }
     ]
   },
   {
     path: '/work',
-    Component: AppShell,
-    children: [
-      {
-        index: true,
-        lazy: routeModules['../features/work/routes.jsx']
-      },
-      {
-        path: 'insights',
-        Component: WorkInsightsPage
-      }
-    ]
+    element: <Navigate replace to="/app/work" />
+  },
+  {
+    path: '/work/active-tickets',
+    element: <Navigate replace to="/app/work/active-tickets" />
+  },
+  {
+    path: '/work/ai-metrics',
+    element: <Navigate replace to="/app/work/ai-metrics" />
+  },
+  {
+    path: '/work/table',
+    element: <Navigate replace to="/app/work/table" />
+  },
+  {
+    path: '/work/insights',
+    element: <Navigate replace to="/app/work/ai-metrics" />
   },
   {
     path: '/readme',
@@ -74,7 +125,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/csv',
-    element: <Navigate replace to="/work" />
+    element: <Navigate replace to="/app/work/table" />
   },
   {
     path: '/life',
@@ -83,6 +134,14 @@ export const router = createBrowserRouter([
   {
     path: '/console',
     element: <Navigate replace to="/app/console" />
+  },
+  {
+    path: '/settings',
+    element: <Navigate replace to="/app/settings" />
+  },
+  {
+    path: '/settings/ai',
+    element: <Navigate replace to="/app/settings/ai" />
   },
   {
     path: '/uploads',

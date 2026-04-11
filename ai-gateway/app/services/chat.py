@@ -38,6 +38,22 @@ def _normalize_messages(payload):
     return [{'role': 'user', 'content': prompt}]
 
 
+def clean_ai_output(text):
+    cleaned = str(text or '').strip()
+
+    if cleaned.startswith('```'):
+        cleaned = cleaned.strip()
+        if cleaned.startswith('```json'):
+            cleaned = cleaned[len('```json') :].strip()
+        elif cleaned.startswith('```'):
+            cleaned = cleaned[3:].strip()
+
+        if cleaned.endswith('```'):
+            cleaned = cleaned[:-3].strip()
+
+    return cleaned
+
+
 def run_chat_completion(payload, model, temperature, max_tokens, api_base):
     if not model:
         raise RuntimeError('LiteLLM model is not configured. Set LITELLM_MODEL in the environment.')
@@ -52,18 +68,18 @@ def run_chat_completion(payload, model, temperature, max_tokens, api_base):
         'temperature': request_temperature,
         'max_tokens': request_max_tokens,
         'stream': False,
-        'extra_body': {
+    }
+
+    if _uses_ollama(model, api_base):
+        request_kwargs['api_base'] = api_base
+        request_kwargs['extra_body'] = {
             'keep_alive': -1,
             'options': {
                 'num_predict': 100,
                 'num_ctx': 1024,
                 'temperature': 0.2,
             },
-        },
-    }
-
-    if _uses_ollama(model, api_base):
-        request_kwargs['api_base'] = api_base
+        }
 
     started_at = perf_counter()
     LOGGER.info('Starting AI request for model %s', model)
@@ -93,18 +109,18 @@ def warmup_chat_completion(model, temperature, max_tokens, api_base):
         'temperature': 0.2,
         'max_tokens': 1,
         'stream': False,
-        'extra_body': {
+    }
+
+    if _uses_ollama(model, api_base):
+        request_kwargs['api_base'] = api_base
+        request_kwargs['extra_body'] = {
             'keep_alive': -1,
             'options': {
                 'num_predict': 100,
                 'num_ctx': 1024,
                 'temperature': 0.2,
             },
-        },
-    }
-
-    if _uses_ollama(model, api_base):
-        request_kwargs['api_base'] = api_base
+        }
 
     completion(**request_kwargs)
 
@@ -113,7 +129,7 @@ def build_compat_chat_response(payload, result):
     choices = result.get('choices') or []
     first_choice = choices[0] if choices else {}
     message = first_choice.get('message') or {}
-    content = _extract_message_content(message)
+    content = clean_ai_output(_extract_message_content(message))
 
     return {
         'status': 'ok',

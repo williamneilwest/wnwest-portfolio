@@ -33,9 +33,11 @@ const moduleSections = [
     title: 'Work',
     icon: Blocks,
     description:
-      'The operational workspace for CSV ingestion, ticket review, AI analysis, and recent analysis recall.',
+      'The operational workspace for the work hub, active ticket intake, metrics review, and recent analysis recall.',
     points: [
-      'Route: `/work`',
+      'Hub route: `/app/work`',
+      'Active tickets route: `/app/work/active-tickets`',
+      'AI metrics route: `/app/work/ai-metrics`',
       'Flow: upload CSV -> parse rows -> normalize headers -> cache dataset -> render active tickets',
       'Detail view: `/tickets/:ticketId` with metadata, combined notes, and manual AI analysis',
     ],
@@ -92,7 +94,7 @@ const architectureCards = [
 ];
 
 const workflowSteps = [
-  'Upload a CSV from the Work page.',
+  'Open the Work hub and launch Active Tickets.',
   'Backend analyzes the file and frontend caches the parsed dataset for interactive use.',
   'Only active tickets are surfaced as cards in the work module.',
   'Selecting a ticket opens `/tickets/:ticketId` for a full-page detail view.',

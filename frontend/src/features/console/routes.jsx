@@ -1,5 +1,5 @@
 import { ConsolePage } from './ConsolePage';
 
-export function Component() {
-  return <ConsolePage />;
-}
+export default async () => ({
+  Component: ConsolePage
+});

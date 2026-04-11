@@ -77,6 +77,10 @@ export function getUploads() {
   return request(backendBaseUrl, '/uploads');
 }
 
+export function getUploadFile(fileUrl) {
+  return requestText(backendBaseUrl, fileUrl);
+}
+
 export function updateTicketAssignee(ticketId, assignee) {
   return request(backendBaseUrl, '/api/tickets/update-assignee', {
     method: 'POST',
@@ -94,12 +98,48 @@ export function getAiHealth() {
   return request(aiBaseUrl, '/api/ai/health');
 }
 
-export function sendAiChat(message) {
+export function getSettings() {
+  return request(backendBaseUrl, '/api/settings');
+}
+
+export function getAISettings() {
+  return request(backendBaseUrl, '/api/settings/ai');
+}
+
+export function updateAISettings(data) {
+  return request(backendBaseUrl, '/api/settings/ai', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  });
+}
+
+export async function updateAiSettings(model) {
+  const current = await getAISettings();
+
+  return updateAISettings({
+    models: {
+      preview: model,
+      focused: model,
+      deep: model,
+    },
+    pipeline: current.pipeline,
+  });
+}
+
+export function sendAiChat(messageOrPayload) {
+  const payload =
+    typeof messageOrPayload === 'string'
+      ? { message: messageOrPayload }
+      : { ...(messageOrPayload || {}) };
+
   return request(aiBaseUrl, '/api/ai/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ message })
+    body: JSON.stringify(payload)
   });
 }

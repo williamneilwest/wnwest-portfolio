@@ -31,7 +31,7 @@ export function LandingPage() {
         <h1>WestOS</h1>
         <p>
           One control surface for the homelab stack. The frontend, backend, and AI gateway stay behind a single
-          domain with clean path-based routing.
+          domain with clean path-based routing!!
         </p>
 
         <div className="landing__actions">

@@ -3,6 +3,7 @@ import {
   Blocks,
   BrainCircuit,
   ChevronDown,
+  Cog,
   HeartPulse,
   Info,
   LayoutDashboard,
@@ -16,8 +17,9 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
 const modules = [
   { href: '/app/life', label: 'Life', summary: 'Personal systems', icon: HeartPulse, readmeHref: '/readme#life' },
-  { href: '/work', label: 'Work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
+  { href: '/app/work', label: 'Work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
   { href: '/app/uploads', label: 'Uploads', summary: 'Email CSV inbox', icon: Mail, readmeHref: '/readme' },
+  { href: '/app/settings/ai', label: 'Settings', summary: 'AI configuration', icon: Cog, readmeHref: '/readme' },
   { href: 'https://webui.westos.dev', label: 'AI', summary: 'Open WebUI workspace', icon: BrainCircuit, external: true, readmeHref: '/readme#ai' },
   { href: '/app/console', label: 'Console', summary: 'Service status', icon: TerminalSquare, readmeHref: '/readme#console' }
 ];
@@ -33,7 +35,7 @@ const docsModule = {
 export function AppShell() {
   const location = useLocation();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const shellPath = location.pathname.startsWith('/tickets') ? '/work' : location.pathname;
+  const shellPath = location.pathname.startsWith('/tickets') ? '/app/work' : location.pathname;
   const activeModule =
     (shellPath.startsWith('/readme') && docsModule) ||
     modules.find((module) => !module.external && shellPath.startsWith(module.href)) ||

@@ -9,6 +9,14 @@ from ..services.chat import (
 chat_bp = Blueprint('chat', __name__)
 
 
+def _request_model(payload):
+    model = str(payload.get('model', '')).strip()
+    if model:
+        return model
+
+    return current_app.config['LITELLM_MODEL']
+
+
 @chat_bp.post('/ai/chat')
 @chat_bp.post('/api/ai/chat')
 @chat_bp.post('/chat')
@@ -17,7 +25,7 @@ def chat():
     try:
         result = run_chat_completion(
             payload=payload,
-            model=current_app.config['LITELLM_MODEL'],
+            model=_request_model(payload),
             temperature=current_app.config['LITELLM_TEMPERATURE'],
             max_tokens=current_app.config['LITELLM_MAX_TOKENS'],
             api_base=current_app.config['OLLAMA_API_BASE'],
@@ -38,7 +46,7 @@ def openai_chat():
     try:
         result = run_chat_completion(
             payload=payload,
-            model=current_app.config['LITELLM_MODEL'],
+            model=_request_model(payload),
             temperature=current_app.config['LITELLM_TEMPERATURE'],
             max_tokens=current_app.config['LITELLM_MAX_TOKENS'],
             api_base=current_app.config['OLLAMA_API_BASE'],

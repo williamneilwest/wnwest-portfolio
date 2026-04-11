@@ -1,5 +1,5 @@
-import { WorkPage } from './WorkPage';
+import { WorkHubPage } from './WorkHubPage';
 
-export function Component() {
-  return <WorkPage />;
-}
+export default async () => ({
+  Component: WorkHubPage
+});
