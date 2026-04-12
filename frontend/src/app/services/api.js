@@ -206,6 +206,16 @@ export function analyzeDocument(filePath) {
   });
 }
 
+export function processDocumentByFileId(fileId) {
+  return request(backendBaseUrl, '/api/documents/process', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ file_id: fileId })
+  });
+}
+
 export function analyzeKbDocument(category, filename) {
   return request(backendBaseUrl, '/api/kb/analyze', {
     method: 'POST',

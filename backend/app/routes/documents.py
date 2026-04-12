@@ -7,8 +7,10 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 
 from ..models.reference import AIDocument, SessionLocal, init_db
+from ..services.document_processor import process_document
 from ..services.document_ai import analyze_document
 from ..services.document_parser import parse_document
+from ..services.file_registry import get_file_metadata_by_id
 
 
 documents_bp = Blueprint('documents', __name__)
@@ -224,3 +226,25 @@ def get_analyzed_document(document_id):
         return jsonify(_serialize_document(record))
     finally:
         session.close()
+
+
+@documents_bp.post('/api/documents/process')
+def process_uploaded_document():
+    payload = request.get_json(silent=True) or {}
+    try:
+        file_id = int(payload.get('file_id') or 0)
+    except (TypeError, ValueError):
+        file_id = 0
+
+    if file_id <= 0:
+        return jsonify({'success': False, 'error': 'file_id is required.'}), 400
+
+    file_row = get_file_metadata_by_id(file_id)
+    if file_row is None:
+        return jsonify({'success': False, 'error': 'File not found.'}), 404
+
+    result = process_document(file_row.storage_path, int(file_row.id))
+    if not result.get('success'):
+        return jsonify({'success': False, 'error': str(result.get('error') or 'Document processing failed.')}), 200
+
+    return jsonify({'success': True, 'data': result.get('document') or {}})

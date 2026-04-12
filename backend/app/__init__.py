@@ -164,6 +164,7 @@ def create_app():
         ENABLE_CHUNKING=os.getenv('ENABLE_CHUNKING', 'true').lower() == 'true',
         FRONTEND_BUILD_DIR=str(frontend_build_dir) if frontend_build_dir else '',
         ENABLE_LOG_MONITOR=os.getenv('ENABLE_LOG_MONITOR', 'true').lower() == 'true',
+        DOCUMENT_PROCESSOR_MAX_FILE_BYTES=int(os.getenv('DOCUMENT_PROCESSOR_MAX_FILE_BYTES', str(15 * 1024 * 1024))),
         WORK_DOMAIN=os.getenv('WORK_DOMAIN', 'work.westos.dev').strip().lower(),
         DATABASE_URL=os.getenv('DATABASE_URL', '').strip(),
         SECRET_KEY=os.getenv('AUTH_SESSION_SECRET', os.getenv('SECRET_KEY', 'westos-session-secret')),
