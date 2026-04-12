@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Brain, Download, ExternalLink, FileText, RefreshCcw, Trash2 } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useBackNavigation } from '../../app/hooks/useBackNavigation';
-import { analyzeDocumentWithAi, deleteFileById, updateFileById } from '../../app/services/api';
+import { deleteFileById, updateFileById } from '../../app/services/api';
+import { analyzeDocumentAI } from '../../app/services/aiClient';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
@@ -131,7 +132,7 @@ export function DocumentPage() {
         }
       }
 
-      const payload = await analyzeDocumentWithAi({
+      const payload = await analyzeDocumentAI({
         documentText,
         documentName: currentFileName || title || 'Untitled Document',
         documentUrl: currentFileUrl,
@@ -158,7 +159,7 @@ export function DocumentPage() {
     setLoadingExisting(true);
 
     try {
-      const payload = await analyzeDocumentWithAi({
+      const payload = await analyzeDocumentAI({
         documentText: '',
         documentName: currentFileName || title || 'Untitled Document',
         documentUrl: currentFileUrl,

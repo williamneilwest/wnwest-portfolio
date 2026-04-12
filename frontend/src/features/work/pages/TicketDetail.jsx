@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Clock3, MessageSquareText, ShieldCheck, ShieldX, Sparkles, UserRound } from 'lucide-react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useBackNavigation } from '../../../app/hooks/useBackNavigation';
-import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, getUserGroups, sendAiChat } from '../../../app/services/api';
+import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, getUserGroups } from '../../../app/services/api';
+import { chatAI } from '../../../app/services/aiClient';
 import { Card, CardHeader } from '../../../app/ui/Card';
 import { EmptyState } from '../../../app/ui/EmptyState';
 import { getCachedWorkDataset, setCachedWorkDataset } from '../workDatasetCache';
@@ -402,7 +403,7 @@ export function TicketDetail() {
     const startedAt = performance.now();
 
     try {
-      const result = await sendAiChat({
+      const result = await chatAI({
         analysis_mode: 'deep',
         ticket,
         fileName: dataset?.fileName,

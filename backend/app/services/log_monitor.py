@@ -16,7 +16,7 @@ _WARNING_PATTERN = re.compile(r"\bwarn(?:ing)?\b", re.IGNORECASE)
 _ERROR_PATTERN = re.compile(r"(error|exception|traceback)", re.IGNORECASE)
 _SEVERITY_PATTERN = re.compile(r"\b(low|medium|high)\b", re.IGNORECASE)
 _MISSING_CONTEXT_PATTERN = re.compile(
-    r"(error log details are missing|no data provided|log missing|provide (the )?specific error message)",
+    r"(error log.*missing|no data provided|no log provided|log missing|provide (the )?specific error message|share (the )?details)",
     re.IGNORECASE,
 )
 _MAX_BLOCK_LINES = 40

@@ -36,3 +36,7 @@ portainer.westos.dev {
 files.westos.dev {
 	reverse_proxy filebrowser:80
 }
+
+webui.westos.dev {
+	reverse_proxy open-webui:8080
+}

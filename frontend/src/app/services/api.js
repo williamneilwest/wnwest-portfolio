@@ -235,6 +235,12 @@ export function getAiHealth() {
   return request(aiBaseUrl, '/api/ai/health');
 }
 
+export function getAiInteractionLogs(limit = 200) {
+  const params = new URLSearchParams();
+  params.set('limit', String(limit));
+  return request(aiBaseUrl, `/api/ai/logs?${params.toString()}`);
+}
+
 export function getSettings() {
   return request(backendBaseUrl, '/api/settings');
 }

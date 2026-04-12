@@ -17,6 +17,7 @@ from ..services.ai_client import (
     call_gateway_chat,
     call_gateway_openai_chat,
 )
+from ..services.ai_interaction_log import read_ai_interactions
 from ..services.document_ai import analyze_document
 from ..services.document_parser import parse_document
 from ..services.smart_analysis import (
@@ -247,6 +248,17 @@ def _run_smart_analysis(payload):
 @ai_bp.post('/chat')
 def chat():
     raw_payload = request.get_json(silent=True) or {}
+    if not current_app.config.get('USE_AI_GATEWAY', False):
+        return jsonify({'status': 'error', 'error': 'AI gateway is disabled.'}), 503
+
+    request_type = str(raw_payload.get('type') or '').strip().lower()
+    if request_type == 'log_analysis':
+        logs = raw_payload.get('logs')
+        has_logs = isinstance(logs, str) and logs.strip()
+        if isinstance(logs, list):
+            has_logs = len(logs) > 0
+        if not has_logs:
+            return jsonify({'status': 'skipped', 'reason': 'no_logs', 'message': 'No logs available to analyze'})
 
     if smart_analysis_requested(raw_payload):
         try:
@@ -280,6 +292,8 @@ def chat():
 @ai_bp.post('/api/ai/v1/chat/completions')
 @ai_bp.post('/v1/chat/completions')
 def openai_chat():
+    if not current_app.config.get('USE_AI_GATEWAY', False):
+        return jsonify({'error': {'message': 'AI gateway is disabled.', 'type': 'service_unavailable'}}), 503
     payload = _gateway_payload(request.get_json(silent=True) or {})
 
     try:
@@ -288,6 +302,18 @@ def openai_chat():
         return jsonify({'error': {'message': str(error), 'type': 'invalid_request_error'}}), 400
     except RequestException as error:
         return jsonify({'error': {'message': f'AI request failed: {error}', 'type': 'service_unavailable'}}), 503
+
+
+@ai_bp.get('/api/ai/logs')
+@ai_bp.get('/ai/logs')
+def ai_logs():
+    try:
+        limit = int(request.args.get('limit', 200))
+    except (TypeError, ValueError):
+        limit = 200
+
+    items = read_ai_interactions(limit=limit)
+    return jsonify({'status': 'ok', 'items': items})
 
 
 @ai_bp.get('/ai/health')

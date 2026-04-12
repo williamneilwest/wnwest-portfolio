@@ -3,7 +3,10 @@ import re
 from time import perf_counter
 
 import requests
+from flask import current_app, has_app_context
+from requests import RequestException
 
+from .ai_interaction_log import write_ai_interaction
 
 DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
 DEFAULT_READ_TIMEOUT_SECONDS = 20
@@ -180,14 +183,24 @@ def sanitize_payload(payload):
 
 
 def call_gateway_chat(payload, gateway_base_url, timeout_seconds=DEFAULT_REQUEST_TIMEOUT):
+    if not str(gateway_base_url or "").strip():
+        raise RequestException('AI gateway is not configured.')
+    if has_app_context() and not current_app.config.get('USE_AI_GATEWAY', False):
+        raise RequestException('AI gateway is disabled by configuration.')
+
     sanitized_payload = sanitize_payload(payload)
+    started_at = perf_counter()
     response = requests.post(
         f"{gateway_base_url.rstrip('/')}/v1/chat/completions",
         json=sanitized_payload,
         timeout=timeout_seconds,
     )
     response.raise_for_status()
-    return response.json()
+    result = response.json()
+    duration_ms = int((perf_counter() - started_at) * 1000)
+    interaction_type = str((sanitized_payload or {}).get("type") or (sanitized_payload or {}).get("analysis_mode") or "chat")
+    write_ai_interaction(sanitized_payload, result, duration_ms, provider="ai-gateway", interaction_type=interaction_type)
+    return result
 
 
 def call_gateway_openai_chat(payload, gateway_base_url):

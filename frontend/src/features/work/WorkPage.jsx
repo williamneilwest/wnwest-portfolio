@@ -18,8 +18,8 @@ import {
   getRecentCsvAnalysisFile,
   getUploadFile,
   getUploads,
-  sendAiChat,
 } from '../../app/services/api';
+import { chatAI } from '../../app/services/aiClient';
 import { STORAGE_KEYS } from '../../app/constants/storageKeys';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
@@ -1165,7 +1165,7 @@ export function WorkPage() {
         : latestDataset;
 
     try {
-      const result = await sendAiChat({
+      const result = await chatAI({
         analysis_mode: 'preview',
         dataset: analysisDataset
           ? {

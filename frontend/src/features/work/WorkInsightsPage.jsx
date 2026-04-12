@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clock3, FolderKanban, MessageSquareText, Tags, UserRoundCheck } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useBackNavigation } from '../../app/hooks/useBackNavigation';
-import { sendAiChat } from '../../app/services/api';
+import { chatAI } from '../../app/services/aiClient';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { getCachedAiMetricSummary, getCachedWorkDataset, setCachedAiMetricSummary } from './workDatasetCache';
@@ -63,7 +63,7 @@ export function WorkInsightsPage() {
     setIsSummaryLoading(true);
 
     try {
-      const result = await sendAiChat({
+      const result = await chatAI({
         analysis_mode: 'full_dataset',
         dataset: {
           fileName: dataset.fileName,
