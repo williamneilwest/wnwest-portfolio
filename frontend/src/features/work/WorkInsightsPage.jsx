@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clock3, FolderKanban, MessageSquareText, Tags, UserRoundCheck } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useBackNavigation } from '../../app/hooks/useBackNavigation';
+import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { chatAI } from '../../app/services/aiClient';
 import { getLatestTickets } from '../../app/services/api';
 import { EmptyState } from '../../app/ui/EmptyState';
@@ -40,6 +41,7 @@ function RankedList({ items, emptyText, secondaryKey }) {
 }
 
 export function WorkInsightsPage() {
+  const { authenticated } = useCurrentUser();
   const location = useLocation();
   const goBack = useBackNavigation('/app/work/active-tickets');
   const backLabel = location.state?.label || 'Active Tickets';
@@ -100,7 +102,7 @@ export function WorkInsightsPage() {
     return () => {
       active = false;
     };
-  }, [dataset]);
+  }, [authenticated, dataset]);
 
   async function handleGenerateSummary() {
     if (!dataset?.rows?.length || !insights || !summaryCacheKey) {
