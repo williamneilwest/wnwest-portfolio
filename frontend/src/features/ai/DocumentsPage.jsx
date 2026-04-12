@@ -25,6 +25,33 @@ function formatWhen(value) {
   });
 }
 
+function getDisplayPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
+
+  const structured = payload.ai_structured;
+  if (structured && typeof structured === 'object' && Object.keys(structured).length > 0) {
+    return structured;
+  }
+
+  return {
+    summary: payload.ai_summary || 'No structured AI output available.',
+    tags: Array.isArray(payload.tags) ? payload.tags : [],
+    source: payload.source || '',
+    file_type: payload.file_type || '',
+    parsed_text_preview: String(payload.parsed_text || '').slice(0, 1000),
+  };
+}
+
+function getDisplayBody(payload) {
+  const raw = payload?.ai_structured?.raw_response;
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw;
+  }
+  return JSON.stringify(getDisplayPayload(payload), null, 2);
+}
+
 export function DocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [query, setQuery] = useState('');
@@ -151,7 +178,7 @@ export function DocumentsPage() {
             </div>
 
             <div className="row-detail-drawer__content">
-              <pre className="code-block">{JSON.stringify(selectedPayload || {}, null, 2)}</pre>
+              <pre className="code-block">{getDisplayBody(selectedPayload)}</pre>
             </div>
           </aside>
         </div>

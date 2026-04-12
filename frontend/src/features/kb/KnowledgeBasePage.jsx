@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Folder, FileText, Download, Mail, ExternalLink, Printer } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { getKnowledgeBase } from '../../app/services/api';
+import { Folder, FileText, Download, Mail, ExternalLink, Printer, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { analyzeKbDocument, getKnowledgeBase } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { buildDocumentViewHref } from '../../app/utils/documentFiles';
 import { EmptyState } from '../../app/ui/EmptyState';
@@ -18,6 +18,9 @@ export function KnowledgeBasePage() {
   const [data, setData] = useState({ categories: [] });
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -66,6 +69,7 @@ export function KnowledgeBasePage() {
         />
 
         {error ? <p className="status-text status-text--error">{error}</p> : null}
+        {message ? <p className="status-text status-text--success">{message}</p> : null}
 
         <div className="toolbar" style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '8px 0 16px' }}>
           <input
@@ -132,6 +136,32 @@ export function KnowledgeBasePage() {
                           <button
                             type="button"
                             className="compact-toggle"
+                            disabled={submitting}
+                            onClick={async () => {
+                              setMessage('');
+                              setError('');
+                              setSubmitting(true);
+                              try {
+                                const result = await analyzeKbDocument(cat.category, file.filename);
+                                const id = Number(result?.id || 0);
+                                if (id > 0) {
+                                  setMessage('Document analyzed. Opening details…');
+                                  navigate(`/app/ai/documents/${id}`);
+                                } else {
+                                  setMessage('Document analyzed.');
+                                }
+                              } catch (e) {
+                                setError(e?.message || 'Analyze failed');
+                              } finally {
+                                setSubmitting(false);
+                              }
+                            }}
+                          >
+                            {submitting ? 'Analyzing…' : 'Analyze'}
+                          </button>
+                          <button
+                            type="button"
+                            className="compact-toggle"
                             onClick={() => {
                               const url = absoluteUrl(file.url);
                               const subject = encodeURIComponent(`KB: ${formatDataFileName(file.originalName || file.filename)}`);
@@ -151,6 +181,65 @@ export function KnowledgeBasePage() {
                             Print
                           </a>
                         </div>
+                        <details className="upload-row-menu">
+                          <summary className="compact-toggle upload-row-menu__toggle">
+                            Actions
+                            <ChevronDown className="compact-toggle__icon" size={14} />
+                          </summary>
+                          <div className="upload-row-menu__panel">
+                            <Link className="upload-row-menu__action" to={previewHref}>
+                              <ExternalLink size={14} />
+                              Open
+                            </Link>
+                            <button
+                              type="button"
+                              className="upload-row-menu__action"
+                              disabled={submitting}
+                              onClick={async () => {
+                                setMessage('');
+                                setError('');
+                                setSubmitting(true);
+                                try {
+                                  const result = await analyzeKbDocument(cat.category, file.filename);
+                                  const id = Number(result?.id || 0);
+                                  if (id > 0) {
+                                    setMessage('Document analyzed. Opening details…');
+                                    navigate(`/app/ai/documents/${id}`);
+                                  } else {
+                                    setMessage('Document analyzed.');
+                                  }
+                                } catch (e) {
+                                  setError(e?.message || 'Analyze failed');
+                                } finally {
+                                  setSubmitting(false);
+                                }
+                              }}
+                            >
+                              {submitting ? 'Analyzing…' : 'Analyze'}
+                            </button>
+                            <button
+                              type="button"
+                              className="upload-row-menu__action"
+                              onClick={() => {
+                                const url = absoluteUrl(file.url);
+                                const subject = encodeURIComponent(`KB: ${formatDataFileName(file.originalName || file.filename)}`);
+                                const body = encodeURIComponent(`Quick reference link:\n${url}`);
+                                window.location.href = `mailto:?subject=${subject}&body=${body}`;
+                              }}
+                            >
+                              <Mail size={14} />
+                              Email
+                            </button>
+                            <a className="upload-row-menu__action" href={file.url} download={file.filename}>
+                              <Download size={14} />
+                              Download
+                            </a>
+                            <a className="upload-row-menu__action" href={file.url} target="_blank" rel="noreferrer">
+                              <Printer size={14} />
+                              Print
+                            </a>
+                          </div>
+                        </details>
                       </div>
                       );
                     })}

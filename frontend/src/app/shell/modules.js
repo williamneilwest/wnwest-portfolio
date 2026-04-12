@@ -2,7 +2,7 @@ import { Blocks, BrainCircuit, Cog, Database, HeartPulse, ShieldEllipsis, Termin
 
 export const modules = [
   { href: '/app/life', label: 'Life', summary: 'Personal systems', icon: HeartPulse, readmeHref: '/readme#life' },
-  { href: '/app/work', label: 'Work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
+  { href: '/app/work', label: 'work', summary: 'Operational file tools', icon: Blocks, readmeHref: '/readme#work' },
   { href: '/app/data', label: 'Data', summary: 'Uploads and tables', icon: Database, readmeHref: '/readme' },
   { href: '/app/kb', label: 'Knowledge Base', summary: 'Documents and references', icon: BookText, readmeHref: '/readme' },
   { href: '/app/admin', label: 'Admin', summary: 'Admin tools', icon: ShieldEllipsis, readmeHref: '/readme' },

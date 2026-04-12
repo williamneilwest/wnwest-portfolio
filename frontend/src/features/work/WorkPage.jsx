@@ -9,9 +9,10 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   analyzeCsvFile,
+  getLatestTickets,
   getRecentCsvAnalyses,
   getRecentCsvAnalysisFile,
   getUploadFile,
@@ -34,6 +35,7 @@ const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
 const TABLE_PAGE_SIZE = 50;
 const PREVIEW_COLUMN_PREFERENCE_KEY = 'westos.work.previewColumns';
 const DATASET_COLUMN_PREFERENCE_KEY = 'westos.work.datasetColumns';
+const ACTIVE_TICKETS_FIXED_FILE = 'ActiveTicketsLAH.csv';
 
 function formatColumnLabel(column) {
   return String(column ?? '')
@@ -192,25 +194,8 @@ function formatUploadSource(value) {
   return String(value || '').trim().toLowerCase() === 'email' ? 'Email upload' : 'Manual upload';
 }
 
-function isActiveTicketFile(filename) {
-  const normalized = String(filename || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '');
-
-  const isCsv = String(filename || '').toLowerCase().endsWith('.csv');
-  if (!isCsv) {
-    return false;
-  }
-
-  return normalized.includes('activeticket') || normalized.includes('activetickets') || normalized.includes('dailydigest');
-}
-
 function getDefaultVisibleColumns(analysis) {
   return getStoredVisibleColumns(PREVIEW_COLUMN_PREFERENCE_KEY, analysis?.columns || []);
-}
-
-function findLatestActiveTicketsUpload(files = []) {
-  return files.find((file) => isActiveTicketFile(file?.originalName || file?.filename)) || null;
 }
 
 function buildLocalAnalysis(fileName, dataset) {
@@ -541,8 +526,9 @@ const DataTable = memo(function DataTable({
 
 export function WorkPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isActiveTicketsRoute = location.pathname.startsWith('/app/work/active-tickets');
   const fileInputRef = useRef(null);
-  const hasAutoLoadedLatestUpload = useRef(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const initialDataset = getCachedWorkDataset();
   const [analysis, setAnalysis] = useState(() =>
@@ -580,8 +566,13 @@ export function WorkPage() {
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
   const [isLoadingSavedRun, setIsLoadingSavedRun] = useState(false);
-  const activeTicketUploads = useMemo(
-    () => uploadedFiles.filter((file) => isActiveTicketFile(file.originalName || file.filename)),
+  const csvUploads = useMemo(
+    () =>
+      uploadedFiles.filter((file) => {
+        const filename = String(file?.filename || '').toLowerCase();
+        const mime = String(file?.mimeType || '').toLowerCase();
+        return filename.endsWith('.csv') || mime.includes('csv');
+      }),
     [uploadedFiles]
   );
 
@@ -661,7 +652,7 @@ export function WorkPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isActiveTicketsRoute]);
 
   useEffect(() => {
     let isMounted = true;
@@ -688,32 +679,76 @@ export function WorkPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isActiveTicketsRoute]);
 
   useEffect(() => {
-    if (!recentAnalyses.length || isLoadingSavedRun || latestFileName || activeTicketUploads.length) {
+    if (!isActiveTicketsRoute) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadFixedActiveTicketsDataset() {
+      setError('');
+      setIsLoadingSavedRun(true);
+      setSelectedFile(null);
+      setSelectedRow(null);
+
+      try {
+        const payload = await getLatestTickets();
+        if (!isMounted) {
+          return;
+        }
+
+        const columns = Array.isArray(payload?.columns) ? payload.columns : [];
+        const rows = Array.isArray(payload?.tickets) ? payload.tickets : [];
+        const fileName = String(payload?.fileName || ACTIVE_TICKETS_FIXED_FILE).trim() || ACTIVE_TICKETS_FIXED_FILE;
+        const nextDataset = {
+          fileName,
+          columns,
+          rows,
+        };
+
+        setAnalysis(buildLocalAnalysis(fileName, nextDataset));
+        setLatestDataset({ columns, rows });
+        setLatestFileName(fileName);
+        setLatestMessage(String(payload?.message || '').trim());
+        setCachedWorkDataset(nextDataset);
+      } catch (requestError) {
+        if (!isMounted) {
+          return;
+        }
+        setAnalysis(null);
+        setLatestDataset({ columns: [], rows: [] });
+        setLatestFileName(ACTIVE_TICKETS_FIXED_FILE);
+        setError(requestError.message || 'Active Tickets dataset could not be loaded.');
+      } finally {
+        if (isMounted) {
+          setIsLoadingSavedRun(false);
+        }
+      }
+    }
+
+    void loadFixedActiveTicketsDataset();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isActiveTicketsRoute]);
+
+  useEffect(() => {
+    if (!recentAnalyses.length || isLoadingSavedRun || latestFileName || csvUploads.length) {
+      return;
+    }
+
+    if (isActiveTicketsRoute) {
       return;
     }
 
     if (!analysis?.analysisId) {
       void loadSavedAnalysisEntry(recentAnalyses[0], { showLoading: false });
     }
-  }, [activeTicketUploads.length, analysis?.analysisId, isLoadingSavedRun, latestFileName, recentAnalyses]);
-
-  useEffect(() => {
-    if (isLoadingUploads || hasAutoLoadedLatestUpload.current) {
-      return;
-    }
-
-    const latestActiveTicketsUpload = activeTicketUploads[0] || null;
-    if (!latestActiveTicketsUpload) {
-      hasAutoLoadedLatestUpload.current = true;
-      return;
-    }
-
-    hasAutoLoadedLatestUpload.current = true;
-    void handleUploadedFileSelection(latestActiveTicketsUpload);
-  }, [activeTicketUploads, isLoadingUploads]);
+  }, [csvUploads.length, analysis?.analysisId, isActiveTicketsRoute, isLoadingSavedRun, latestFileName, recentAnalyses]);
 
   useEffect(() => {
     storage.set(VIEW_STORAGE_KEY, ticketView);
@@ -1264,9 +1299,9 @@ export function WorkPage() {
                     <div className="dataset-panel__section-header">
                       <h4>Uploaded CSV Files</h4>
                     </div>
-                    {activeTicketUploads.length ? (
+                    {csvUploads.length ? (
                       <div className="stack-list">
-                        {activeTicketUploads.map((file) => (
+                        {csvUploads.map((file) => (
                             <button
                               key={file.filename}
                               className="stack-row stack-row--interactive"
@@ -1291,8 +1326,8 @@ export function WorkPage() {
                     ) : (
                       <EmptyState
                         icon={<Upload size={20} />}
-                        title="No active ticket CSV files yet"
-                        description="Only CSVs whose filenames match Active Tickets or Daily Digest are available in this workspace."
+                        title="No uploaded CSV files yet"
+                        description="Upload a CSV to make it available in this list."
                       />
                     )}
                   </div>

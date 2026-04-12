@@ -121,7 +121,7 @@ function extractAuthor(value) {
   return match ? normalizeValue(match[1]) : '';
 }
 
-function extractNoteType(value, fallback = 'Comments and Work Notes') {
+function extractNoteType(value, fallback = 'Comments and work Notes') {
   const text = normalizeValue(value);
   const headerMatch = text.match(HEADER_AUTHOR_TYPE_PATTERN);
   return headerMatch ? normalizeValue(headerMatch[2]) : fallback;
@@ -364,7 +364,7 @@ export function build_prompt(ticket, days_since, last_author, last_type) {
     'Summary:',
     '- 1-2 sentences describing the issue',
     '',
-    'Work Notes:',
+    'work Notes:',
     '- Bullet list of key actions performed',
     '',
     'Comments:',

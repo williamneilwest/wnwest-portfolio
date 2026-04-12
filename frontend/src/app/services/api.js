@@ -91,6 +91,16 @@ export function analyzeDocument(filePath) {
   });
 }
 
+export function analyzeKbDocument(category, filename) {
+  return request(backendBaseUrl, '/api/kb/analyze', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ category, filename })
+  });
+}
+
 export function getAnalyzedDocuments() {
   return request(backendBaseUrl, '/api/documents');
 }
@@ -194,6 +204,7 @@ export async function updateAiSettings(model) {
       preview: model,
       focused: model,
       deep: model,
+      document_processing: model,
     },
     pipeline: current.pipeline,
   });

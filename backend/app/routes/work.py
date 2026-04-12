@@ -6,10 +6,11 @@ from flask import Blueprint, Response, request
 from ..api_response import error_response, success_response
 from .email_upload import (
     MAX_ATTACHMENT_BYTES,
+    extract_recipient_from_request,
     is_allowed_attachment,
     iter_sendgrid_attachments,
-    save_uploaded_attachment,
-    save_uploaded_attachment_bytes,
+    resolve_target_from_recipient,
+    save_attachment_bytes_to_directory,
 )
 from ..services.active_tickets import (
     SOURCE_EMAIL,
@@ -26,7 +27,11 @@ LOGGER = logging.getLogger(__name__)
 
 @work_bp.get('/flows/work/recent-analyses')
 def recent_analyses():
-    return success_response(list_recent_analyses())
+    try:
+        return success_response(list_recent_analyses())
+    except Exception as error:
+        LOGGER.warning('Failed to load recent analyses: %s', error)
+        return success_response([])
 
 
 @work_bp.get('/flows/work/recent-analyses/<analysis_id>/file')
@@ -74,6 +79,8 @@ def analyze_csv():
 def upload_email_csv():
     try:
         saved_files = []
+        routing = resolve_target_from_recipient(extract_recipient_from_request())
+        transport = None
 
         for uploaded_file in request.files.values():
             filename = (uploaded_file.filename or '').strip()
@@ -90,24 +97,39 @@ def upload_email_csv():
 
             content = uploaded_file.stream.read()
             uploaded_file.stream = BytesIO(content)
-            saved_record = save_uploaded_attachment(uploaded_file, source=SOURCE_EMAIL)
+            saved_record = save_attachment_bytes_to_directory(
+                filename,
+                content,
+                routing['directory'],
+                source=SOURCE_EMAIL,
+                recipient=routing['recipient'],
+                route=routing['target'],
+            )
             saved_files.append(
                 {
                     'originalFileName': filename,
                     'savedFileName': saved_record['filename'],
                     'savedFileUrl': saved_record['url'],
+                    'route': routing['target'],
                 }
             )
 
-        transport = None
         if not saved_files:
             for attachment in iter_sendgrid_attachments():
-                saved_record = save_uploaded_attachment_bytes(attachment['filename'], attachment['content'], source=SOURCE_EMAIL)
+                saved_record = save_attachment_bytes_to_directory(
+                    attachment['filename'],
+                    attachment['content'],
+                    routing['directory'],
+                    source=SOURCE_EMAIL,
+                    recipient=routing['recipient'],
+                    route=routing['target'],
+                )
                 saved_files.append(
                     {
                         'originalFileName': attachment['filename'],
                         'savedFileName': saved_record['filename'],
                         'savedFileUrl': saved_record['url'],
+                        'route': routing['target'],
                     }
                 )
                 transport = 'base64'
@@ -124,6 +146,7 @@ def upload_email_csv():
             'saved': True,
             'savedFiles': saved_files,
             'source': SOURCE_EMAIL,
+            'route': routing['target'],
             'datasetUpdated': False,
         }
 

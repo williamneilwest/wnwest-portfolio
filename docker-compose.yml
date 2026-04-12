@@ -18,12 +18,14 @@ services:
       context: ./backend
     container_name: backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       FLASK_ENV: ${BACKEND_FLASK_ENV}
       GUNICORN_BIND: ${BACKEND_GUNICORN_BIND}
       APP_NAME: ${BACKEND_APP_NAME:-westOS API}
       BACKEND_DATA_DIR: ${BACKEND_DATA_DIR:-/app/data}
-      FRONTEND_STATUS_URL: http://frontend:${FRONTEND_PORT}
+      FRONTEND_STATUS_URL: ${FRONTEND_STATUS_URL:-http://localhost:5173}
       AI_GATEWAY_STATUS_URL: http://backend:${BACKEND_PORT}/api/ai/health
       USE_AI_GATEWAY: ${USE_AI_GATEWAY}
       AI_GATEWAY_BASE_URL: http://ai-gateway:${AI_GATEWAY_PORT}
@@ -50,6 +52,8 @@ services:
       context: ./ai-gateway
     container_name: ai-gateway
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       FLASK_ENV: ${AI_FLASK_ENV}
       GUNICORN_BIND: ${AI_GUNICORN_BIND}

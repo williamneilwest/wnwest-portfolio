@@ -420,7 +420,7 @@ export function TicketDetail() {
           <EmptyState
             icon={<MessageSquareText size={20} />}
             title="No ticket dataset loaded"
-            description={error || 'Upload or reopen a CSV from the Work page before opening a ticket detail view.'}
+            description={error || 'Upload or reopen a CSV from the work page before opening a ticket detail view.'}
           />
         </Card>
       </section>

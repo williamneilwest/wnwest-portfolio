@@ -8,6 +8,7 @@ DEFAULT_AI_SETTINGS = {
         'preview': 'ollama/llama3.2',
         'focused': 'gpt-4o-mini',
         'deep': 'gpt-4o',
+        'document_processing': 'gpt-4o-mini',
     },
     'pipeline': {
         'preview_max_rows': 10,
@@ -49,6 +50,7 @@ def _normalize_settings(raw_settings, defaults=None):
         elif raw_settings.get('ai_model'):
             normalized['models']['deep'] = str(raw_settings.get('ai_model')).strip() or normalized['models']['deep']
             normalized['models']['focused'] = normalized['models']['deep']
+            normalized['models']['document_processing'] = normalized['models']['focused']
 
     normalized['pipeline']['preview_max_rows'] = max(1, int(normalized['pipeline'].get('preview_max_rows', 10) or 10))
     normalized['pipeline']['focused_max_rows'] = max(1, int(normalized['pipeline'].get('focused_max_rows', 5) or 5))

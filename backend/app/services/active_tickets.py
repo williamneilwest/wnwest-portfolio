@@ -22,6 +22,15 @@ ASSIGNEE_PATTERNS = (
     re.compile(r'owner', re.IGNORECASE),
     re.compile(r'agent', re.IGNORECASE),
 )
+TICKET_ID_PATTERNS = (
+    re.compile(r'^ticket$', re.IGNORECASE),
+    re.compile(r'incident', re.IGNORECASE),
+    re.compile(r'case', re.IGNORECASE),
+    re.compile(r'request', re.IGNORECASE),
+    re.compile(r'task', re.IGNORECASE),
+    re.compile(r'number', re.IGNORECASE),
+    re.compile(r'id', re.IGNORECASE),
+)
 
 
 def _storage_root():
@@ -36,10 +45,6 @@ def _source_metadata_path():
     return _storage_root() / 'source.json'
 
 
-def _uploads_dir():
-    return _storage_root() / 'uploads'
-
-
 def _ensure_storage_dir():
     _storage_root().mkdir(parents=True, exist_ok=True)
 
@@ -48,55 +53,11 @@ def _current_timestamp():
     return datetime.now(timezone.utc).isoformat()
 
 
-def _normalize_ticket_filename(value):
-    return re.sub(r'[^a-z0-9]+', '', str(value or '').lower())
-
-
-def is_active_ticket_file(filename):
-    try:
-        name = Path(str(filename or '')).name
-    except Exception:
-        name = str(filename or '')
-
-    if not name.lower().endswith('.csv'):
-        return False
-
-    normalized = _normalize_ticket_filename(name)
-    return 'activeticket' in normalized or 'activetickets' in normalized or 'dailydigest' in normalized
-
-
 def _resolve_active_ticket_dataset_path():
-    uploads_dir = _uploads_dir()
-    if not uploads_dir.exists():
+    fixed_path = _storage_root() / 'work' / 'live' / 'ActiveTicketsLAH.csv'
+    if not fixed_path.exists():
         return None
-
-    candidates = []
-
-    try:
-        entries = list(uploads_dir.iterdir())
-    except OSError:
-        return None
-
-    for entry in entries:
-        if not entry.is_file() or entry.name.endswith('.meta.json'):
-            continue
-
-        if not is_active_ticket_file(entry.name):
-            continue
-
-        try:
-            modified = entry.stat().st_mtime
-        except OSError:
-            modified = 0
-
-        LOGGER.info('Valid active ticket dataset candidate found: %s', entry.name)
-        candidates.append((modified, entry))
-
-    if not candidates:
-        return None
-
-    candidates.sort(key=lambda item: item[0], reverse=True)
-    return candidates[0][1]
+    return fixed_path
 
 
 def _parse_csv_bytes(content):
@@ -105,9 +66,6 @@ def _parse_csv_bytes(content):
     headers = normalize_headers(reader.fieldnames)
     reader.fieldnames = headers
     rows = [dict(row) for row in reader]
-
-    if 'Ticket' not in headers:
-        raise ValueError('The active ticket dataset is missing the Ticket field.')
 
     LOGGER.info('Active ticket dataset loaded with %s records.', len(rows))
 
@@ -188,6 +146,38 @@ def _find_assignee_column(columns):
     return ''
 
 
+def _find_ticket_id_columns(columns):
+    prioritized = []
+    seen = set()
+
+    for column in columns:
+        if str(column).strip().lower() == 'ticket':
+            prioritized.append(column)
+            seen.add(column)
+            break
+
+    for pattern in TICKET_ID_PATTERNS:
+        for column in columns:
+            if column in seen:
+                continue
+            if pattern.search(str(column)):
+                prioritized.append(column)
+                seen.add(column)
+
+    if not prioritized and columns:
+        prioritized.append(columns[0])
+
+    return prioritized
+
+
+def _row_ticket_id(row, columns):
+    for column in _find_ticket_id_columns(columns):
+        value = str(row.get(column, '')).strip()
+        if value:
+            return value
+    return ''
+
+
 def load_active_ticket_dataset(force_reload=False):
     global _cached_dataset, _cached_metadata
 
@@ -265,9 +255,9 @@ def load_latest_ticket_payload(force_reload=False):
 
 def get_ticket_by_id(ticket_id):
     dataset = load_active_ticket_dataset()
-
+    ticket_id_norm = str(ticket_id or '').strip()
     for row in dataset['rows']:
-        if str(row.get('Ticket', '')).strip() == ticket_id:
+        if _row_ticket_id(row, dataset['columns']) == ticket_id_norm:
             return row
 
     return None
@@ -287,8 +277,9 @@ def update_ticket_assignee(ticket_id, assignee):
         raise ValueError('No active ticket dataset is available.')
 
     updated = False
+    ticket_id_norm = str(ticket_id or '').strip()
     for row in dataset['rows']:
-        if str(row.get('Ticket', '')).strip() != ticket_id:
+        if _row_ticket_id(row, dataset['columns']) != ticket_id_norm:
             continue
 
         row[assignee_column] = assignee

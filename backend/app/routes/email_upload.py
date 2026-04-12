@@ -123,8 +123,36 @@ def build_storage_filename(name: str) -> str:
     if not cleaned:
         return ''
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    return f"{timestamp}_{cleaned}"
+    return cleaned
+
+
+def build_old_storage_filename(name: str) -> str:
+    cleaned = clean_filename(name)
+    if not cleaned:
+        return ''
+
+    return f"{cleaned}.old"
+
+
+def rotate_stored_file_versions(directory: str, filename: str) -> tuple[str, str]:
+    current_path = os.path.join(directory, filename)
+    old_filename = build_old_storage_filename(filename)
+    old_path = os.path.join(directory, old_filename)
+    current_meta_path = _metadata_path_for_directory(directory, filename)
+    old_meta_path = _metadata_path_for_directory(directory, old_filename)
+
+    if os.path.exists(current_path):
+        if os.path.exists(old_path):
+            os.remove(old_path)
+        if os.path.exists(old_meta_path):
+            os.remove(old_meta_path)
+
+        os.replace(current_path, old_path)
+
+        if os.path.exists(current_meta_path):
+            os.replace(current_meta_path, old_meta_path)
+
+    return filename, current_path
 
 
 def normalize_recipient(recipient: str) -> str:
@@ -230,12 +258,7 @@ def extract_recipient_from_request():
 def extract_original_name(saved_name: str) -> str:
     """Extract the original filename portion from a stored name.
 
-    Supports multiple patterns to be robust to legacy/manual files:
-    - "<timestamp>_<name>"  (our standard saved format)
-    - "<timestamp> <name>"  (space separator)
-    - "<timestamp>-<name>"  (dash separator)
-
-    Where <timestamp> is 8–14 digits (e.g., YYYYMMDD or YYYYMMDDHHMMSS).
+    Supports legacy timestamped names and the current stable-name storage pattern.
     If no recognizable timestamp prefix exists, returns a cleaned fallback.
     """
     if not saved_name:
@@ -287,7 +310,7 @@ def save_attachment_bytes_to_directory(filename, content, directory, source='man
 
     os.makedirs(directory, exist_ok=True)
     safe_name = build_storage_filename(cleaned)
-    path = os.path.join(directory, safe_name)
+    safe_name, path = rotate_stored_file_versions(directory, safe_name)
 
     with open(path, 'wb') as handle:
         handle.write(content)

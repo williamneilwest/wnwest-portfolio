@@ -9,7 +9,7 @@ import mimetypes
 from typing import Optional
 
 # Reuse helpers from email uploads where possible to keep behavior consistent
-from .email_upload import clean_filename, extract_original_name
+from .email_upload import clean_filename, extract_original_name, rotate_stored_file_versions
 from ..services.document_parser import run_document_processing_task, parse_document
 from ..services.document_ai import analyze_document
 from ..models.reference import AIDocument, SessionLocal, init_db
@@ -45,6 +45,22 @@ def _kb_write_metadata(category: str, filename: str, payload: dict):
             json.dump(payload or {}, h)
     except OSError:
         pass
+
+
+def _kb_read_metadata(category: str, filename: str) -> dict:
+    try:
+        with open(_kb_metadata_path(category, filename), "r", encoding="utf-8") as h:
+            data = json.load(h)
+            return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _kb_write_analysis_metadata(category: str, filename: str, analysis_payload: dict):
+    existing = _kb_read_metadata(category, filename)
+    merged = dict(existing)
+    merged["analysis"] = analysis_payload
+    _kb_write_metadata(category, filename, merged)
 
 
 def _determine_category(original_name: str, mail_subject=None) -> str:
@@ -108,6 +124,24 @@ def _build_kb_url(category: str, filename: str) -> str:
     return f"/kb/{safe_cat}/{filename}"
 
 
+def _build_structured_payload(ai_result, text, failure_reason=''):
+    if isinstance(ai_result, dict):
+        structured = {key: value for key, value in ai_result.items() if key != 'tags'}
+        if structured:
+            return structured
+
+    excerpt = str(text or '').strip()
+    if len(excerpt) > 1000:
+        excerpt = f'{excerpt[:1000]}\n...'
+
+    return {
+        'status': 'analysis_unavailable',
+        'reason': failure_reason or 'AI analysis did not return structured output.',
+        'text_extracted': bool(str(text or '').strip()),
+        'text_excerpt': excerpt,
+    }
+
+
 def _queue_document_processing(app, path: str):
     worker = threading.Thread(
         target=run_document_processing_task,
@@ -122,7 +156,8 @@ def handle_kb_email():
     """Accept email attachments for Knowledge Base ingestion.
 
     Expected to be called by the mail provider webhook (similar to /webhooks/mailgun).
-    Files will be saved under BACKEND_DATA_DIR/kb/<category>/timestamp_cleanedname.ext
+    Files will be saved under BACKEND_DATA_DIR/kb/<category>/filename.ext,
+    with the prior version rotated to filename.ext.old when a duplicate arrives.
     Category is determined via a light heuristic from subject or filename.
     """
     saved = []
@@ -146,9 +181,7 @@ def handle_kb_email():
         category = _determine_category(original_name, mail_subject)
         directory = _kb_category_dir(category)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-        safe_name = f"{timestamp}_{cleaned}"
-        path = os.path.join(directory, safe_name)
+        safe_name, path = rotate_stored_file_versions(directory, cleaned)
 
         try:
             file.save(path)
@@ -320,9 +353,11 @@ def analyze_kb_document():
 
     # Run AI analysis through the existing /api/ai/chat flow (gateway-aware)
     ai_result = None
+    failure_reason = ''
     try:
         ai_result = analyze_document(text, filename)
     except Exception as error:
+        failure_reason = str(error)
         LOGGER.warning('AI analysis failed for KB %s/%s: %s', category, filename, error)
 
     tags = []
@@ -331,7 +366,9 @@ def analyze_kb_document():
     if ai_result:
         ai_summary = str(ai_result.get('summary') or '').strip()
         tags = ai_result.get('tags') if isinstance(ai_result.get('tags'), list) else []
-        structured = {key: value for key, value in ai_result.items() if key != 'tags'}
+        structured = _build_structured_payload(ai_result, text, failure_reason)
+    else:
+        structured = _build_structured_payload(ai_result, text, failure_reason)
 
     # Persist/update AIDocument record
     session = SessionLocal()
@@ -361,6 +398,22 @@ def analyze_kb_document():
 
         session.commit()
         session.refresh(existing)
+        if ai_result:
+            try:
+                meta_tags = json.loads(existing.tags or "[]") if existing.tags else []
+            except json.JSONDecodeError:
+                meta_tags = []
+            _kb_write_analysis_metadata(
+                category,
+                filename,
+                {
+                    "status": "success",
+                    "analyzedAt": existing.updated_at.isoformat() if existing.updated_at else datetime.now(timezone.utc).isoformat(),
+                    "documentId": existing.id,
+                    "summary": existing.ai_summary or "",
+                    "tags": meta_tags if isinstance(meta_tags, list) else [],
+                },
+            )
         # Mirror documents.py serialization
         try:
             structured_doc = json.loads(existing.ai_structured or '{}') if existing.ai_structured else {}

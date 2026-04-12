@@ -36,11 +36,14 @@ def _read_index():
     if not path.exists():
         return []
 
-    with path.open('r', encoding='utf-8') as handle:
-        try:
-            payload = json.load(handle)
-        except json.JSONDecodeError:
-            return []
+    try:
+        with path.open('r', encoding='utf-8') as handle:
+            try:
+                payload = json.load(handle)
+            except json.JSONDecodeError:
+                return []
+    except (OSError, UnicodeDecodeError):
+        return []
 
     return payload if isinstance(payload, list) else []
 
@@ -86,15 +89,19 @@ def save_analysis(filename, content, analysis):
 
 def list_recent_analyses():
     entries = _read_index()
-    return [
-        {
-            'id': entry.get('id'),
-            'fileName': entry.get('fileName'),
-            'savedAt': entry.get('savedAt'),
-            'analysis': entry.get('analysis'),
-        }
-        for entry in entries[:MAX_RECENT_ANALYSES]
-    ]
+    output = []
+    for entry in entries[:MAX_RECENT_ANALYSES]:
+        if not isinstance(entry, dict):
+            continue
+        output.append(
+            {
+                'id': entry.get('id'),
+                'fileName': entry.get('fileName'),
+                'savedAt': entry.get('savedAt'),
+                'analysis': entry.get('analysis'),
+            }
+        )
+    return output
 
 
 def get_analysis_file(analysis_id):

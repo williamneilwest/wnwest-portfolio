@@ -3,6 +3,7 @@ import { LandingPage } from '../features/landing/LandingPage';
 import { ReadmePage } from '../features/readme/ReadmePage';
 import { AISettingsPage } from '../features/settings/AISettingsPage';
 import { DocumentsPage } from '../features/ai/DocumentsPage';
+import { DocumentDetailPage } from '../features/ai/DocumentDetailPage';
 import { TablePage } from '../features/tables/TablePage';
 import { DocumentPage } from '../features/uploads/DocumentPage';
 import { ProcessedKBPage } from '../features/kb/ProcessedKBPage';
@@ -34,12 +35,13 @@ const getRoute = (path) => {
   };
 };
 
-export const router = createBrowserRouter([
-  {
+export const router = createBrowserRouter(
+  [
+    {
     path: '/',
     Component: LandingPage
   },
-  {
+    {
     path: '/app',
     Component: AppShell,
     children: [
@@ -74,6 +76,10 @@ export const router = createBrowserRouter([
       {
         path: 'ai/documents',
         Component: DocumentsPage
+      },
+      {
+        path: 'ai/documents/:id',
+        Component: DocumentDetailPage
       },
       {
         path: 'admin',
@@ -240,5 +246,11 @@ export const router = createBrowserRouter([
   {
     path: '*',
     element: <Navigate replace to="/" />
+    }
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+    },
   }
-]);
+);

@@ -3,14 +3,13 @@ import json
 from requests import RequestException
 from flask import Blueprint, current_app, jsonify, request
 
-from ..services.settings_store import get_ai_model, get_ai_settings
+from ..services.settings_store import get_ai_settings
 from ..services.ai_client import (
     build_compat_chat_response,
     build_health_payload,
     build_openai_chat_response,
     call_gateway_chat,
     call_gateway_openai_chat,
-    call_ollama_generate,
 )
 from ..services.smart_analysis import (
     build_execution_plan,
@@ -18,7 +17,6 @@ from ..services.smart_analysis import (
     get_cached_result,
     has_meaningful_ticket_data,
     parse_llm_json,
-    preferred_model,
     prepare_analysis_request,
     save_cached_result,
     smart_analysis_requested,
@@ -28,55 +26,8 @@ from ..services.smart_analysis import (
 ai_bp = Blueprint('ai', __name__)
 
 
-def _using_gateway():
-    return bool(current_app.config.get('USE_AI_GATEWAY'))
-
-
-def _is_gateway_model(model):
-    normalized = str(model or '').strip().lower()
-    if not normalized:
-        return _using_gateway()
-
-    if normalized.startswith(('gpt-', 'o1', 'o3', 'o4', 'openai/', 'anthropic/', 'gemini/')):
-        return True
-
-    return '/' in normalized and not normalized.startswith('ollama/')
-
-
-def _payload_with_model(payload):
-    next_payload = dict(payload)
-    active_model = get_ai_model(
-        mode='deep',
-        defaults=_default_ai_settings(),
-    )
-    if _is_gateway_model(active_model):
-        next_payload.setdefault('model', active_model)
-
-    return next_payload
-
-
-def _available_models():
-    configured = str(current_app.config.get('AVAILABLE_AI_MODELS', '') or '').strip()
-    models = [model.strip() for model in configured.split(',') if model.strip()]
-
-    if not models:
-        models = ['ollama/llama3.2', 'ollama/mistral', 'qwen2.5-coder']
-
-    if current_app.config.get('OPENAI_API_KEY'):
-        for model in ('gpt-4o-mini', 'gpt-4o'):
-            if model not in models:
-                models.append(model)
-
-    return models
-
-
 def _default_ai_settings():
     return {
-        'models': {
-            'preview': current_app.config.get('OLLAMA_MODEL', 'ollama/llama3.2'),
-            'focused': current_app.config.get('LITELLM_MODEL', 'gpt-4o-mini'),
-            'deep': current_app.config.get('LITELLM_MODEL', 'gpt-4o'),
-        },
         'pipeline': {
             'preview_max_rows': int(current_app.config.get('PREVIEW_MAX_ROWS', 10)),
             'focused_max_rows': int(current_app.config.get('FOCUSED_MAX_ROWS', 5)),
@@ -85,20 +36,16 @@ def _default_ai_settings():
     }
 
 
-def _run_model_prompt(prompt, model, analysis_mode='preview'):
-    payload = _payload_with_model({'message': prompt, 'model': model, 'analysis_mode': analysis_mode})
-    active_model = str(payload.get('model') or model).strip()
+def _gateway_payload(payload):
+    next_payload = dict(payload or {})
+    next_payload.pop('model', None)
+    return next_payload
 
-    if _is_gateway_model(active_model):
-        result = call_gateway_chat(payload, current_app.config['AI_GATEWAY_BASE_URL'])
-        return result.get('message', '')
 
-    result = call_ollama_generate(
-        payload=payload,
-        ollama_api_base=current_app.config['OLLAMA_API_BASE'],
-        ollama_model=active_model,
-    )
-    return result.get('response', '')
+def _run_model_prompt(prompt, analysis_mode='preview'):
+    payload = _gateway_payload({'message': prompt, 'analysis_mode': analysis_mode})
+    result = call_gateway_chat(payload, current_app.config['AI_GATEWAY_BASE_URL'])
+    return result.get('message', '')
 
 
 def _run_smart_analysis(payload):
@@ -122,15 +69,13 @@ def _run_smart_analysis(payload):
     if cached_result:
         return cached_result
 
-    model = str(payload.get('model') or '').strip() or preferred_model(prepared['mode'], _available_models(), settings=ai_settings)
-    plan = build_execution_plan(prepared, model)
+    plan = build_execution_plan(prepared, 'gateway-managed')
 
     if prepared['mode'] == 'full_dataset':
         if not ai_settings.get('pipeline', {}).get('enable_chunking', True):
-            # Fall back to the focused-style pass over the selected records when chunking is disabled.
             plan = {
                 'mode': prepared['mode'],
-                'model': model,
+                'model': 'gateway-managed',
                 'prompt': '\n'.join(
                     [
                         'Analyze the following dataset and summarize the major trends, issues, and anomalies.',
@@ -141,12 +86,12 @@ def _run_smart_analysis(payload):
                     ]
                 ),
             }
-            parsed = parse_llm_json(_run_model_prompt(plan['prompt'], model, analysis_mode='full_dataset'))
+            parsed = parse_llm_json(_run_model_prompt(plan['prompt'], analysis_mode='full_dataset'))
             meta = {
                 'records_used': prepared['recordCount'],
                 'truncated': prepared['truncated'],
                 'chunked': False,
-                'model': model,
+                'model': 'gateway-managed',
             }
             output = build_output_payload(prepared['mode'], parsed, meta)
             if prepared.get('cacheKey'):
@@ -155,7 +100,7 @@ def _run_smart_analysis(payload):
 
         chunk_summaries = []
         for chunk_prompt in plan['chunks']:
-            chunk_result = parse_llm_json(_run_model_prompt(chunk_prompt, model, analysis_mode='focused'))
+            chunk_result = parse_llm_json(_run_model_prompt(chunk_prompt, analysis_mode='focused'))
             chunk_summaries.append(
                 {
                     'summary': chunk_result.get('summary', ''),
@@ -164,21 +109,21 @@ def _run_smart_analysis(payload):
             )
 
         final_prompt = plan['finalPrompt'](chunk_summaries, prepared)
-        parsed = parse_llm_json(_run_model_prompt(final_prompt, model, analysis_mode='full_dataset'))
+        parsed = parse_llm_json(_run_model_prompt(final_prompt, analysis_mode='full_dataset'))
         meta = {
             'records_used': prepared['recordCount'],
             'truncated': prepared['truncated'],
             'chunked': True,
             'chunk_count': len(chunk_summaries),
-            'model': model,
+            'model': 'gateway-managed',
         }
     else:
-        parsed = parse_llm_json(_run_model_prompt(plan['prompt'], model, analysis_mode=prepared['mode']))
+        parsed = parse_llm_json(_run_model_prompt(plan['prompt'], analysis_mode=prepared['mode']))
         meta = {
             'records_used': prepared['recordsUsed'],
             'truncated': prepared['truncated'],
             'chunked': False,
-            'model': model,
+            'model': 'gateway-managed',
         }
 
     output = build_output_payload(prepared['mode'], parsed, meta)
@@ -206,18 +151,10 @@ def chat():
         except RequestException as error:
             return jsonify({'error': f'AI request failed: {error}'}), 503
 
-    payload = _payload_with_model(raw_payload)
-    active_model = get_ai_model(mode='deep', defaults=_default_ai_settings())
+    payload = _gateway_payload(raw_payload)
 
     try:
-        if _is_gateway_model(active_model):
-            return jsonify(call_gateway_chat(payload, current_app.config['AI_GATEWAY_BASE_URL']))
-
-        result = call_ollama_generate(
-            payload=payload,
-            ollama_api_base=current_app.config['OLLAMA_API_BASE'],
-            ollama_model=active_model,
-        )
+        result = call_gateway_chat(payload, current_app.config['AI_GATEWAY_BASE_URL'])
         return jsonify(build_compat_chat_response(payload, result))
     except ValueError as error:
         return jsonify({'error': str(error)}), 400
@@ -229,19 +166,10 @@ def chat():
 @ai_bp.post('/api/ai/v1/chat/completions')
 @ai_bp.post('/v1/chat/completions')
 def openai_chat():
-    payload = _payload_with_model(request.get_json(silent=True) or {})
-    active_model = get_ai_model(mode='deep', defaults=_default_ai_settings())
+    payload = _gateway_payload(request.get_json(silent=True) or {})
 
     try:
-        if _is_gateway_model(active_model):
-            return jsonify(call_gateway_openai_chat(payload, current_app.config['AI_GATEWAY_BASE_URL']))
-
-        result = call_ollama_generate(
-            payload=payload,
-            ollama_api_base=current_app.config['OLLAMA_API_BASE'],
-            ollama_model=active_model,
-        )
-        return jsonify(build_openai_chat_response(result, active_model))
+        return jsonify(build_openai_chat_response(call_gateway_openai_chat(payload, current_app.config['AI_GATEWAY_BASE_URL'])))
     except ValueError as error:
         return jsonify({'error': {'message': str(error), 'type': 'invalid_request_error'}}), 400
     except RequestException as error:
@@ -251,15 +179,11 @@ def openai_chat():
 @ai_bp.get('/ai/health')
 @ai_bp.get('/api/ai/health')
 def health():
-    model = get_ai_model(mode='deep', defaults=_default_ai_settings())
-    use_gateway = _is_gateway_model(model)
-    api_base = current_app.config['AI_GATEWAY_BASE_URL'] if use_gateway else current_app.config['OLLAMA_API_BASE']
-
     return jsonify(
         build_health_payload(
             app_name=current_app.config['APP_NAME'],
-            model=model,
-            api_base=api_base,
-            use_ai_gateway=use_gateway,
+            model='gateway-managed',
+            api_base=current_app.config['AI_GATEWAY_BASE_URL'],
+            use_ai_gateway=True,
         )
     )

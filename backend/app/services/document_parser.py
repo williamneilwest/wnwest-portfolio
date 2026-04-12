@@ -19,6 +19,24 @@ LOGGER = logging.getLogger(__name__)
 MIN_TEXT_LENGTH_FOR_PDF = 500
 
 
+def _build_structured_payload(ai_result, text, failure_reason=''):
+    if isinstance(ai_result, dict):
+        structured = {key: value for key, value in ai_result.items() if key != 'tags'}
+        if structured:
+            return structured
+
+    excerpt = str(text or '').strip()
+    if len(excerpt) > 1000:
+        excerpt = f'{excerpt[:1000]}\n...'
+
+    return {
+        'status': 'analysis_unavailable',
+        'reason': failure_reason or 'AI analysis did not return structured output.',
+        'text_extracted': bool(str(text or '').strip()),
+        'text_excerpt': excerpt,
+    }
+
+
 try:
     from pdf2image import convert_from_path
 except ImportError:  # pragma: no cover
@@ -128,14 +146,16 @@ def run_document_processing_task(app, file_path):
             mime_type, _ = mimetypes.guess_type(filename)
 
             ai_result = None
+            failure_reason = ''
             try:
                 ai_result = analyze_document(text, filename)
             except Exception as error:
+                failure_reason = str(error)
                 LOGGER.warning('Background AI analysis failed for %s: %s', file_path, error)
 
             tags = ai_result.get('tags') if isinstance(ai_result, dict) and isinstance(ai_result.get('tags'), list) else []
             summary = str(ai_result.get('summary') or '').strip() if isinstance(ai_result, dict) else ''
-            structured = {key: value for key, value in (ai_result or {}).items() if key != 'tags'} if isinstance(ai_result, dict) else {}
+            structured = _build_structured_payload(ai_result, text, failure_reason)
 
             session = SessionLocal()
             try:

@@ -196,7 +196,10 @@ def save_cached_result(cache_key, payload):
 
 
 def smart_analysis_requested(payload):
-    return bool(payload.get('analysis_mode') or payload.get('dataset') or payload.get('ticket'))
+    # Smart analysis requires tabular/ticket input. `analysis_mode` by itself is
+    # also used by plain prompt calls (for example KB document analysis), so
+    # don't route those into the dataset pipeline.
+    return bool(payload.get('dataset') or payload.get('ticket') or payload.get('smart_analysis'))
 
 
 def resolve_mode(payload):
@@ -419,7 +422,7 @@ def format_deep_message(parsed):
     ]
     status = '\n'.join([line for line in status_lines if _normalize_value(line)])
 
-    lines = ['Summary:', summary or 'No summary returned.', '', 'Work Notes:']
+    lines = ['Summary:', summary or 'No summary returned.', '', 'work Notes:']
     lines.extend([f'- {item}' for item in work_performed] or ['- No work notes returned.'])
     lines.extend(['', 'Comments:'])
     lines.extend([f'- {item}' for item in comments] or ['- No comments returned.'])

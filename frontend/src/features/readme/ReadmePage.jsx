@@ -30,7 +30,7 @@ const moduleSections = [
   {
     id: 'work',
     tag: 'Module',
-    title: 'Work',
+    title: 'work',
     icon: Blocks,
     description:
       'The operational workspace for the work hub, active ticket intake, metrics review, and recent analysis recall.',
@@ -94,7 +94,7 @@ const architectureCards = [
 ];
 
 const workflowSteps = [
-  'Open the Work hub and launch Active Tickets.',
+  'Open the work hub and launch Active Tickets.',
   'Backend analyzes the file and frontend caches the parsed dataset for interactive use.',
   'Only active tickets are surfaced as cards in the work module.',
   'Selecting a ticket opens `/tickets/:ticketId` for a full-page detail view.',

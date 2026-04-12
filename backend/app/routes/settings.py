@@ -30,6 +30,7 @@ def _default_ai_settings():
             'preview': current_app.config.get('OLLAMA_MODEL', 'ollama/llama3.2'),
             'focused': current_app.config.get('LITELLM_MODEL', 'gpt-4o-mini'),
             'deep': current_app.config.get('LITELLM_MODEL', 'gpt-4o'),
+            'document_processing': current_app.config.get('LITELLM_MODEL', 'gpt-4o-mini'),
         },
         'pipeline': {
             'preview_max_rows': int(current_app.config.get('PREVIEW_MAX_ROWS', 10)),
@@ -55,10 +56,10 @@ def _settings_payload():
 
 def _validate_model_map(model_map):
     available_models = set(_available_ai_models())
-    required_keys = {'preview', 'focused', 'deep'}
+    required_keys = {'preview', 'focused', 'deep', 'document_processing'}
 
     if set(model_map.keys()) != required_keys:
-        return 'models must include preview, focused, and deep'
+        return 'models must include preview, focused, deep, and document_processing'
 
     for mode, model in model_map.items():
         normalized = str(model or '').strip()
@@ -119,6 +120,7 @@ def update_ai_settings():
                 'preview': str(models['preview']).strip(),
                 'focused': str(models['focused']).strip(),
                 'deep': str(models['deep']).strip(),
+                'document_processing': str(models['document_processing']).strip(),
             },
             'pipeline': {
                 'preview_max_rows': int(pipeline['preview_max_rows']),

@@ -30,27 +30,27 @@ function getContextTitle(pathname) {
   }
 
   if (pathname.startsWith('/app/work/active-tickets')) {
-    return 'Work / Active Tickets';
+    return 'work / Active Tickets';
   }
 
   if (pathname.startsWith('/app/work/ai-metrics')) {
-    return 'Work / AI Metrics';
+    return 'work / AI Metrics';
   }
 
   if (pathname.startsWith('/app/work/group-search')) {
-    return 'Work / Group Search';
+    return 'work / Group Search';
   }
 
   if (pathname.startsWith('/app/work/get-user-groups')) {
-    return 'Work / Get User Groups';
+    return 'work / Get User Groups';
   }
 
   if (pathname.startsWith('/app/work/user-group-association')) {
-    return 'Work / User-Group Association';
+    return 'work / User-Group Association';
   }
 
   if (pathname.startsWith('/app/work/table')) {
-    return 'Work / Table';
+    return 'work / Table';
   }
 
   if (pathname.startsWith('/app/document')) {
@@ -70,7 +70,7 @@ function getContextTitle(pathname) {
   }
 
   if (pathname.startsWith('/app/work')) {
-    return 'Work';
+    return 'work';
   }
 
   if (pathname.startsWith('/app/data')) {

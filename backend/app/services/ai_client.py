@@ -68,6 +68,16 @@ def clean_ticket_text(text):
     return cleaned
 
 
+def clean_ai_output(text):
+    output = str(text or '').strip()
+    if not output:
+        return ''
+
+    output = re.sub(r'```(?:json)?', '', output, flags=re.IGNORECASE)
+    output = output.replace('```', '')
+    return output.strip()
+
+
 def clean_message_content(content):
     if isinstance(content, str):
         return clean_ticket_text(content)
@@ -157,12 +167,12 @@ def sanitize_payload(payload):
     return sanitized
 
 
-def call_gateway_chat(payload, gateway_base_url):
+def call_gateway_chat(payload, gateway_base_url, timeout_seconds=DEFAULT_TIMEOUT_SECONDS):
     sanitized_payload = sanitize_payload(payload)
     response = requests.post(
-        f"{gateway_base_url.rstrip('/')}/api/ai/chat",
+        f"{gateway_base_url.rstrip('/')}/v1/chat/completions",
         json=sanitized_payload,
-        timeout=DEFAULT_TIMEOUT_SECONDS,
+        timeout=timeout_seconds,
     )
     response.raise_for_status()
     return response.json()
@@ -171,7 +181,7 @@ def call_gateway_chat(payload, gateway_base_url):
 def call_gateway_openai_chat(payload, gateway_base_url):
     sanitized_payload = sanitize_payload(payload)
     response = requests.post(
-        f"{gateway_base_url.rstrip('/')}/api/ai/v1/chat/completions",
+        f"{gateway_base_url.rstrip('/')}/v1/chat/completions",
         json=sanitized_payload,
         timeout=DEFAULT_TIMEOUT_SECONDS,
     )
@@ -210,35 +220,22 @@ def call_ollama_generate(payload, ollama_api_base, ollama_model):
 
 
 def build_compat_chat_response(payload, result):
+    choices = result.get('choices') or []
+    first_choice = choices[0] if choices else {}
+    message = first_choice.get('message') or {}
+    content = clean_ai_output(extract_message_content(message))
+
     return {
         'status': 'ok',
-        'message': result.get('response', ''),
+        'message': content,
         'model': result.get('model'),
         'received': payload,
         'usage': result.get('usage'),
     }
 
 
-def build_openai_chat_response(result, ollama_model):
-    content = result.get('response', '')
-
-    return {
-        'id': result.get('created_at') or 'ollama-chat-completion',
-        'object': 'chat.completion',
-        'created': 0,
-        'model': result.get('model') or ollama_model,
-        'choices': [
-            {
-                'index': 0,
-                'message': {
-                    'role': 'assistant',
-                    'content': content,
-                },
-                'finish_reason': 'stop',
-            }
-        ],
-        'usage': result.get('usage'),
-    }
+def build_openai_chat_response(result, _ignored_model=None):
+    return result
 
 
 def build_health_payload(app_name, model, api_base, use_ai_gateway):

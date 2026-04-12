@@ -28,3 +28,4 @@ services/ollama/models/
 *.pem
 *.key
 id_ed25519
+.env

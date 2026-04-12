@@ -11,6 +11,7 @@ const EMPTY_FORM = {
     preview: '',
     focused: '',
     deep: '',
+    document_processing: '',
   },
   pipeline: {
     preview_max_rows: 10,
@@ -76,6 +77,7 @@ export function AISettingsPage() {
             preview: result.models?.preview || '',
             focused: result.models?.focused || '',
             deep: result.models?.deep || '',
+            document_processing: result.models?.document_processing || '',
           },
           pipeline: {
             preview_max_rows: Number(result.pipeline?.preview_max_rows || 10),
@@ -116,7 +118,7 @@ export function AISettingsPage() {
   }
 
   async function handleSave() {
-    if (!form.models.preview || !form.models.focused || !form.models.deep) {
+    if (!form.models.preview || !form.models.focused || !form.models.deep || !form.models.document_processing) {
       setError('All model selections are required.');
       return;
     }
@@ -133,6 +135,7 @@ export function AISettingsPage() {
           preview: result.models?.preview || '',
           focused: result.models?.focused || '',
           deep: result.models?.deep || '',
+          document_processing: result.models?.document_processing || '',
         },
         pipeline: {
           preview_max_rows: Number(result.pipeline?.preview_max_rows || 10),
@@ -223,6 +226,13 @@ export function AISettingsPage() {
               onChange={(value) => updateModel('deep', value)}
               options={settings.availableModels || []}
               value={form.models.deep}
+            />
+            <ModelSelect
+              id="document-processing-model"
+              label="Document Processing Model"
+              onChange={(value) => updateModel('document_processing', value)}
+              options={settings.availableModels || []}
+              value={form.models.document_processing}
             />
           </div>
         </Card>

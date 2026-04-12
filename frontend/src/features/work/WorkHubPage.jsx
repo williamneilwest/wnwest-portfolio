@@ -34,7 +34,7 @@ const workModules = [
   },
   {
     title: 'Group Search Tool',
-    description: 'Run the cache-first group search workflow from Work and inspect results without going through the Reference Data page.',
+    description: 'Run the cache-first group search workflow from work and inspect results without going through the Reference Data page.',
     href: '/app/work/group-search',
     icon: Search,
     cta: 'Open Group Search',

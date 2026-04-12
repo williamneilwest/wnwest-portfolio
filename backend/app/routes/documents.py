@@ -57,6 +57,57 @@ def _serialize_document(record: AIDocument):
     }
 
 
+def _build_structured_payload(ai_result, text, failure_reason=''):
+    if isinstance(ai_result, dict):
+        structured = {key: value for key, value in ai_result.items() if key != 'tags'}
+        if structured:
+            return structured
+
+    excerpt = str(text or '').strip()
+    if len(excerpt) > 1000:
+        excerpt = f'{excerpt[:1000]}\n...'
+
+    return {
+        'status': 'analysis_unavailable',
+        'reason': failure_reason or 'AI analysis did not return structured output.',
+        'text_extracted': bool(str(text or '').strip()),
+        'text_excerpt': excerpt,
+    }
+
+
+def _analysis_metadata_path(file_path: str) -> str:
+    directory = os.path.dirname(file_path or '')
+    filename = os.path.basename(file_path or '')
+    if not directory or not filename:
+        return ''
+    return os.path.join(directory, f'{filename}.meta.json')
+
+
+def _read_analysis_metadata(file_path: str) -> dict:
+    meta_path = _analysis_metadata_path(file_path)
+    if not meta_path or not os.path.exists(meta_path):
+        return {}
+    try:
+        with open(meta_path, 'r', encoding='utf-8') as handle:
+            data = json.load(handle)
+            return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_analysis_metadata(file_path: str, analysis_payload: dict):
+    meta_path = _analysis_metadata_path(file_path)
+    if not meta_path:
+        return
+    merged = dict(_read_analysis_metadata(file_path))
+    merged['analysis'] = analysis_payload
+    try:
+        with open(meta_path, 'w', encoding='utf-8') as handle:
+            json.dump(merged, handle)
+    except OSError:
+        LOGGER.warning('Failed to write analysis metadata for %s', file_path)
+
+
 @documents_bp.post('/api/documents/analyze')
 def analyze_uploaded_document():
     _ensure_db()
@@ -75,9 +126,11 @@ def analyze_uploaded_document():
     text = str((extracted or {}).get('text') or '')
 
     ai_result = None
+    failure_reason = ''
     try:
         ai_result = analyze_document(text, filename)
     except Exception as error:
+        failure_reason = str(error)
         LOGGER.warning('AI analysis failed for %s: %s', file_path, error)
 
     tags = []
@@ -86,7 +139,9 @@ def analyze_uploaded_document():
     if ai_result:
         ai_summary = str(ai_result.get('summary') or '').strip()
         tags = ai_result.get('tags') if isinstance(ai_result.get('tags'), list) else []
-        structured = {key: value for key, value in ai_result.items() if key != 'tags'}
+        structured = _build_structured_payload(ai_result, text, failure_reason)
+    else:
+        structured = _build_structured_payload(ai_result, text, failure_reason)
 
     session = SessionLocal()
     try:
@@ -113,6 +168,21 @@ def analyze_uploaded_document():
 
         session.commit()
         session.refresh(existing)
+        if ai_result:
+            try:
+                meta_tags = json.loads(existing.tags or '[]') if existing.tags else []
+            except json.JSONDecodeError:
+                meta_tags = []
+            _write_analysis_metadata(
+                file_path,
+                {
+                    'status': 'success',
+                    'analyzedAt': existing.updated_at.isoformat() if existing.updated_at else datetime.now(timezone.utc).isoformat(),
+                    'documentId': existing.id,
+                    'summary': existing.ai_summary or '',
+                    'tags': meta_tags if isinstance(meta_tags, list) else [],
+                },
+            )
         return jsonify(_serialize_document(existing))
     finally:
         session.close()

@@ -4,16 +4,38 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="enabled hot reload for backend and frontend during development">
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="Stabilized KB Document AI Aanalysis">
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/ai.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/documents.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/documents.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/routes/email_upload.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/email_upload.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/kb.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/kb.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/work.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/work.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/active_tickets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/active_tickets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/ai_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/ai_client.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/analysis_store.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/analysis_store.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/document_ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/document_ai.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/document_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/document_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/settings_store.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/settings_store.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/smart_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/smart_analysis.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/caddy/Caddyfile" beforeDir="false" afterPath="$PROJECT_DIR$/caddy/Caddyfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/utils/fileDisplay.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/utils/fileDisplay.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/ai/DocumentsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/ai/DocumentsPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/kb/KnowledgeBasePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/kb/KnowledgeBasePage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/readme/ReadmePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/readme/ReadmePage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/settings/AISettingsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/settings/AISettingsPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/utils/aiAnalysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/utils/aiAnalysis.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/main.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/main.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +43,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="129" />
+    <option name="cachedIndexableFilesCount" value="171" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -45,6 +67,12 @@
     &quot;accountId&quot;: &quot;089b1c94-93a0-495f-b833-8cd1fe979565&quot;
   }
 }</component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/data/settings.json" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/data/uploads/20260412034200_Provision_a_Rover_account_IGOAT_Cisco_Provisioning_Manager.pdf.meta.json" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/data/uploads/TicketsNotUpdatedin3Days.csv" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/data/work/kb/uncategorized/20260412044736_Provision_a_Rover_account_IGOAT_Cisco_Provisioning_Manager.pdf.meta.json" root0="SKIP_INSPECTION" />
+  </component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
@@ -58,28 +86,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.user_info.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/will/westos&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.user_info.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "last_opened_file_path": "/home/will/westos/data/work/HotFiles",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data/work/HotFiles" />
+      <recent name="$PROJECT_DIR$/data/SOURCE-DONOTTOUCH" />
+      <recent name="$PROJECT_DIR$/data/kb/uncategorized" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data/live" />
+      <recent name="$PROJECT_DIR$/data/Work" />
+    </key>
+  </component>
   <component name="RunManager">
     <configuration name="user_info" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="westos" />
@@ -128,7 +167,13 @@
       <workItem from="1775898448247" duration="4427000" />
       <workItem from="1775904429915" duration="4649000" />
       <workItem from="1775922324445" duration="1829000" />
-      <workItem from="1775956647569" duration="6717000" />
+      <workItem from="1775956647569" duration="7050000" />
+      <workItem from="1775964623476" duration="17000" />
+      <workItem from="1775964664817" duration="455000" />
+      <workItem from="1775965186696" duration="449000" />
+      <workItem from="1775965981245" duration="4133000" />
+      <workItem from="1775971485092" duration="641000" />
+      <workItem from="1775972221075" duration="3805000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor AI analysis logic and enhance ticket detail UI handling">
       <option name="closed" value="true" />
@@ -154,7 +199,39 @@
       <option name="project" value="LOCAL" />
       <updated>1775959671600</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="added kb upload code">
+      <option name="closed" value="true" />
+      <created>1775963401035</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1775963401035</updated>
+    </task>
+    <task id="LOCAL-00005" summary="added kb upload code">
+      <option name="closed" value="true" />
+      <created>1775971594602</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1775971594602</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Stabilized KB Document AI Aanalysis">
+      <option name="closed" value="true" />
+      <created>1775973741561</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1775973741561</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Stabilized KB Document AI Aanalysis">
+      <option name="closed" value="true" />
+      <created>1775973959571</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1775973959571</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -165,7 +242,9 @@
     <MESSAGE value="Refactor AI analysis logic and enhance ticket detail UI handling" />
     <MESSAGE value="edited ai card" />
     <MESSAGE value="enabled hot reload for backend and frontend during development" />
-    <option name="LAST_COMMIT_MESSAGE" value="enabled hot reload for backend and frontend during development" />
+    <MESSAGE value="added kb upload code" />
+    <MESSAGE value="Stabilized KB Document AI Aanalysis" />
+    <option name="LAST_COMMIT_MESSAGE" value="Stabilized KB Document AI Aanalysis" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />
