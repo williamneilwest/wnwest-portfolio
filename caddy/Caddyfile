@@ -62,3 +62,11 @@ files.westos.dev {
 webui.westos.dev {
 	reverse_proxy open-webui:8080
 }
+
+plex.westos.dev {
+	reverse_proxy homelab-plex:32400
+}
+
+torrent.westos.dev {
+	reverse_proxy homelab-qbittorrent:8080
+}

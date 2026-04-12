@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Folder, FileText, Download, Mail, ExternalLink, Printer, ChevronDown } from 'lucide-react';
+import { Folder, FileText, Download, Mail, ExternalLink, Printer, ChevronDown, Flame, Pencil } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { analyzeKbDocument, getKnowledgeBase } from '../../app/services/api';
+import { analyzeKbDocument, getKnowledgeBase, getMostAccessedKnowledgeBase, updateFileById } from '../../app/services/api';
+import { parseFileId } from '../../app/utils/fileIds';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { buildDocumentViewHref } from '../../app/utils/documentFiles';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
+import { FileDetailsEditor } from '../../components/files/FileDetailsEditor';
 
 function formatWhen(value) {
   if (!value) return 'Time unavailable';
@@ -55,25 +57,45 @@ function visibleTags(tags, category) {
     });
 }
 
+function scoreMostAccessed(file) {
+  return {
+    accessCount: Number(file?.accessCount || 0),
+    lastOpenedAt: String(file?.lastOpenedAt || ''),
+    modifiedAt: String(file?.modifiedAt || ''),
+  };
+}
+
 export function KnowledgeBasePage() {
   const [data, setData] = useState({ categories: [] });
+  const [mostAccessedData, setMostAccessedData] = useState({ documents: [] });
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [filterMode, setFilterMode] = useState('most_accessed');
   const [activeCategory, setActiveCategory] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [editingKey, setEditingKey] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
+  async function loadKnowledgeBase() {
+    const [kbPayload, mostAccessedPayload] = await Promise.all([getKnowledgeBase(), getMostAccessedKnowledgeBase(40)]);
+    setData(kbPayload && typeof kbPayload === 'object' ? kbPayload : { categories: [] });
+    setMostAccessedData(
+      mostAccessedPayload && typeof mostAccessedPayload === 'object'
+        ? mostAccessedPayload
+        : { documents: [] }
+    );
+  }
+
   useEffect(() => {
     let mounted = true;
-    getKnowledgeBase()
-      .then((payload) => {
-        if (mounted) setData(payload && typeof payload === 'object' ? payload : { categories: [] });
-      })
+
+    loadKnowledgeBase()
       .catch((e) => {
         if (mounted) setError(e.message || 'Knowledge Base could not be loaded.');
       });
+
     return () => { mounted = false; };
   }, []);
 
@@ -81,7 +103,6 @@ export function KnowledgeBasePage() {
     const cats = Array.isArray(data.categories) ? data.categories : [];
     const q = String(query || '').trim().toLowerCase();
     if (!q) return cats;
-    // Client-side filter by tag or filename
     return cats
       .map((c) => ({
         ...c,
@@ -94,7 +115,60 @@ export function KnowledgeBasePage() {
       .filter((c) => (c.files?.length || 0) > 0);
   }, [data, query]);
 
+  const fallbackMostAccessed = useMemo(() => {
+    const flattened = categories.flatMap((category) =>
+      (Array.isArray(category.files) ? category.files : []).map((file) => ({
+        ...file,
+        category: category.category,
+      }))
+    );
+
+    return [...flattened].sort((left, right) => {
+      const a = scoreMostAccessed(left);
+      const b = scoreMostAccessed(right);
+      if (a.accessCount !== b.accessCount) return b.accessCount - a.accessCount;
+      if (a.lastOpenedAt !== b.lastOpenedAt) return b.lastOpenedAt.localeCompare(a.lastOpenedAt);
+      return b.modifiedAt.localeCompare(a.modifiedAt);
+    });
+  }, [categories]);
+
+  const mostAccessedFiles = useMemo(() => {
+    const docs = Array.isArray(mostAccessedData.documents) ? mostAccessedData.documents : [];
+    const fromEndpoint = [...docs].sort((left, right) => {
+      const a = scoreMostAccessed(left);
+      const b = scoreMostAccessed(right);
+      if (a.accessCount !== b.accessCount) return b.accessCount - a.accessCount;
+      if (a.lastOpenedAt !== b.lastOpenedAt) return b.lastOpenedAt.localeCompare(a.lastOpenedAt);
+      return b.modifiedAt.localeCompare(a.modifiedAt);
+    });
+
+    if (fromEndpoint.length) {
+      return fromEndpoint;
+    }
+
+    return fallbackMostAccessed;
+  }, [fallbackMostAccessed, mostAccessedData.documents]);
+
+  const filteredMostAccessedFiles = useMemo(() => {
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) {
+      return mostAccessedFiles;
+    }
+
+    return mostAccessedFiles.filter((file) => {
+      const nameHit = String(file.filename || '').toLowerCase().includes(q)
+        || String(file.originalName || '').toLowerCase().includes(q);
+      const tagHit = (Array.isArray(file.tags) ? file.tags : []).some((tag) => String(tag || '').toLowerCase().includes(q));
+      const categoryHit = String(file.category || '').toLowerCase().includes(q);
+      return nameHit || tagHit || categoryHit;
+    });
+  }, [mostAccessedFiles, query]);
+
   useEffect(() => {
+    if (filterMode !== 'category') {
+      return;
+    }
+
     if (!categories.length) {
       if (activeCategory) {
         setActiveCategory('');
@@ -105,7 +179,7 @@ export function KnowledgeBasePage() {
     if (!categories.some((category) => category.category === activeCategory)) {
       setActiveCategory(categories[0].category);
     }
-  }, [activeCategory, categories]);
+  }, [activeCategory, categories, filterMode]);
 
   function absoluteUrl(relative) {
     try {
@@ -154,11 +228,38 @@ export function KnowledgeBasePage() {
 
   const selectedCategory = categories.find((category) => category.category === activeCategory) || null;
   const selectedFiles = Array.isArray(selectedCategory?.files) ? selectedCategory.files : [];
+  const renderedFiles = filterMode === 'most_accessed' ? filteredMostAccessedFiles : selectedFiles;
   const totalFileCount = categories.reduce((count, category) => count + (Array.isArray(category.files) ? category.files.length : 0), 0);
+  const categoryOptions = useMemo(() => {
+    const options = categories.map((category) => String(category.category || '').trim()).filter(Boolean);
+    if (!options.includes('uncategorized')) {
+      options.unshift('uncategorized');
+    }
+    return options;
+  }, [categories]);
+
+  async function handleSaveFileDetails(file, payload) {
+    const fileId = parseFileId(file?.url || '');
+    if (!fileId) {
+      throw new Error('File identifier is missing.');
+    }
+
+    setError('');
+    setMessage('');
+    const nextPayload = {
+      name: payload?.name,
+      category: payload?.category,
+      tags: Array.isArray(payload?.tags) ? payload.tags : [],
+    };
+    await updateFileById(fileId, nextPayload);
+    await loadKnowledgeBase();
+    setEditingKey('');
+    setMessage('File details updated.');
+  }
 
   return (
     <section className="module">
-      <Card className="analysis-grid__wide">
+      <Card className="analysis-grid__wide kb-shell-card">
         <CardHeader
           eyebrow="Knowledge Base"
           title="Reference documents"
@@ -186,8 +287,11 @@ export function KnowledgeBasePage() {
                   <button
                     key={category.category}
                     type="button"
-                    className={`kb-sidebar__item${activeCategory === category.category ? ' kb-sidebar__item--active' : ''}`}
-                    onClick={() => setActiveCategory(category.category)}
+                    className={`kb-sidebar__item${filterMode === 'category' && activeCategory === category.category ? ' kb-sidebar__item--active' : ''}`}
+                    onClick={() => {
+                      setFilterMode('category');
+                      setActiveCategory(category.category);
+                    }}
                   >
                     <span>{formatCategoryLabel(category.category)}</span>
                     <small>{(category.files?.length || 0)} files</small>
@@ -198,6 +302,27 @@ export function KnowledgeBasePage() {
 
             <div className="kb-main">
               <div className="kb-main__toolbar">
+                <div className="kb-filter-tabs" role="tablist" aria-label="Knowledge base view mode">
+                  <button
+                    type="button"
+                    className={`compact-toggle${filterMode === 'most_accessed' ? ' compact-toggle--active' : ''}`}
+                    onClick={() => setFilterMode('most_accessed')}
+                  >
+                    Most Accessed
+                  </button>
+                  <button
+                    type="button"
+                    className={`compact-toggle${filterMode === 'category' ? ' compact-toggle--active' : ''}`}
+                    onClick={() => {
+                      setFilterMode('category');
+                      if (!activeCategory && categories[0]?.category) {
+                        setActiveCategory(categories[0].category);
+                      }
+                    }}
+                  >
+                    Categories
+                  </button>
+                </div>
                 <input
                   type="search"
                   value={query}
@@ -209,13 +334,18 @@ export function KnowledgeBasePage() {
               </div>
 
               <div className="kb-main__header">
-                <strong>{formatCategoryLabel(selectedCategory?.category || 'Knowledge Base')}</strong>
-                <small>{selectedFiles.length} files</small>
+                <strong>
+                  {filterMode === 'most_accessed'
+                    ? 'Most Accessed'
+                    : formatCategoryLabel(selectedCategory?.category || 'Knowledge Base')}
+                </strong>
+                <small>{renderedFiles.length} files</small>
               </div>
 
-              {selectedFiles.length ? (
+              {renderedFiles.length ? (
                 <div className="kb-file-list">
-                  {selectedFiles.map((file) => {
+                  {renderedFiles.map((file) => {
+                    const fileCategory = String(file.category || selectedCategory?.category || '').trim();
                     const previewHref = buildDocumentViewHref({
                       url: file.url,
                       fileName: file.filename,
@@ -225,14 +355,16 @@ export function KnowledgeBasePage() {
                     });
 
                     const label = formatDataFileName(file.originalName || file.filename);
-                    const fileTags = visibleTags(file.tags, selectedCategory?.category);
+                    const fileTags = visibleTags(file.tags, fileCategory);
                     const visibleFileTags = fileTags.slice(0, 5);
                     const hiddenTagCount = Math.max(0, fileTags.length - visibleFileTags.length);
-                    const subtitle = `${formatDateShort(file.modifiedAt)} • ${formatMimeLabel(file.filename, file.mimeType)} • ${formatCategoryLabel(selectedCategory?.category || '')}`;
+                    const subtitle = `${formatDateShort(file.modifiedAt)} • ${formatMimeLabel(file.filename, file.mimeType)} • ${formatCategoryLabel(fileCategory)}`;
                     const hasAnalysis = Boolean(Number(file.analysis?.documentId || file.analysis?.analysisId || 0));
+                    const accessCount = Number(file.accessCount || 0);
 
+                    const fileKey = `${fileCategory}-${file.filename}`;
                     return (
-                      <article className="kb-file-row" key={file.filename}>
+                      <article className="kb-file-row" key={`${fileCategory}-${file.filename}`}>
                         <div className="kb-file-row__left">
                           <span className="kb-file-row__icon">
                             <FileText size={16} />
@@ -252,59 +384,96 @@ export function KnowledgeBasePage() {
                               {hiddenTagCount > 0 ? <span className="kb-chip kb-chip--more">+{hiddenTagCount} more</span> : null}
                             </div>
                           ) : <small className="kb-file-row__hint">No tags</small>}
-                          {hasAnalysis ? (
-                            <div className="kb-chip-row">
+                          <div className="kb-chip-row">
+                            {accessCount > 0 ? (
+                              <span className="kb-chip kb-chip--popular">
+                                <Flame size={12} />
+                                {`Popular • ${accessCount}`}
+                              </span>
+                            ) : null}
+                            {hasAnalysis ? (
                               <span className="kb-chip kb-chip--analysis">Analyzed</span>
-                            </div>
-                          ) : null}
+                            ) : null}
+                          </div>
                         </div>
 
                         <div className="kb-file-row__right">
-                          <Link
-                            className="compact-toggle kb-action kb-action--primary"
-                            to={previewHref}
-                            state={{
-                              from: `${location.pathname}${location.search || ''}`,
-                              label: 'Knowledge Base',
-                            }}
-                          >
-                            <ExternalLink size={14} />
-                            Open
-                          </Link>
-                          <button
-                            type="button"
-                            className="compact-toggle kb-action kb-action--secondary"
-                            disabled={submitting}
-                            onClick={() => void handleAnalyze(selectedCategory.category, file.filename, file.analysis)}
-                          >
-                            {submitting ? 'Analyzing…' : 'Analyze'}
-                          </button>
                           <details className="upload-row-menu kb-actions-menu">
                             <summary className="compact-toggle compact-toggle--icon upload-row-menu__toggle kb-action kb-action--tertiary" aria-label="More actions">
                               <ChevronDown className="compact-toggle__icon" size={14} />
                             </summary>
                             <div className="upload-row-menu__panel">
-                              <button
-                                type="button"
-                                className="upload-row-menu__action"
-                                onClick={() => {
-                                  const url = absoluteUrl(file.url);
-                                  const subject = encodeURIComponent(`KB: ${label}`);
-                                  const body = encodeURIComponent(`Quick reference link:\n${url}`);
-                                  window.location.href = `mailto:?subject=${subject}&body=${body}`;
-                                }}
-                              >
-                                <Mail size={14} />
-                                Email
-                              </button>
-                              <a className="upload-row-menu__action" href={file.url} download={file.filename}>
-                                <Download size={14} />
-                                Download
-                              </a>
-                              <a className="upload-row-menu__action" href={file.url} target="_blank" rel="noreferrer">
-                                <Printer size={14} />
-                                Print
-                              </a>
+                              <div className="upload-row-menu__group">
+                                <Link
+                                  className="upload-row-menu__action"
+                                  to={previewHref}
+                                  state={{
+                                    from: `${location.pathname}${location.search || ''}`,
+                                    label: 'Knowledge Base',
+                                  }}
+                                >
+                                  <ExternalLink size={16} />
+                                  Open
+                                </Link>
+                                <button
+                                  type="button"
+                                  className="upload-row-menu__action"
+                                  disabled={submitting}
+                                  onClick={() => void handleAnalyze(fileCategory, file.filename, file.analysis)}
+                                >
+                                  <FileText size={16} />
+                                  {submitting ? 'Analyzing…' : 'Analyze'}
+                                </button>
+                              </div>
+
+                              <div className="upload-row-menu__separator" aria-hidden="true" />
+
+                              <div className="upload-row-menu__group">
+                                <button
+                                  type="button"
+                                  className="upload-row-menu__action"
+                                  onClick={() => {
+                                    const url = absoluteUrl(file.url);
+                                    const subject = encodeURIComponent(`KB: ${label}`);
+                                    const body = encodeURIComponent(`Quick reference link:\n${url}`);
+                                    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+                                  }}
+                                >
+                                  <Mail size={16} />
+                                  Email
+                                </button>
+                                <a className="upload-row-menu__action" href={file.url} download={file.filename}>
+                                  <Download size={16} />
+                                  Download
+                                </a>
+                                <a className="upload-row-menu__action" href={file.url} target="_blank" rel="noreferrer">
+                                  <Printer size={16} />
+                                  Print
+                                </a>
+                              </div>
+
+                              <div className="upload-row-menu__separator" aria-hidden="true" />
+
+                              <div className="upload-row-menu__group">
+                                <button
+                                  type="button"
+                                  className="upload-row-menu__action upload-row-menu__action--edit"
+                                  onClick={() => setEditingKey((current) => (current === fileKey ? '' : fileKey))}
+                                >
+                                  <Pencil size={16} />
+                                  Edit details
+                                </button>
+                              </div>
+                              {editingKey === fileKey ? (
+                                <FileDetailsEditor
+                                  name={file.originalName || file.filename}
+                                  category={fileCategory}
+                                  tags={Array.isArray(file.tags) ? file.tags : []}
+                                  categoryOptions={categoryOptions}
+                                  disabled={submitting}
+                                  onSave={(nextPayload) => handleSaveFileDetails(file, nextPayload)}
+                                />
+                              ) : null}
                             </div>
                           </details>
                         </div>
@@ -315,8 +484,8 @@ export function KnowledgeBasePage() {
               ) : (
                 <EmptyState
                   icon={<Folder size={20} />}
-                  title="No files in this category"
-                  description="Try another category or adjust your search."
+                  title={filterMode === 'most_accessed' ? 'No recently accessed documents yet' : 'No files in this category'}
+                  description={filterMode === 'most_accessed' ? 'Open a document to populate Most Accessed.' : 'Try another category or adjust your search.'}
                 />
               )}
             </div>
@@ -326,3 +495,5 @@ export function KnowledgeBasePage() {
     </section>
   );
 }
+
+export default KnowledgeBasePage;

@@ -157,6 +157,12 @@ export function getKnowledgeBase() {
   return request(backendBaseUrl, '/api/kb');
 }
 
+export function getMostAccessedKnowledgeBase(limit = 30) {
+  const params = new URLSearchParams();
+  params.set('limit', String(limit));
+  return request(backendBaseUrl, `/api/kb/most-accessed?${params.toString()}`);
+}
+
 export function analyzeDocument(filePath) {
   return request(backendBaseUrl, '/api/documents/analyze', {
     method: 'POST',

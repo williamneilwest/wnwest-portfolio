@@ -58,6 +58,48 @@ services:
     networks:
       - westos
 
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: homelab-plex
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+      - VERSION=docker
+    ports:
+      - "32400:32400"
+      - "1900:1900/udp"
+      - "32410:32410/udp"
+      - "32412:32412/udp"
+      - "32413:32413/udp"
+      - "32414:32414/udp"
+      - "32469:32469"
+    volumes:
+      - ./media/plex/config:/config
+      - ./media/plex/transcode:/transcode
+      - ./media/library:/data
+    networks:
+      - westos
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: homelab-qbittorrent
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Denver
+      - WEBUI_PORT=8080
+    ports:
+      - "6881:6881"
+      - "6881:6881/udp"
+    volumes:
+      - ./media/qbittorrent/config:/config
+      - ./media/library/downloads:/downloads
+    networks:
+      - westos
+
 networks:
   westos:
     external: true

@@ -49,6 +49,13 @@ def _kb_write_metadata(category: str, filename: str, payload: dict):
         pass
 
 
+def _touch_kb_access(category: str, filename: str):
+    metadata = _kb_read_metadata(category, filename)
+    metadata["lastOpenedAt"] = datetime.now(timezone.utc).isoformat()
+    metadata["accessCount"] = int(metadata.get("accessCount") or 0) + 1
+    _kb_write_metadata(category, filename, metadata)
+
+
 def _kb_read_metadata(category: str, filename: str) -> dict:
     try:
         with open(_kb_metadata_path(category, filename), "r", encoding="utf-8") as h:
@@ -249,6 +256,8 @@ def _list_kb_categories(q_tags: list[str] | None = None) -> list[dict]:
                 "tags": tags,
                 "derived_tags": derived_tags,
                 "analysis": metadata.get("analysis") if isinstance(metadata.get("analysis"), dict) else None,
+                "lastOpenedAt": metadata.get("lastOpenedAt"),
+                "accessCount": int(metadata.get("accessCount") or 0),
             })
 
         items.sort(key=lambda x: (x["modifiedAt"] or ""), reverse=True)
@@ -335,6 +344,51 @@ def list_kb():
     return jsonify({"categories": categories})
 
 
+@kb_bp.route("/api/kb/most-accessed", methods=["GET"])
+def list_most_accessed_kb():
+    try:
+        limit = int(request.args.get("limit") or 30)
+    except (TypeError, ValueError):
+        limit = 30
+    limit = max(1, min(limit, 100))
+
+    categories = _list_kb_categories()
+    docs = []
+    for category in categories:
+        category_name = str(category.get("category") or "").strip()
+        for file_item in (category.get("files") or []):
+            if not isinstance(file_item, dict):
+                continue
+            docs.append(
+                {
+                    "category": category_name,
+                    "filename": file_item.get("filename") or "",
+                    "originalName": file_item.get("originalName") or "",
+                    "url": file_item.get("url") or "",
+                    "modifiedAt": file_item.get("modifiedAt"),
+                    "mimeType": file_item.get("mimeType") or "",
+                    "size": file_item.get("size"),
+                    "source": file_item.get("source") or "email",
+                    "tags": file_item.get("tags") if isinstance(file_item.get("tags"), list) else [],
+                    "analysis": file_item.get("analysis") if isinstance(file_item.get("analysis"), dict) else None,
+                    "lastOpenedAt": file_item.get("lastOpenedAt"),
+                    "accessCount": int(file_item.get("accessCount") or 0),
+                }
+            )
+
+    # Primary sort by usage count, then recent open, then recent modification.
+    docs.sort(
+        key=lambda item: (
+            int(item.get("accessCount") or 0),
+            str(item.get("lastOpenedAt") or ""),
+            str(item.get("modifiedAt") or ""),
+        ),
+        reverse=True,
+    )
+
+    return jsonify({"documents": docs[:limit]})
+
+
 @kb_bp.post('/api/kb/match')
 def match_ticket_against_kb():
     payload = request.get_json(silent=True) or {}
@@ -383,6 +437,7 @@ def get_kb_file(category, filename):
     if not os.path.isfile(path):
         return jsonify({'error': 'KB document not found.'}), 404
 
+    _touch_kb_access(category, filename)
     mime, _ = mimetypes.guess_type(filename)
 
     response = make_response(send_from_directory(directory, filename, mimetype=mime or None))

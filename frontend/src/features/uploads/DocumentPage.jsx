@@ -7,6 +7,7 @@ import { analyzeDocumentAI } from '../../app/services/aiClient';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
+import { parseFileId } from '../../app/utils/fileIds';
 import { canPreviewInline, isImageFile, isPdfFile, isTextLikeFile } from '../../app/utils/documentFiles';
 import { TokenUsage } from '../../components/TokenUsage';
 
@@ -30,19 +31,6 @@ function renderPreview(url, fileName, mimeType) {
   }
 
   return null;
-}
-
-function parseFileId(fileUrl) {
-  const raw = String(fileUrl || '').trim();
-  if (!raw) {
-    return '';
-  }
-
-  const pathOnly = raw.replace(/^https?:\/\/[^/]+/i, '').split('?', 1)[0].replace(/^\/+/, '');
-  if (pathOnly.startsWith('api/')) {
-    return pathOnly.slice(4);
-  }
-  return pathOnly;
 }
 
 function parseCategory(fileUrl, fallbackTitle) {
