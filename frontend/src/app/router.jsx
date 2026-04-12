@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Navigate, createBrowserRouter, useLocation } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { ReadmePage } from '../features/readme/ReadmePage';
 import { AISettingsPage } from '../features/settings/AISettingsPage';
 import { DocumentsPage } from '../features/ai/DocumentsPage';
@@ -18,7 +17,7 @@ import { SystemViewerPage } from '../features/system/SystemViewerPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AppShell } from './shell/AppShell';
 import { isWorkDomainHost } from './constants/domain';
-import { getCurrentUser } from './services/auth';
+import { RequireAuth } from './router/RequireAuth';
 
 const routeModules = import.meta.glob('../features/*/routes.jsx');
 const missingRoute = async () => ({ Component: () => null });
@@ -33,51 +32,6 @@ const hostnamePrefix = hostname.split('.')[0] || '';
 const defaultAppRoute = subdomainRouteMap[hostnamePrefix] || '/app/life';
 const isWorkSubdomain = isWorkDomainHost(hostname);
 const workRedirect = <Navigate replace to="/app/work" />;
-
-function RequireAuth({ children }) {
-  const location = useLocation();
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    getCurrentUser()
-      .then((payload) => {
-        if (!active) {
-          return;
-        }
-        setAuthenticated(Boolean(payload?.authenticated));
-      })
-      .catch(() => {
-        if (active) {
-          setAuthenticated(false);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (isWorkSubdomain) {
-    return children;
-  }
-
-  if (loading) {
-    return <section className="module"><p className="status-text">Checking authentication...</p></section>;
-  }
-
-  if (!authenticated) {
-    return <Navigate replace to="/login" state={{ from: `${location.pathname}${location.search}` }} />;
-  }
-
-  return children;
-}
 
 const getRoute = (path) => {
   if (!routeModules[path]) {

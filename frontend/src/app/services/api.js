@@ -108,6 +108,13 @@ export async function getSystemAi({ refresh = false } = {}) {
   return unwrapData(payload);
 }
 
+export async function getSystemAuth(windowHours = 24) {
+  const params = new URLSearchParams();
+  params.set('windowHours', String(windowHours));
+  const payload = await request(backendBaseUrl, `/api/system/auth?${params.toString()}`);
+  return unwrapData(payload);
+}
+
 export async function getSystemMap({ refresh = false } = {}) {
   const suffix = refresh ? '?refresh=true' : '';
   const payload = await request(backendBaseUrl, `/api/system/map${suffix}`);

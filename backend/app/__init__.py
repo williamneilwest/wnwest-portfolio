@@ -36,6 +36,56 @@ WORK_ALLOWED_PREFIXES = (
 PUBLIC_AUTH_PATH_PREFIX = '/api/auth/'
 
 
+def _normalize_host(raw_host):
+    return (raw_host or '').split(':', 1)[0].lower()
+
+
+def _normalize_path(raw_path):
+    return (raw_path or '/').rstrip('/') or '/'
+
+
+def _path_matches_prefixes(request_path, prefixes):
+    return any(
+        request_path == prefix.rstrip('/') or request_path.startswith(f'{prefix.rstrip("/")}/')
+        for prefix in prefixes
+    )
+
+
+def _is_work_domain_request(app, host):
+    return host == app.config.get('WORK_DOMAIN', 'work.westos.dev')
+
+
+def _is_public_non_work_path(request_path):
+    return request_path == '/health' or request_path.startswith(PUBLIC_AUTH_PATH_PREFIX)
+
+
+def _log_guard_decision(app, *, host, path, guard, action, reason):
+    app.logger.info(
+        'auth_guard decision guard=%s action=%s host=%s path=%s reason=%s',
+        guard,
+        action,
+        host,
+        path,
+        reason,
+    )
+    if action != 'block':
+        return
+
+    try:
+        from .services.auth_store import log_auth_event
+
+        log_auth_event(
+            username='anonymous',
+            host=host,
+            path=path,
+            action=f'{guard}_blocked',
+            reason=reason,
+        )
+    except Exception:
+        # Guard persistence should never affect request handling.
+        return
+
+
 def _resolve_frontend_build_dir():
     configured = os.getenv('FRONTEND_BUILD_DIR', '').strip()
     candidates = []
@@ -84,6 +134,7 @@ def create_app():
         FRONTEND_BUILD_DIR=str(frontend_build_dir) if frontend_build_dir else '',
         ENABLE_LOG_MONITOR=os.getenv('ENABLE_LOG_MONITOR', 'true').lower() == 'true',
         WORK_DOMAIN=os.getenv('WORK_DOMAIN', 'work.westos.dev').strip().lower(),
+        DATABASE_URL=os.getenv('DATABASE_URL', '').strip(),
         SECRET_KEY=os.getenv('AUTH_SESSION_SECRET', os.getenv('SECRET_KEY', 'westos-session-secret')),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE='Lax',
@@ -91,42 +142,102 @@ def create_app():
         PERMANENT_SESSION_LIFETIME=60 * 60 * 12,
     )
 
+    from .models.platform import init_platform_db
+    from .services.auth_bootstrap import bootstrap_auth_user_from_env
+
+    try:
+        init_platform_db()
+    except Exception as error:
+        app.logger.warning('Failed to initialize platform database tables: %s', error)
+    else:
+        try:
+            seeded = bootstrap_auth_user_from_env()
+            if seeded is not None:
+                app.logger.info('Seeded initial auth user: %s', seeded.username)
+        except Exception as error:
+            app.logger.warning('Failed to seed auth user from environment: %s', error)
+
     register_routes(app)
     app.register_blueprint(email_upload_bp)
 
     @app.before_request
     def restrict_non_work_routes_on_work_domain():
-        host = (request.host or '').split(':', 1)[0].lower()
-        if host != app.config.get('WORK_DOMAIN', 'work.westos.dev'):
+        host = _normalize_host(request.host)
+        if not _is_work_domain_request(app, host):
             return None
 
         if request.method == 'OPTIONS':
+            _log_guard_decision(
+                app,
+                host=host,
+                path=_normalize_path(request.path),
+                guard='work_domain_route_guard',
+                action='allow',
+                reason='preflight_options',
+            )
             return None
 
-        request_path = (request.path or '/').rstrip('/') or '/'
-        is_allowed = any(
-            request_path == prefix.rstrip('/') or request_path.startswith(f'{prefix.rstrip("/")}/')
-            for prefix in WORK_ALLOWED_PREFIXES
-        )
+        request_path = _normalize_path(request.path)
+        is_allowed = _path_matches_prefixes(request_path, WORK_ALLOWED_PREFIXES)
 
         if is_allowed:
+            _log_guard_decision(
+                app,
+                host=host,
+                path=request_path,
+                guard='work_domain_route_guard',
+                action='allow',
+                reason='work_route_whitelist',
+            )
             return None
 
+        _log_guard_decision(
+            app,
+            host=host,
+            path=request_path,
+            guard='work_domain_route_guard',
+            action='block',
+            reason='route_not_whitelisted_for_work_domain',
+        )
         return ('Not Found', 404)
 
     @app.before_request
     def enforce_non_work_authentication():
-        host = (request.host or '').split(':', 1)[0].lower()
-        if host == app.config.get('WORK_DOMAIN', 'work.westos.dev'):
+        host = _normalize_host(request.host)
+        if _is_work_domain_request(app, host):
             return None
 
-        request_path = (request.path or '/').rstrip('/') or '/'
-        if request_path == '/health' or request_path.startswith(PUBLIC_AUTH_PATH_PREFIX):
+        request_path = _normalize_path(request.path)
+        if _is_public_non_work_path(request_path):
+            _log_guard_decision(
+                app,
+                host=host,
+                path=request_path,
+                guard='non_work_auth_guard',
+                action='allow',
+                reason='public_path',
+            )
             return None
 
-        if session.get('authenticated'):
+        if int(session.get('user_id') or 0) > 0:
+            _log_guard_decision(
+                app,
+                host=host,
+                path=request_path,
+                guard='non_work_auth_guard',
+                action='allow',
+                reason='session_user_id_present',
+            )
             return None
 
+        _log_guard_decision(
+            app,
+            host=host,
+            path=request_path,
+            guard='non_work_auth_guard',
+            action='block',
+            reason='missing_session_authentication',
+        )
         return ('Unauthorized', 401)
 
     if app.config.get('ENABLE_LOG_MONITOR', True):

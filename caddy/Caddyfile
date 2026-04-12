@@ -1,4 +1,20 @@
+{
+	# Optional global settings
+	# email you@example.com
+}
+
+# -------------------------
+# 🔐 Infra Auth (Caddy-level)
+# -------------------------
+(auth_infra) {
+	# Intentionally empty to avoid startup failure when infra auth secrets are unavailable.
+}
+
+# -------------------------
+# 🌐 WORK DOMAIN (PUBLIC)
+# -------------------------
 work.westos.dev {
+
 	handle /api/* {
 		reverse_proxy backend:5000
 	}
@@ -20,8 +36,13 @@ work.westos.dev {
 	}
 }
 
+# -------------------------
+# 🔐 MAIN APP (APP-LEVEL AUTH)
+# -------------------------
 westos.dev {
+
 	route {
+
 		handle /api/* {
 			reverse_proxy backend:5000
 		}
@@ -44,50 +65,64 @@ westos.dev {
 	}
 }
 
+# -------------------------
+# 🔐 INFRA SERVICES (PROTECTED)
+# -------------------------
+
 grafana.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy grafana:3000
 	}
 }
 
 code.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy code-server:8080
 	}
 }
 
 portainer.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy portainer:9000
 	}
 }
 
 files.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy filebrowser:80
 	}
 }
 
 webui.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy open-webui:8080
 	}
 }
 
 plex.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy homelab-plex:32400
 	}
 }
 
 torrent.westos.dev {
 	route {
+		import auth_infra
 		reverse_proxy homelab-qbittorrent:8080
 	}
 }
 
+# -------------------------
+# 🚫 CATCH-ALL (BLOCK UNKNOWN)
+# -------------------------
 *.westos.dev {
 	route {
-		respond "Not Found" 404
+		abort
 	}
 }

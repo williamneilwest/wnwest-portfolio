@@ -3,9 +3,13 @@ from datetime import datetime, timezone
 from sqlalchemy import String, Column, DateTime, Integer, create_engine, inspect, text, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from .platform import resolve_database_url
 
-# Database URL can be overridden via env; default to a local SQLite file
-_DEFAULT_DB_URL = os.getenv('REFERENCE_DATABASE_URL', 'sqlite:///reference.db')
+# Database URL preference: REFERENCE_DATABASE_URL override, then DATABASE_URL/postgres fallback, then SQLite.
+_DEFAULT_DB_URL = (
+    str(os.getenv('REFERENCE_DATABASE_URL', '')).strip()
+    or resolve_database_url()
+)
 
 engine = create_engine(_DEFAULT_DB_URL, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)

@@ -6,10 +6,11 @@ import re
 from datetime import datetime, timezone
 import logging
 
-from flask import Blueprint, jsonify, request, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory, has_request_context
 from werkzeug.utils import secure_filename
 
 from ..services.tag_derivation import derive_tags
+from ..services.file_registry import upsert_file_metadata, move_file_metadata, delete_file_metadata
 from ..utils.storage import get_kb_category_dir, get_uploads_dir
 
 email_upload_bp = Blueprint("email_upload", __name__)
@@ -28,6 +29,12 @@ ALLOWED_ATTACHMENT_EXTENSIONS = {
 
 def _uploads_dir():
     return get_uploads_dir()
+
+
+def _request_host():
+    if not has_request_context():
+        return ''
+    return (request.host or '').split(':', 1)[0].lower()
 
 
 def _kb_uncategorized_dir():
@@ -416,6 +423,17 @@ def save_attachment_bytes_to_directory(filename, content, directory, source='man
         original_name=original_name,
     )
     LOGGER.info('Saved file path=%s source=%s route=%s', path, source, route)
+    try:
+        upsert_file_metadata(
+            storage_path=path,
+            original_filename=original_name or safe_name,
+            content_type=mimetypes.guess_type(safe_name)[0],
+            source_host=_request_host(),
+            uploaded_by='email-webhook' if source == 'email' else source,
+            status='stored',
+        )
+    except Exception:
+        LOGGER.warning('Failed to sync file metadata for %s', path)
 
     return {
         "filename": safe_name,
@@ -634,6 +652,7 @@ def update_file_metadata(file_id):
             if os.path.exists(next_path):
                 return jsonify({'error': 'A file with this name already exists.'}), 409
             os.replace(path, next_path)
+            move_file_metadata(path, next_path, original_filename=new_name)
             old_meta_path = _metadata_path_for_directory(directory, filename)
             next_meta_path = _metadata_path_for_directory(directory, clean_new_name)
             if os.path.exists(old_meta_path):
@@ -653,6 +672,7 @@ def update_file_metadata(file_id):
             if os.path.exists(next_path):
                 return jsonify({'error': 'A file with this name already exists in the target category.'}), 409
             os.replace(path, next_path)
+            move_file_metadata(path, next_path, original_filename=metadata.get('originalName') or filename)
             old_meta_path = _metadata_path_for_directory(directory, filename)
             next_meta_path = _metadata_path_for_directory(next_directory, filename)
             if os.path.exists(old_meta_path):
@@ -685,6 +705,17 @@ def update_file_metadata(file_id):
         )
     with open(_metadata_path_for_directory(directory, filename), 'w', encoding='utf-8') as handle:
         json.dump(current_meta, handle)
+    try:
+        upsert_file_metadata(
+            storage_path=path,
+            original_filename=current_meta.get('originalName') or filename,
+            content_type=mimetypes.guess_type(filename)[0],
+            source_host=_request_host(),
+            uploaded_by='user',
+            status='stored',
+        )
+    except Exception:
+        LOGGER.warning('Failed to sync updated file metadata for %s', path)
 
     return jsonify(
         {
@@ -704,6 +735,7 @@ def delete_file(file_id):
         return jsonify({'error': 'File not found.'}), 404
 
     os.remove(target['path'])
+    delete_file_metadata(target['path'])
     meta_path = _metadata_path_for_directory(target['directory'], target['filename'])
     if os.path.exists(meta_path):
         os.remove(meta_path)

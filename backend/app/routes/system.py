@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from ..api_response import success_response
+from ..services.auth_store import get_auth_summary
 from ..services.system_aggregator import build_system_map
 from ..services.system_metrics import build_system_status
 from ..services.system_validator import run_system_validation
@@ -40,6 +41,15 @@ def system_ai():
     force_refresh = str(request.args.get('refresh') or '').strip().lower() in {'1', 'true', 'yes'}
     payload = build_system_map(force_refresh=force_refresh)
     return success_response(payload.get('ai', {}))
+
+
+@system_bp.get('/api/system/auth')
+def system_auth():
+    try:
+        window_hours = int(request.args.get('windowHours') or 24)
+    except (TypeError, ValueError):
+        window_hours = 24
+    return success_response(get_auth_summary(window_hours=window_hours))
 
 
 @system_bp.get('/api/system/map')

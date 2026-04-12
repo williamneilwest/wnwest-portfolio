@@ -17,7 +17,7 @@ from ..services.ai_client import (
     call_gateway_chat,
     call_gateway_openai_chat,
 )
-from ..services.ai_interaction_log import read_ai_interactions
+from ..services.ai_interaction_log import read_ai_interactions, write_ai_interaction_error
 from ..services.document_ai import analyze_document
 from ..services.document_parser import parse_document
 from ..services.smart_analysis import (
@@ -269,10 +269,13 @@ def chat():
                 }
             )
         except ValueError as error:
+            write_ai_interaction_error(raw_payload, str(error), interaction_type='smart_analysis')
             return jsonify({'error': str(error)}), 400
         except Timeout:
+            write_ai_interaction_error(raw_payload, 'AI request timed out', interaction_type='smart_analysis')
             return jsonify({'status': 'timeout', 'error': 'AI request timed out'}), 504
         except RequestException as error:
+            write_ai_interaction_error(raw_payload, f'AI request failed: {error}', interaction_type='smart_analysis')
             return jsonify({'status': 'error', 'error': f'AI request failed: {error}'}), 502
 
     payload = _gateway_payload(raw_payload)
@@ -281,10 +284,13 @@ def chat():
         result = call_gateway_chat(payload, current_app.config['AI_GATEWAY_BASE_URL'])
         return jsonify(build_compat_chat_response(payload, result))
     except ValueError as error:
+        write_ai_interaction_error(payload, str(error))
         return jsonify({'error': str(error)}), 400
     except Timeout:
+        write_ai_interaction_error(payload, 'AI request timed out')
         return jsonify({'status': 'timeout', 'error': 'AI request timed out'}), 504
     except RequestException as error:
+        write_ai_interaction_error(payload, f'AI request failed: {error}')
         return jsonify({'status': 'error', 'error': f'AI request failed: {error}'}), 502
 
 
@@ -299,8 +305,10 @@ def openai_chat():
     try:
         return jsonify(build_openai_chat_response(call_gateway_openai_chat(payload, current_app.config['AI_GATEWAY_BASE_URL'])))
     except ValueError as error:
+        write_ai_interaction_error(payload, str(error), interaction_type='openai_chat')
         return jsonify({'error': {'message': str(error), 'type': 'invalid_request_error'}}), 400
     except RequestException as error:
+        write_ai_interaction_error(payload, f'AI request failed: {error}', interaction_type='openai_chat')
         return jsonify({'error': {'message': f'AI request failed: {error}', 'type': 'service_unavailable'}}), 503
 
 

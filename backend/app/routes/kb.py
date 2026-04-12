@@ -12,6 +12,7 @@ from typing import Optional
 from .email_upload import clean_filename, extract_original_name, rotate_stored_file_versions
 from ..services.document_parser import run_document_processing_task, parse_document
 from ..services.document_ai import analyze_document
+from ..services.file_registry import upsert_file_metadata
 from ..services.tag_derivation import derive_tags
 from ..services.ticket_match import match_ticket_to_kb
 from ..models.reference import AIDocument, SessionLocal, init_db
@@ -317,6 +318,14 @@ def handle_kb_email():
                 category,
                 safe_name,
                 base_metadata,
+            )
+            upsert_file_metadata(
+                storage_path=path,
+                original_filename=original_name or safe_name,
+                content_type=mimetypes.guess_type(safe_name)[0],
+                source_host=(request.host or '').split(':', 1)[0].lower(),
+                uploaded_by='email-webhook',
+                status='stored',
             )
             print(f"[kb] Saved KB doc: {path} (category={category})")
             _queue_document_processing(current_app._get_current_object(), path)
