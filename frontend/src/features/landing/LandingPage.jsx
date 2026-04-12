@@ -7,7 +7,7 @@ const primaryAction = {
 };
 
 const secondaryActions = [
-  { href: '/csv', label: 'CSV Tools' },
+  { href: '/app/data', label: 'Data Tools' },
   { href: '/app/ai', label: 'AI Workspace' },
   { href: '/app/work', label: 'Work Console' }
 ];
@@ -26,9 +26,9 @@ const systemModules = [
     icon: BriefcaseBusiness
   },
   {
-    href: '/csv',
-    title: 'CSV Tools',
-    description: 'CSV intake, review, and structured analysis pipelines.',
+    href: '/app/data',
+    title: 'Data Tools',
+    description: 'Upload files and run modular data tools by document type.',
     icon: Blocks
   },
   {

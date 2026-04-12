@@ -98,6 +98,20 @@ export function getUploads() {
   return request(backendBaseUrl, '/uploads');
 }
 
+export function uploadDataFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return request(backendBaseUrl, '/api/data/upload', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export function getDataTools(fileType) {
+  return request(backendBaseUrl, `/api/data/tools/${encodeURIComponent(fileType)}`);
+}
+
 export function getKnowledgeBase() {
   return request(backendBaseUrl, '/api/kb');
 }

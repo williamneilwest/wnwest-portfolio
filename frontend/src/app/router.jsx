@@ -198,7 +198,7 @@ export const router = createBrowserRouter(
   },
   {
     path: '/csv',
-    element: <Navigate replace to="/app/work/table" />
+    element: <Navigate replace to="/app/data" />
   },
   {
     path: '/life',

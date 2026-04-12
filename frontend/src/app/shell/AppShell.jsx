@@ -518,40 +518,44 @@ export function AppShell() {
 
       <main className="shell__content">
         <header className="shell__topbar">
-          <button className="shell__home-back" aria-label="Go back" type="button" onClick={onTopbarBack}>
-            <ArrowLeft size={14} />
-          </button>
-          <h2 className="shell__context-title">{contextTitle}</h2>
-          <div className="shell__topbar-actions">
-            {isMobileViewport ? (
-              <button
-                type="button"
-                className="compact-toggle shell__mobile-menu-toggle"
-                onClick={() => setIsMobileNavOpen((current) => !current)}
-                aria-expanded={isMobileNavOpen}
-                aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              >
-                {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
-                Menu
-              </button>
-            ) : null}
-            {location.pathname.startsWith('/app/ai') ? (
-              <NavLink
-                to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
-                className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
-              >
-                {location.pathname.startsWith('/app/ai/documents') ? 'AI Settings' : 'AI Documents'}
-              </NavLink>
-            ) : null}
-            {location.pathname.startsWith('/app/kb') ? (
-              <NavLink
-                to={location.pathname.startsWith('/app/kb/processed') ? '/app/kb' : '/app/kb/processed'}
-                className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
-              >
-                {location.pathname.startsWith('/app/kb/processed') ? 'Knowledge Base' : 'Processed KB'}
-              </NavLink>
-            ) : null}
-            <AssistantPopover />
+          <div className="shell__topbar-left">
+            <button className="shell__home-back" aria-label="Go back" type="button" onClick={onTopbarBack}>
+              <ArrowLeft size={14} />
+            </button>
+          </div>
+          <div className="shell__topbar-right">
+            <h2 className="shell__context-title">{contextTitle}</h2>
+            <div className="shell__topbar-actions">
+              {isMobileViewport ? (
+                <button
+                  type="button"
+                  className="compact-toggle shell__mobile-menu-toggle"
+                  onClick={() => setIsMobileNavOpen((current) => !current)}
+                  aria-expanded={isMobileNavOpen}
+                  aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                >
+                  {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+                  Menu
+                </button>
+              ) : null}
+              {location.pathname.startsWith('/app/ai') ? (
+                <NavLink
+                  to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
+                  className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
+                >
+                  {location.pathname.startsWith('/app/ai/documents') ? 'AI Settings' : 'AI Documents'}
+                </NavLink>
+              ) : null}
+              {location.pathname.startsWith('/app/kb') ? (
+                <NavLink
+                  to={location.pathname.startsWith('/app/kb/processed') ? '/app/kb' : '/app/kb/processed'}
+                  className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
+                >
+                  {location.pathname.startsWith('/app/kb/processed') ? 'Knowledge Base' : 'Processed KB'}
+                </NavLink>
+              ) : null}
+              <AssistantPopover />
+            </div>
           </div>
         </header>
 

@@ -1,4 +1,4 @@
-import { ArrowRight, Clock3, Lightbulb, Sparkles, UserRound } from 'lucide-react';
+import { ArrowRight, Clock3, Lightbulb, Sparkles, Tag, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../../app/ui/Card';
 import {
@@ -14,6 +14,11 @@ export function TicketCard({ ticket, columns, matchedRules = [], onOpen, navigat
   const hasAiAnalysis = Boolean(ticket?.ai_analysis?.result);
   const canOpenTicketRoute = ticketId && ticketId !== 'Untitled ticket';
   const safeRules = (matchedRules || []).filter((rule) => rule && typeof rule === 'object');
+  const hasTaggedRule = safeRules.some((rule) => {
+    const ruleId = String(rule?.id || '').toLowerCase();
+    const hasTagAssociations = Array.isArray(rule?.associatedGroupTags) && rule.associatedGroupTags.length > 0;
+    return ruleId === 'responder_group' || ruleId.startsWith('kb_tag_') || hasTagAssociations;
+  });
   const visibleRules = safeRules.filter((rule) => {
     const ruleId = String(rule?.id || '').toLowerCase();
     const hasTagAssociations = Array.isArray(rule?.associatedGroupTags) && rule.associatedGroupTags.length > 0;
@@ -35,6 +40,12 @@ export function TicketCard({ ticket, columns, matchedRules = [], onOpen, navigat
           <span className="ticket-card__ai-chip">
             <Sparkles size={14} />
             AI cached
+          </span>
+        ) : null}
+        {hasTaggedRule ? (
+          <span className="ticket-card__tag-chip">
+            <Tag size={13} />
+            Tagged
           </span>
         ) : null}
         {visibleRules.length ? (

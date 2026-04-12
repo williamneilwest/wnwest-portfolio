@@ -843,6 +843,19 @@ textarea {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.shell__topbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.shell__topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
 .shell__topbar-actions,
 .module__actions {
   display: flex;
@@ -851,8 +864,8 @@ textarea {
 }
 
 .shell__topbar-actions {
-  margin-left: auto;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .shell__mobile-menu-toggle {
@@ -872,6 +885,7 @@ textarea {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
 .assistant-popover {
@@ -1431,6 +1445,70 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.module--data-tools {
+  gap: 1rem;
+}
+
+.data-tools-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.data-tools-panel {
+  display: grid;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.data-tools-panel__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.data-tools-panel__header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.data-tools-panel__header p {
+  margin: 0.15rem 0 0;
+  color: var(--text-muted);
+}
+
+.data-tools-upload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.data-tools-upload__input {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.data-tools-suggestions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.55rem;
+}
+
+.data-tool-card--action {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.data-tools-output {
+  grid-column: 1 / -1;
+}
+
+.spin {
+  animation: ai-spin 0.9s linear infinite;
 }
 
 .data-tool-card {
@@ -3210,6 +3288,7 @@ textarea {
 }
 
 .ticket-card__ai-chip,
+.ticket-card__tag-chip,
 .ticket-card__status {
   display: inline-flex;
   align-items: center;
@@ -3220,6 +3299,12 @@ textarea {
   background: rgba(16, 185, 129, 0.08);
   color: #b7f7cf;
   font-size: 0.78rem;
+}
+
+.ticket-card__tag-chip {
+  border-color: rgba(59, 130, 246, 0.26);
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
 }
 
 .ticket-card__meta {
@@ -4526,9 +4611,14 @@ textarea {
     align-items: flex-start;
   }
 
+  .shell__topbar-right {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
   .shell__topbar-actions {
     gap: 0.45rem;
-    width: 100%;
+    width: auto;
     justify-content: flex-end;
   }
 
@@ -4586,6 +4676,10 @@ textarea {
     gap: 0.65rem;
   }
 
+  .data-tools-layout {
+    grid-template-columns: 1fr;
+  }
+
   .work-quick-actions,
   .work-tools-grid,
   .work-tools-grid--compact {
@@ -4636,6 +4730,10 @@ textarea {
   .shell__context-title,
   .module__tag {
     display: none;
+  }
+
+  .shell__topbar-right {
+    width: 100%;
   }
 
   .metric-grid {

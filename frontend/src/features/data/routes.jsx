@@ -1,5 +1,5 @@
-import { DataPage } from './DataPage';
+import { DataToolsPage } from './DataToolsPage';
 
 export default async () => ({
-  Component: DataPage
+  Component: DataToolsPage
 });
