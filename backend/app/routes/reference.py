@@ -114,8 +114,10 @@ def upsert_users():
 
             existing = session.get(User, uid)
             if existing:
-                existing.name = name
-                existing.email = email
+                if name and not (existing.name or '').strip():
+                    existing.name = name
+                if email and not (existing.email or '').strip():
+                    existing.email = email
             else:
                 session.add(User(id=uid, name=name, email=email))
 

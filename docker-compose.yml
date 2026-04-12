@@ -1,4 +1,5 @@
 services:
+
   db:
     image: postgres:15
     container_name: database
@@ -32,13 +33,15 @@ services:
       ACTIVE_TICKETS_PATH: ${ACTIVE_TICKETS_PATH}
       POWER_AUTOMATE_GROUP_SEARCH_URL: ${POWER_AUTOMATE_GROUP_SEARCH_URL:-}
       POWER_AUTOMATE_GROUP_SCRIPT_NAME: ${POWER_AUTOMATE_GROUP_SCRIPT_NAME:-Search Groups}
+      POWER_AUTOMATE_USER_GROUPS_SCRIPT_NAME: ${POWER_AUTOMATE_USER_GROUPS_SCRIPT_NAME:-Get User Groups}
       POWER_AUTOMATE_GROUP_TIMEOUT_SECONDS: ${POWER_AUTOMATE_GROUP_TIMEOUT_SECONDS:-20}
+      GUNICORN_CMD_ARGS: ${BACKEND_GUNICORN_CMD_ARGS:-}
     expose:
       - "${BACKEND_PORT}"
     volumes:
       - backend_data:/app/data
-      - backend_data:/data
       - ./frontend/dist:/app/frontend/dist:ro
+      - ./backend:/app
     networks:
       - westos
 

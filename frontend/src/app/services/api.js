@@ -93,8 +93,28 @@ export function getReferenceGroups() {
   return request(backendBaseUrl, '/api/reference/groups');
 }
 
+export function upsertReferenceGroups(groups) {
+  return request(backendBaseUrl, '/api/reference/groups', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ groups })
+  });
+}
+
 export function getReferenceUsers() {
   return request(backendBaseUrl, '/api/reference/users');
+}
+
+export function upsertReferenceUsers(users) {
+  return request(backendBaseUrl, '/api/reference/users', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ users })
+  });
 }
 
 export function getUploadFile(fileUrl) {

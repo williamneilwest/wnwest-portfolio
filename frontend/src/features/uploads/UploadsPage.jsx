@@ -25,6 +25,10 @@ function formatUploadTimestamp(value) {
   });
 }
 
+function formatUploadSource(value) {
+  return String(value || '').trim().toLowerCase() === 'email' ? 'Email upload' : 'Manual upload';
+}
+
 export function UploadsPage() {
   const [files, setFiles] = useState([]);
   const [error, setError] = useState('');
@@ -68,7 +72,7 @@ export function UploadsPage() {
                   <FileSpreadsheet size={16} />
                   <span>
                     <strong>{formatDataFileName(file.filename)}</strong>
-                    <small>{formatUploadTimestamp(file.modifiedAt)}</small>
+                    <small>{formatUploadSource(file.source)} · {formatUploadTimestamp(file.modifiedAt)}</small>
                   </span>
                 </span>
                 <div className="stack-row__actions">

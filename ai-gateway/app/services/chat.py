@@ -60,7 +60,12 @@ def run_chat_completion(payload, model, temperature, max_tokens, api_base):
 
     messages = _normalize_messages(payload)
     request_temperature = 0.2
-    request_max_tokens = min(int(payload.get('max_tokens', max_tokens)), 100)
+    # Honor client-provided max_tokens up to the server-configured limit; remove low hard cap
+    try:
+        requested = int(payload.get('max_tokens', max_tokens))
+    except Exception:
+        requested = max_tokens
+    request_max_tokens = max(1, min(requested, max_tokens))
 
     request_kwargs = {
         'model': model,
@@ -75,8 +80,9 @@ def run_chat_completion(payload, model, temperature, max_tokens, api_base):
         request_kwargs['extra_body'] = {
             'keep_alive': -1,
             'options': {
-                'num_predict': 100,
-                'num_ctx': 1024,
+                # Align Ollama generation limit with request_max_tokens
+                'num_predict': request_max_tokens,
+                'num_ctx': 2048,
                 'temperature': 0.2,
             },
         }

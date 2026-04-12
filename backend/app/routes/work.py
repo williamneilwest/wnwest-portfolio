@@ -90,7 +90,7 @@ def upload_email_csv():
 
             content = uploaded_file.stream.read()
             uploaded_file.stream = BytesIO(content)
-            saved_record = save_uploaded_attachment(uploaded_file)
+            saved_record = save_uploaded_attachment(uploaded_file, source=SOURCE_EMAIL)
             saved_files.append(
                 {
                     'originalFileName': filename,
@@ -102,7 +102,7 @@ def upload_email_csv():
         transport = None
         if not saved_files:
             for attachment in iter_sendgrid_attachments():
-                saved_record = save_uploaded_attachment_bytes(attachment['filename'], attachment['content'])
+                saved_record = save_uploaded_attachment_bytes(attachment['filename'], attachment['content'], source=SOURCE_EMAIL)
                 saved_files.append(
                     {
                         'originalFileName': attachment['filename'],

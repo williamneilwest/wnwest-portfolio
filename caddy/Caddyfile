@@ -4,31 +4,7 @@ westos.dev {
         reverse_proxy backend:5000
     }
 
-    handle /flows/* {
-        reverse_proxy backend:5000
-    }
-
-    handle /uploads* {
-        reverse_proxy backend:5000
-    }
-
-    handle /plaid/* {
-        reverse_proxy backend:5000
-    }
-
-    handle /auth/* {
-        reverse_proxy backend:5000
-    }
-
-    handle /health {
-        reverse_proxy backend:5000
-    }
-
     handle {
-        reverse_proxy backend:5000
+        reverse_proxy 10.0.0.10:5173
     }
-}
-
-webui.westos.dev {
-    reverse_proxy open-webui:8080
 }

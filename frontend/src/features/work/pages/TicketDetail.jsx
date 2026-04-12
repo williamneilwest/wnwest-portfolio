@@ -77,12 +77,33 @@ function resolveTaggedGroups(referenceGroups, associatedGroupNames) {
   associatedGroupNames.forEach((groupName) => {
     const normalizedGroupName = normalizeComparisonValue(groupName);
     const canonicalGroupName = normalizeCanonicalGroupKey(groupName);
-    const matchedGroup = groupRows.find((group) => {
-      const cachedName = normalizeComparisonValue(group?.name);
-      const cachedCanonicalName = normalizeCanonicalGroupKey(group?.name);
 
-      return cachedName === normalizedGroupName
-        || (canonicalGroupName && cachedCanonicalName === canonicalGroupName);
+    const matchedGroup = groupRows.find((group) => {
+      const idNorm = normalizeComparisonValue(group?.id);
+      const idCanon = normalizeCanonicalGroupKey(group?.id);
+
+      const nameNorm = normalizeComparisonValue(group?.name);
+      const nameCanon = normalizeCanonicalGroupKey(group?.name);
+
+      // Parse optional aliases from tags field. Accept common delimiters.
+      const rawTags = String(group?.tags ?? '');
+      const tagParts = rawTags
+        .split(/[,;|\n]/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const tagNormSet = new Set(tagParts.map((t) => normalizeComparisonValue(t)));
+      const tagCanonSet = new Set(tagParts.map((t) => normalizeCanonicalGroupKey(t)));
+
+      return (
+        // Direct id match
+        idNorm === normalizedGroupName || (canonicalGroupName && idCanon === canonicalGroupName)
+      ) || (
+        // Name match (existing behavior)
+        nameNorm === normalizedGroupName || (canonicalGroupName && nameCanon === canonicalGroupName)
+      ) || (
+        // Match any aliases provided in tags
+        tagNormSet.has(normalizedGroupName) || (canonicalGroupName && tagCanonSet.has(canonicalGroupName))
+      );
     });
 
     if (matchedGroup?.id && !seenIds.has(matchedGroup.id)) {

@@ -21,6 +21,32 @@ ALLOWED_ATTACHMENT_EXTENSIONS = {
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+def _metadata_path(filename):
+    return os.path.join(UPLOAD_DIR, f'{filename}.meta.json')
+
+
+def _write_upload_metadata(filename, source):
+    payload = {
+        'source': source or 'manual',
+    }
+
+    with open(_metadata_path(filename), 'w', encoding='utf-8') as handle:
+        json.dump(payload, handle)
+
+
+def _read_upload_metadata(filename):
+    path = _metadata_path(filename)
+    if not os.path.exists(path):
+        return {}
+
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            parsed = json.load(handle)
+            return parsed if isinstance(parsed, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
 def is_allowed_attachment(filename):
     if not filename:
         return False
@@ -32,12 +58,13 @@ def is_csv_attachment(filename):
     return os.path.splitext(filename or '')[1].lower() == '.csv'
 
 
-def save_uploaded_attachment(file):
+def save_uploaded_attachment(file, source='manual'):
     timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     safe_name = f"{timestamp}_{secure_filename(file.filename)}"
     path = os.path.join(UPLOAD_DIR, safe_name)
 
     file.save(path)
+    _write_upload_metadata(safe_name, source)
 
     return {
         "filename": safe_name,
@@ -46,13 +73,14 @@ def save_uploaded_attachment(file):
     }
 
 
-def save_uploaded_attachment_bytes(filename, content):
+def save_uploaded_attachment_bytes(filename, content, source='manual'):
     timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     safe_name = f"{timestamp}_{secure_filename(filename)}"
     path = os.path.join(UPLOAD_DIR, safe_name)
 
     with open(path, 'wb') as handle:
         handle.write(content)
+    _write_upload_metadata(safe_name, source)
 
     return {
         "filename": safe_name,
@@ -128,7 +156,7 @@ def handle_incoming_email():
         if size > MAX_ATTACHMENT_BYTES:
             continue
 
-        saved_record = save_uploaded_attachment(file)
+        saved_record = save_uploaded_attachment(file, source='email')
         saved_files.append({
             "filename": saved_record["filename"],
             "url": saved_record["url"]
@@ -151,8 +179,12 @@ def list_uploads():
     files = []
 
     for name in sorted(os.listdir(UPLOAD_DIR), reverse=True):
+        if name.endswith('.meta.json'):
+            continue
+
         file_path = os.path.join(UPLOAD_DIR, name)
         modified_at = None
+        metadata = _read_upload_metadata(name)
 
         try:
             modified_at = datetime.fromtimestamp(os.path.getmtime(file_path), tz=timezone.utc).isoformat()
@@ -163,6 +195,7 @@ def list_uploads():
             "filename": name,
             "url": f"/uploads/{name}",
             "modifiedAt": modified_at,
+            "source": str(metadata.get('source') or 'manual').strip() or 'manual',
         })
 
     return jsonify(files)

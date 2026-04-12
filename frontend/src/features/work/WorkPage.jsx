@@ -25,6 +25,7 @@ import { getStoredVisibleColumns, setStoredVisibleColumns } from '../tables/tabl
 import { TicketCard } from './components/TicketCard';
 import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
 import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
+import { buildTicketRuleText, matchTicketRules } from './utils/ticketRules';
 
 const DEFAULT_CARD_ASSIGNEE = 'William West';
 const VIEW_STORAGE_KEY = 'westos.work.ticketView';
@@ -164,6 +165,29 @@ function formatRelativeTimestamp(value) {
 
   const days = Math.floor(hours / 24);
   return days === 1 ? '1 day ago' : `${days} days ago`;
+}
+
+function formatUploadTimestamp(value) {
+  if (!value) {
+    return 'Time unavailable';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Time unavailable';
+  }
+
+  return parsed.toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function formatUploadSource(value) {
+  return String(value || '').trim().toLowerCase() === 'email' ? 'Email upload' : 'Manual upload';
 }
 
 function getDefaultVisibleColumns(analysis) {
@@ -516,6 +540,7 @@ export function WorkPage() {
   const [latestMessage, setLatestMessage] = useState('');
   const [ticketView, setTicketView] = useState('card');
   const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [showOnlyFlaggedTickets, setShowOnlyFlaggedTickets] = useState(false);
   const [recentAnalyses, setRecentAnalyses] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [error, setError] = useState('');
@@ -781,6 +806,7 @@ export function WorkPage() {
   );
   const datasetColumns = latestDataset.columns || [];
   const datasetAssigneeColumn = useMemo(() => getTicketColumns(datasetColumns).assignee, [datasetColumns]);
+  const datasetDescriptionColumn = useMemo(() => getDescriptionColumn(datasetColumns), [datasetColumns]);
   const datasetRows = useMemo(
     () =>
       (latestDataset.rows || []).filter((row) => {
@@ -818,6 +844,21 @@ export function WorkPage() {
       setAssigneeFilter('');
     }
   }, [assigneeFilter, assigneeOptions]);
+  const matchedDatasetTickets = useMemo(
+    () =>
+      datasetRows.map((ticket) => ({
+        ticket,
+        matchedRules: matchTicketRules(buildTicketRuleText(ticket, datasetColumns, datasetDescriptionColumn)),
+      })),
+    [datasetColumns, datasetDescriptionColumn, datasetRows]
+  );
+  const visibleTickets = useMemo(
+    () =>
+      matchedDatasetTickets.filter(({ matchedRules }) =>
+        showOnlyFlaggedTickets ? matchedRules.length > 0 : true
+      ),
+    [matchedDatasetTickets, showOnlyFlaggedTickets]
+  );
   const datasetColumnTypeMap = useMemo(
     () => Object.fromEntries(datasetVisibleColumns.map((column) => [column, inferColumnType(datasetRows, column)])),
     [datasetRows, datasetVisibleColumns]
@@ -848,7 +889,6 @@ export function WorkPage() {
         compareValues(leftRow[datasetSortConfig.column], rightRow[datasetSortConfig.column], columnType) * sortDirection
     );
   }, [datasetColumnTypeMap, datasetGlobalSearch, datasetSortConfig, datasetRows, datasetVisibleColumns]);
-  const visibleDatasetRows = datasetRows;
   const paginatedDatasetRows = useMemo(() => {
     const start = datasetPage * TABLE_PAGE_SIZE;
     return filteredDatasetRows.slice(start, start + TABLE_PAGE_SIZE);
@@ -1220,7 +1260,7 @@ export function WorkPage() {
                                 <Upload size={16} />
                                 <span>
                                   <strong>{formatDataFileName(file.filename)}</strong>
-                                  <small>{file.url}</small>
+                                  <small>{formatUploadSource(file.source)} · {formatUploadTimestamp(file.modifiedAt)}</small>
                                 </span>
                               </span>
                             </button>
@@ -1249,7 +1289,7 @@ export function WorkPage() {
               <div className="ticket-toolbar ticket-toolbar--compact">
                 <div className="ticket-toolbar__header">
                   <span className="ticket-source-banner__pill">
-                    {visibleDatasetRows.length} {visibleDatasetRows.length === 1 ? 'row' : 'rows'}
+                    {visibleTickets.length} {visibleTickets.length === 1 ? 'row' : 'rows'}
                   </span>
                 </div>
 
@@ -1288,6 +1328,14 @@ export function WorkPage() {
                       ))}
                     </select>
                   ) : null}
+                  <button
+                    aria-pressed={showOnlyFlaggedTickets}
+                    className={showOnlyFlaggedTickets ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                    onClick={() => setShowOnlyFlaggedTickets((current) => !current)}
+                    type="button"
+                  >
+                    Show only flagged
+                  </button>
                   <div className="ticket-view-toggle" role="tablist" aria-label="Ticket view">
                     <button
                       aria-pressed={ticketView === 'card'}
@@ -1325,12 +1373,13 @@ export function WorkPage() {
               {latestMessage ? <p className="status-text">{latestMessage}</p> : null}
 
               {latestDataset?.rows?.length ? (
-                visibleDatasetRows.length ? (
+                visibleTickets.length ? (
                   <div className="ticket-card-grid">
-                    {visibleDatasetRows.map((ticket, index) => (
+                    {visibleTickets.map(({ ticket, matchedRules }, index) => (
                       <TicketCard
                         key={`${getTicketId(ticket, datasetColumns)}-${index}`}
                         columns={datasetColumns}
+                        matchedRules={matchedRules}
                         onOpen={handlePreviewRowSelect}
                         ticket={ticket}
                       />
@@ -1343,7 +1392,9 @@ export function WorkPage() {
           description={
             assigneeFilter
               ? `The selected dataset does not contain any rows assigned to ${assigneeFilter}.`
-              : 'The selected dataset does not contain any rows that match the current filters.'
+              : showOnlyFlaggedTickets
+                ? 'The selected dataset does not contain any flagged rows that match the current filters.'
+                : 'The selected dataset does not contain any rows that match the current filters.'
           }
         />
       )
