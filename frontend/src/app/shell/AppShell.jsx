@@ -77,10 +77,6 @@ function getContextTitle(pathname) {
     return 'Data';
   }
 
-  if (pathname.startsWith('/app/admin')) {
-    return 'Admin';
-  }
-
   if (pathname.startsWith('/app/uploads')) {
     return 'Uploads';
   }

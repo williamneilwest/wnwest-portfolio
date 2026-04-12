@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, Eye, FileSpreadsheet } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { analyzeDocument, getUploads } from '../../app/services/api';
 import { buildDocumentViewHref, isCsvFile } from '../../app/utils/documentFiles';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
@@ -31,6 +31,7 @@ function formatUploadSource(value) {
 }
 
 export function UploadsPage() {
+  const location = useLocation();
   const [files, setFiles] = useState([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -82,6 +83,10 @@ export function UploadsPage() {
                   });
 
               const primaryLabel = csvFile ? 'View Table' : 'Open';
+              const routeState = {
+                from: `${location.pathname}${location.search || ''}`,
+                label: 'Uploads',
+              };
 
               return (
               <div className="stack-row" key={file.filename}>
@@ -96,6 +101,7 @@ export function UploadsPage() {
                   <Link
                     className="compact-toggle"
                     to={primaryHref}
+                    state={routeState}
                   >
                     <Eye size={14} />
                     {primaryLabel}
@@ -130,6 +136,7 @@ export function UploadsPage() {
                     <Link
                       className="upload-row-menu__action"
                       to={primaryHref}
+                      state={routeState}
                     >
                       <Eye size={14} />
                       {primaryLabel}

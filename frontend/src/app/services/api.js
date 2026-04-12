@@ -190,6 +190,10 @@ export function getReferenceUsers() {
   return request(backendBaseUrl, '/api/reference/users');
 }
 
+export function getReferenceEndpoints() {
+  return request(backendBaseUrl, '/api/reference/endpoints');
+}
+
 export function upsertReferenceUsers(users) {
   return request(backendBaseUrl, '/api/reference/users', {
     method: 'POST',

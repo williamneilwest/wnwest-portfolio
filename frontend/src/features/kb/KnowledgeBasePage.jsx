@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Folder, FileText, Download, Mail, ExternalLink, Printer, ChevronDown } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { analyzeKbDocument, getKnowledgeBase } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { buildDocumentViewHref } from '../../app/utils/documentFiles';
@@ -63,6 +63,7 @@ export function KnowledgeBasePage() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -118,7 +119,12 @@ export function KnowledgeBasePage() {
     const existingDocumentId = Number(existingAnalysis?.documentId || existingAnalysis?.analysisId || 0);
     if (existingDocumentId > 0) {
       setMessage('Loaded previous analysis from metadata.');
-      navigate(`/app/ai/documents/${existingDocumentId}`);
+      navigate(`/app/ai/documents/${existingDocumentId}`, {
+        state: {
+          from: `${location.pathname}${location.search || ''}`,
+          label: 'Knowledge Base',
+        },
+      });
       return;
     }
 
@@ -130,7 +136,12 @@ export function KnowledgeBasePage() {
       const id = Number(result?.id || 0);
       if (id > 0) {
         setMessage('Document analyzed. Opening details…');
-        navigate(`/app/ai/documents/${id}`);
+        navigate(`/app/ai/documents/${id}`, {
+          state: {
+            from: `${location.pathname}${location.search || ''}`,
+            label: 'Knowledge Base',
+          },
+        });
       } else {
         setMessage('Document analyzed.');
       }
@@ -249,7 +260,14 @@ export function KnowledgeBasePage() {
                         </div>
 
                         <div className="kb-file-row__right">
-                          <Link className="compact-toggle kb-action kb-action--primary" to={previewHref}>
+                          <Link
+                            className="compact-toggle kb-action kb-action--primary"
+                            to={previewHref}
+                            state={{
+                              from: `${location.pathname}${location.search || ''}`,
+                              label: 'Knowledge Base',
+                            }}
+                          >
                             <ExternalLink size={14} />
                             Open
                           </Link>

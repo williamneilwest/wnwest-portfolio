@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Clock3, FileSpreadsheet, History, TableProperties, Upload, X } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { getRecentCsvAnalyses, getRecentCsvAnalysisFile, getUploadFile, getUploads } from '../../app/services/api';
+import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
@@ -125,6 +126,9 @@ function buildDatasetPayload({ fileName, rows, columns, sourceUrl }) {
 
 export function TablePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const goBack = useBackNavigation('/app/work/active-tickets');
+  const backLabel = location.state?.label || 'Work';
   const fileInputRef = useRef(null);
   const [searchParams] = useSearchParams();
   const sourceUrl = searchParams.get('url') || '';
@@ -343,7 +347,12 @@ export function TablePage() {
     const ticketId = getTicketId(row, dataset.columns || []);
 
     if (ticketId && ticketId !== 'Untitled ticket') {
-      navigate(`/tickets/${encodeURIComponent(ticketId)}`);
+      navigate(`/tickets/${encodeURIComponent(ticketId)}`, {
+        state: {
+          from: `${location.pathname}${location.search || ''}`,
+          label: location.state?.label || 'Table Viewer',
+        },
+      });
       return;
     }
 
@@ -621,10 +630,10 @@ export function TablePage() {
                 <TableProperties size={15} />
                 Dataset Panel
               </button>
-              <Link className="compact-toggle" to="/app/work/active-tickets">
+              <button className="compact-toggle" onClick={goBack} type="button">
                 <ArrowLeft size={15} />
-                Back to Work
-              </Link>
+                {`Back to ${backLabel}`}
+              </button>
             </div>
           }
         />

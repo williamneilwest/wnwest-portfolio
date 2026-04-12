@@ -1141,7 +1141,12 @@ export function WorkPage() {
       return;
     }
 
-    navigate(`/tickets/${encodeURIComponent(ticketId)}`);
+    navigate(`/tickets/${encodeURIComponent(ticketId)}`, {
+      state: {
+        from: `${location.pathname}${location.search || ''}`,
+        label: 'Active Tickets',
+      },
+    });
   }
 
   async function handleAiAnalysis() {
@@ -1429,14 +1434,28 @@ export function WorkPage() {
                     <button
                       aria-pressed="false"
                       className="compact-toggle"
-                      onClick={() => navigate('/app/work/table')}
+                      onClick={() =>
+                        navigate('/app/work/table', {
+                          state: {
+                            from: `${location.pathname}${location.search || ''}`,
+                            label: 'Active Tickets',
+                          },
+                        })
+                      }
                       type="button"
                     >
                       Table
                     </button>
                     <button
                       className="compact-toggle"
-                      onClick={() => navigate('/app/work/ai-metrics')}
+                      onClick={() =>
+                        navigate('/app/work/ai-metrics', {
+                          state: {
+                            from: `${location.pathname}${location.search || ''}`,
+                            label: 'Active Tickets',
+                          },
+                        })
+                      }
                       type="button"
                     >
                       <BarChart3 size={15} />
@@ -1461,6 +1480,10 @@ export function WorkPage() {
                         key={`${getTicketId(ticket, datasetColumns)}-${index}`}
                         columns={datasetColumns}
                         matchedRules={matchedRules}
+                        navigationState={{
+                          from: `${location.pathname}${location.search || ''}`,
+                          label: 'Active Tickets',
+                        }}
                         onOpen={handlePreviewRowSelect}
                         ticket={ticket}
                       />

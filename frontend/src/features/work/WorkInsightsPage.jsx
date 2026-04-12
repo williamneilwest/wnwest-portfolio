@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clock3, FolderKanban, MessageSquareText, Tags, UserRoundCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { sendAiChat } from '../../app/services/api';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
@@ -38,6 +39,9 @@ function RankedList({ items, emptyText, secondaryKey }) {
 }
 
 export function WorkInsightsPage() {
+  const location = useLocation();
+  const goBack = useBackNavigation('/app/work/active-tickets');
+  const backLabel = location.state?.label || 'Active Tickets';
   const dataset = getCachedWorkDataset();
   const insights = useMemo(() => (dataset?.rows?.length ? buildInsights(dataset) : null), [dataset]);
   const summaryCacheKey = dataset?.analysisId || dataset?.fileName || '';
@@ -92,9 +96,9 @@ export function WorkInsightsPage() {
             title="Full dataset not loaded"
             description="Upload and analyze a CSV from the Work page first to build advanced insights from the full dataset."
           />
-          <Link className="ui-button ui-button--secondary" to="/app/work/active-tickets">
-            Back to Active Tickets
-          </Link>
+          <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+            {`Back to ${backLabel}`}
+          </button>
         </div>
       </section>
     );
@@ -107,9 +111,9 @@ export function WorkInsightsPage() {
         title="AI Metrics"
         description={`Advanced ticket metrics from ${dataset.fileName}.`}
         actions={
-          <Link className="ui-button ui-button--secondary" to="/app/work/active-tickets">
-            Back to Active Tickets
-          </Link>
+          <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+            {`Back to ${backLabel}`}
+          </button>
         }
       />
 

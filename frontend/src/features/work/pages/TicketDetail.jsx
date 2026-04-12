@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Clock3, MessageSquareText, ShieldCheck, ShieldX, Sparkles, UserRound } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import { useBackNavigation } from '../../../app/hooks/useBackNavigation';
 import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, getUserGroups, sendAiChat } from '../../../app/services/api';
 import { Card, CardHeader } from '../../../app/ui/Card';
 import { EmptyState } from '../../../app/ui/EmptyState';
@@ -168,6 +169,9 @@ function resolveUserOpid(candidates, users) {
 
 export function TicketDetail() {
   const { ticketId: routeTicketId = '' } = useParams();
+  const location = useLocation();
+  const goBack = useBackNavigation('/app/work/active-tickets');
+  const backLabel = location.state?.label || 'Active Tickets';
   const decodedTicketId = decodeURIComponent(routeTicketId);
   const [dataset, setDataset] = useState(() => getCachedWorkDataset());
   const [analysisResult, setAnalysisResult] = useState('');
@@ -468,10 +472,10 @@ export function TicketDetail() {
   return (
     <section className="module">
       <div className="ticket-detail__topbar">
-        <Link className="compact-toggle" to="/app/work/active-tickets">
+        <button className="compact-toggle" onClick={goBack} type="button">
           <ArrowLeft size={15} />
-          Back to Active Tickets
-        </Link>
+          {`Back to ${backLabel}`}
+        </button>
       </div>
 
       {responderRule ? (

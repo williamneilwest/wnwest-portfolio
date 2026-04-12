@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Activity, Cpu, RefreshCcw, ServerCog } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getSystemStatus } from '../../app/services/api';
 import { Button } from '../../app/ui/Button';
 import { Card, CardHeader } from '../../app/ui/Card';
@@ -154,6 +155,20 @@ export function ConsolePage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader
+          eyebrow="Console module"
+          title="API Endpoints Registry"
+          description="Open a dedicated table page for backend route catalog."
+          action={
+            <Link className="compact-toggle" to="/app/console/endpoints" state={{ from: '/app/console', label: 'Console' }}>
+              Open Table
+            </Link>
+          }
+        />
+        <p className="status-text">Use this view to inspect route names, methods, paths, and descriptions.</p>
+      </Card>
 
       <LogsPanel />
     </section>

@@ -69,7 +69,7 @@ export function WorkHubPage() {
               <span className="icon-badge">
                 <module.icon size={18} />
               </span>
-              <Link className="ui-button ui-button--secondary" to={module.href}>
+              <Link className="ui-button ui-button--secondary" to={module.href} state={{ from: '/app/work', label: 'Work Hub' }}>
                 {module.cta}
               </Link>
             </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Brain, Download, ExternalLink, FileText, RefreshCcw, Trash2 } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { analyzeDocumentWithAi, deleteFileById, updateFileById } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
@@ -62,12 +63,16 @@ function extractAnalysis(payload) {
 
 export function DocumentPage() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const location = useLocation();
   const initialFileUrl = searchParams.get('url') || '';
   const initialFileName = searchParams.get('fileName') || '';
   const mimeType = searchParams.get('mimeType') || '';
   const title = searchParams.get('title') || 'Document';
   const backTo = searchParams.get('backTo') || '/app/uploads';
+  const fallbackRoute = backTo || '/app/uploads';
+  const goBack = useBackNavigation(fallbackRoute);
+  const backLabel = location.state?.label
+    || (fallbackRoute === '/app/kb' ? 'Knowledge Base' : 'Uploads');
 
   const [currentFileUrl, setCurrentFileUrl] = useState(initialFileUrl);
   const [currentFileName, setCurrentFileName] = useState(initialFileName);
@@ -261,7 +266,7 @@ export function DocumentPage() {
     setDetailsMessage('');
     try {
       await deleteFileById(fileId);
-      navigate(backTo);
+      goBack();
     } catch (error) {
       setDetailsError(error?.message || 'Delete failed.');
     } finally {
@@ -451,10 +456,10 @@ export function DocumentPage() {
                 <Download size={15} />
                 Download
               </a>
-              <Link className="compact-toggle" to={backTo}>
+              <button type="button" className="compact-toggle" onClick={goBack}>
                 <ArrowLeft size={15} />
-                Back
-              </Link>
+                {`Back to ${backLabel}`}
+              </button>
             </div>
           }
         />

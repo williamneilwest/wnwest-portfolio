@@ -4,13 +4,16 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="Revamp Knowledge Base features with enhanced UI and analysis support:&#10;- Implement frontend category filtering and file analysis in UI&#10;- Improve tag normalization for ticket rules and KB documents&#10;- Add derived tag support for backend&#10;- Optimize model resolution and usage in AI gateway">
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="Add logging support to frontend and backend&#10;&#10;- Integrate `LogsPanel` in `ConsolePage.jsx`&#10;- Add `getLogs` API function&#10;- Register `logs_bp` in backend routes&#10;- Update Dockerfile to include `docker-cli` dependency&#10;- Modify `docker-compose.yml` to mount Docker socket">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/backend/Dockerfile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/admin/AdminPage.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/admin/routes.jsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/features/console/ConsolePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/console/ConsolePage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/data/DataPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/data/DataPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -150,7 +153,7 @@
       <workItem from="1775965981245" duration="4133000" />
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
-      <workItem from="1775978570958" duration="5696000" />
+      <workItem from="1775978570958" duration="6811000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor AI analysis logic and enhance ticket detail UI handling">
       <option name="closed" value="true" />
@@ -264,7 +267,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775983819461</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="Add logging support to frontend and backend&#10;&#10;- Integrate `LogsPanel` in `ConsolePage.jsx`&#10;- Add `getLogs` API function&#10;- Register `logs_bp` in backend routes&#10;- Update Dockerfile to include `docker-cli` dependency&#10;- Modify `docker-compose.yml` to mount Docker socket">
+      <option name="closed" value="true" />
+      <created>1775984625705</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1775984625705</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -295,7 +306,9 @@
     <MESSAGE value="Revamp Knowledge Base UI, add category filtering and file analysis&#10;- Implement sidebar navigation with active category highlight&#10;- Introduce search functionality for documents and tags&#10;- Enhance file listing with improved tag visibility&#10;- Add file analysis capability with user feedback messages&#10;- Update styles for consistency and responsiveness" />
     <MESSAGE value="woreked on stuff" />
     <MESSAGE value="Revamp Knowledge Base features with enhanced UI and analysis support:&#10;- Implement frontend category filtering and file analysis in UI&#10;- Improve tag normalization for ticket rules and KB documents&#10;- Add derived tag support for backend&#10;- Optimize model resolution and usage in AI gateway" />
-    <option name="LAST_COMMIT_MESSAGE" value="Revamp Knowledge Base features with enhanced UI and analysis support:&#10;- Implement frontend category filtering and file analysis in UI&#10;- Improve tag normalization for ticket rules and KB documents&#10;- Add derived tag support for backend&#10;- Optimize model resolution and usage in AI gateway" />
+    <MESSAGE value="added logging" />
+    <MESSAGE value="Add logging support to frontend and backend&#10;&#10;- Integrate `LogsPanel` in `ConsolePage.jsx`&#10;- Add `getLogs` API function&#10;- Register `logs_bp` in backend routes&#10;- Update Dockerfile to include `docker-cli` dependency&#10;- Modify `docker-compose.yml` to mount Docker socket" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add logging support to frontend and backend&#10;&#10;- Integrate `LogsPanel` in `ConsolePage.jsx`&#10;- Add `getLogs` API function&#10;- Register `logs_bp` in backend routes&#10;- Update Dockerfile to include `docker-cli` dependency&#10;- Modify `docker-compose.yml` to mount Docker socket" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

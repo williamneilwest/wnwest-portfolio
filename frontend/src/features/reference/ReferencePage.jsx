@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   getReferenceGroups,
   getReferenceUsers,
@@ -83,6 +83,7 @@ function mapUserRows(rows, columns) {
 
 export function ReferencePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +134,12 @@ export function ReferencePage() {
       columns,
       sourceUrl: '',
     });
-    navigate('/app/work/table');
+    navigate('/app/work/table', {
+      state: {
+        from: `${location.pathname}${location.search || ''}`,
+        label: 'Reference',
+      },
+    });
   }
 
   const groupTableRows = useMemo(() => groups, [groups]);

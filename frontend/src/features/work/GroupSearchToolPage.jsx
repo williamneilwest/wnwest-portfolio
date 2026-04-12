@@ -1,12 +1,16 @@
 import { Search } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { lookupReferenceGroups } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 
 export function GroupSearchToolPage() {
+  const location = useLocation();
+  const goBack = useBackNavigation('/app/work');
+  const backLabel = location.state?.label || 'Work Hub';
   const [searchText, setSearchText] = useState('');
   const [lookupResults, setLookupResults] = useState([]);
   const [lookupState, setLookupState] = useState({ loading: false, error: '', source: '', cacheHit: false, total: 0 });
@@ -53,9 +57,9 @@ export function GroupSearchToolPage() {
         title="Group Search Tool"
         description="Search cached groups and fall back to the Power Automate lookup when the local reference cache has no match."
         actions={
-          <Link className="ui-button ui-button--secondary" to="/app/work">
-            Back to Work Hub
-          </Link>
+          <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+            {`Back to ${backLabel}`}
+          </button>
         }
       />
 

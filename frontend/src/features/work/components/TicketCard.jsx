@@ -9,7 +9,7 @@ import {
   getTicketTitle,
 } from '../utils/aiAnalysis';
 
-export function TicketCard({ ticket, columns, matchedRules = [], onOpen }) {
+export function TicketCard({ ticket, columns, matchedRules = [], onOpen, navigationState = null }) {
   const ticketId = getTicketId(ticket, columns);
   const hasAiAnalysis = Boolean(ticket?.ai_analysis?.result);
   const canOpenTicketRoute = ticketId && ticketId !== 'Untitled ticket';
@@ -76,7 +76,7 @@ export function TicketCard({ ticket, columns, matchedRules = [], onOpen }) {
   if (canOpenTicketRoute) {
     return (
       <Card className={cardClassName}>
-        <Link className="ticket-card-link" to={`/tickets/${encodeURIComponent(ticketId)}`}>
+        <Link className="ticket-card-link" state={navigationState || undefined} to={`/tickets/${encodeURIComponent(ticketId)}`}>
           {content}
         </Link>
       </Card>

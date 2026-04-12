@@ -1,6 +1,7 @@
 import { Copy, Database, Network, RefreshCcw, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { getUserGroups } from '../../app/services/api';
 import { STORAGE_KEYS, STORAGE_TTLS } from '../../app/constants/storageKeys';
 import { Card, CardHeader } from '../../app/ui/Card';
@@ -71,6 +72,9 @@ async function copyText(value) {
 }
 
 export function GetUserGroupsPage() {
+  const location = useLocation();
+  const goBack = useBackNavigation('/app/work');
+  const backLabel = location.state?.label || 'Work Hub';
   const [userOpid, setUserOpid] = useState('');
   const [cache, setCache] = useState({});
   const [selectedOpid, setSelectedOpid] = useState('');
@@ -163,9 +167,9 @@ export function GetUserGroupsPage() {
         title="Get User Groups"
         description="Calls Get User Groups, resolves cached group names by matching returned ids, and stores each user’s group list as cached JSON until you explicitly refresh it."
         actions={
-          <Link className="ui-button ui-button--secondary" to="/app/work">
-            Back to Work Hub
-          </Link>
+          <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+            {`Back to ${backLabel}`}
+          </button>
         }
       />
 

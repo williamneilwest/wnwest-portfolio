@@ -13,6 +13,7 @@ import { GroupSearchToolPage } from '../features/work/GroupSearchToolPage';
 import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
+import { ConsoleEndpointsPage } from '../features/console/ConsoleEndpointsPage';
 import { AppShell } from './shell/AppShell';
 
 const routeModules = import.meta.glob('../features/*/routes.jsx');
@@ -58,6 +59,10 @@ export const router = createBrowserRouter(
         lazy: getRoute('../features/console/routes.jsx')
       },
       {
+        path: 'console/endpoints',
+        Component: ConsoleEndpointsPage
+      },
+      {
         path: 'settings',
         lazy: getRoute('../features/settings/routes.jsx')
       },
@@ -80,10 +85,6 @@ export const router = createBrowserRouter(
       {
         path: 'ai/documents/:id',
         Component: DocumentDetailPage
-      },
-      {
-        path: 'admin',
-        lazy: getRoute('../features/admin/routes.jsx')
       },
       {
         path: 'settings/ai',
@@ -217,7 +218,7 @@ export const router = createBrowserRouter(
   },
   {
     path: '/admin',
-    element: <Navigate replace to="/app/admin" />
+    element: <Navigate replace to="/app/console" />
   },
   {
     path: '/settings',

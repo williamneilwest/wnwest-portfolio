@@ -1,6 +1,7 @@
 import { Clipboard, Network, Search, Sparkles, UsersRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import {
   getReferenceGroups,
   getReferenceUsers,
@@ -116,6 +117,9 @@ function groupMatchScore(group, query) {
 }
 
 export function UserGroupAssociationPage() {
+  const location = useLocation();
+  const goBack = useBackNavigation('/app/work');
+  const backLabel = location.state?.label || 'Work Hub';
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -321,9 +325,9 @@ export function UserGroupAssociationPage() {
           title="User-Group Association"
           description="Reference-driven workspace for building group association scripts."
           actions={
-            <Link className="ui-button ui-button--secondary" to="/app/work">
-              Back to Work Hub
-            </Link>
+            <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+              {`Back to ${backLabel}`}
+            </button>
           }
         />
         <EmptyState
@@ -342,9 +346,9 @@ export function UserGroupAssociationPage() {
         title="User-Group Association"
         description="Select a cached user, target the right reference groups, and generate a reusable association script without leaving the Work module."
         actions={
-          <Link className="ui-button ui-button--secondary" to="/app/work">
-            Back to Work Hub
-          </Link>
+          <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+            {`Back to ${backLabel}`}
+          </button>
         }
       />
 
