@@ -2,7 +2,7 @@ import os
 import atexit
 from pathlib import Path
 
-from flask import Flask, send_from_directory
+from flask import Flask, request, send_from_directory
 from dotenv import load_dotenv
 
 from .routes.email_upload import email_upload_bp
@@ -46,7 +46,11 @@ def _resolve_frontend_build_dir():
 def create_app():
     load_dotenv()
     frontend_build_dir = _resolve_frontend_build_dir()
-    app = Flask(__name__)
+    app = Flask(
+        __name__,
+        static_folder=str(frontend_build_dir) if frontend_build_dir else None,
+        static_url_path='',
+    )
     app.config.from_mapping(
         APP_NAME=os.getenv('APP_NAME', 'westOS API'),
         BACKEND_DATA_DIR=os.getenv('BACKEND_DATA_DIR', '/app/data'),
@@ -84,6 +88,14 @@ def create_app():
             requested_file = frontend_build_dir / path
             if path and requested_file.exists() and requested_file.is_file():
                 return send_from_directory(frontend_build_dir, path)
+
+            return send_from_directory(frontend_build_dir, 'index.html')
+
+        @app.errorhandler(404)
+        def spa_fallback(_error):
+            request_path = request.path.rstrip('/') or '/'
+            if any(request_path == prefix.rstrip('/') or request_path.startswith(prefix) for prefix in SPA_EXCLUDED_PREFIXES):
+                return ('Not Found', 404)
 
             return send_from_directory(frontend_build_dir, 'index.html')
 

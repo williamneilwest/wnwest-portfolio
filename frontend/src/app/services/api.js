@@ -277,3 +277,22 @@ export function sendAiChat(messageOrPayload) {
     body: JSON.stringify(payload)
   });
 }
+
+export function askAssistant({ query, currentRoute, context }) {
+  const payload = {
+    query,
+    current_route: currentRoute
+  };
+
+  if (context && typeof context === 'object') {
+    payload.context = context;
+  }
+
+  return request(backendBaseUrl, '/api/assistant', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+}

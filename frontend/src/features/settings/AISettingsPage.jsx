@@ -4,6 +4,7 @@ import { getAISettings, updateAISettings } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
+import { AssistantPanel } from '../ai/components/AssistantPanel';
 
 const EMPTY_FORM = {
   models: {
@@ -269,6 +270,8 @@ export function AISettingsPage() {
                 </a>
               </div>
             </Card>
+
+            <AssistantPanel />
           </div>
 
           <aside className="ai-pipeline__apply">

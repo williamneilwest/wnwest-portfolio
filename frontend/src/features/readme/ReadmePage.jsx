@@ -61,7 +61,7 @@ const moduleSections = [
     title: 'Console',
     icon: TerminalSquare,
     description:
-      'A narrow runtime surface for health visibility across backend, AI path, and frontend services.',
+      'A narrow runtime surface for health visibility across backend, AI path, and the UI served by backend static assets.',
     points: [
       'Route: `/app/console`',
       'Purpose: expose service health and environment signals without becoming a full admin panel',

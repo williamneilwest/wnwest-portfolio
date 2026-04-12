@@ -25,8 +25,7 @@ services:
       GUNICORN_BIND: ${BACKEND_GUNICORN_BIND}
       APP_NAME: ${BACKEND_APP_NAME:-westOS API}
       BACKEND_DATA_DIR: ${BACKEND_DATA_DIR:-/app/data}
-      FRONTEND_STATUS_URL: ${FRONTEND_STATUS_URL:-http://localhost:5173}
-      AI_GATEWAY_STATUS_URL: http://backend:${BACKEND_PORT}/api/ai/health
+      AI_GATEWAY_STATUS_URL: http://ai-gateway:${AI_GATEWAY_PORT}/health
       USE_AI_GATEWAY: ${USE_AI_GATEWAY}
       AI_GATEWAY_BASE_URL: http://ai-gateway:${AI_GATEWAY_PORT}
       OLLAMA_API_BASE: ${OLLAMA_API_BASE}

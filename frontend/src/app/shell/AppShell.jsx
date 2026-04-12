@@ -1,5 +1,4 @@
 import {
-  Activity,
   ArrowLeft,
   ChevronDown,
   ChevronUp,
@@ -11,11 +10,16 @@ import { getSystemStatus } from '../services/api';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { storage } from '../utils/storage';
 import { modules } from './modules';
+import { AssistantPopover } from '../../features/ai/components/AssistantPopover';
 
 const NAV_LAST_USED_KEY = 'westos.nav.lastUsed';
 const NAV_LAST_USED_MAP_KEY = 'westos.nav.lastUsedMap';
 const WORK_HUB_ACTIVITY_KEY = 'westos.work.lastHubActivity';
-const CORE_MODULE_HREFS = new Set(['/app/life', '/app/work', '/app/data']);
+const NAV_GROUPS = [
+  { label: 'Workspace', hrefs: ['/app/life', '/app/work', '/app/data'] },
+  { label: 'Intelligence', hrefs: ['/app/ai', '/app/kb'] },
+  { label: 'System', hrefs: ['/app/console', '/app/settings'] },
+];
 
 function safeDecodeURIComponent(value) {
   try {
@@ -61,27 +65,27 @@ function getContextTitle(pathname) {
   }
 
   if (pathname.startsWith('/app/work/active-tickets')) {
-    return 'work / Active Tickets';
+    return 'Work / Active Tickets';
   }
 
   if (pathname.startsWith('/app/work/ai-metrics')) {
-    return 'work / AI Metrics';
+    return 'Work / AI Metrics';
   }
 
   if (pathname.startsWith('/app/work/group-search')) {
-    return 'work / Group Search';
+    return 'Work / Group Search';
   }
 
   if (pathname.startsWith('/app/work/get-user-groups')) {
-    return 'work / Get User Groups';
+    return 'Work / Get User Groups';
   }
 
   if (pathname.startsWith('/app/work/user-group-association')) {
-    return 'work / User-Group Association';
+    return 'Work / User-Group Association';
   }
 
   if (pathname.startsWith('/app/work/table')) {
-    return 'work / Table';
+    return 'Work / Table';
   }
 
   if (pathname.startsWith('/app/document')) {
@@ -101,11 +105,11 @@ function getContextTitle(pathname) {
   }
 
   if (pathname.startsWith('/app/work')) {
-    return 'work';
+    return 'Work';
   }
 
   if (pathname.startsWith('/app/data')) {
-    return 'Data';
+    return 'Data Hub';
   }
 
   if (pathname.startsWith('/app/uploads')) {
@@ -121,7 +125,7 @@ function getContextTitle(pathname) {
   }
 
   if (pathname.startsWith('/app/console')) {
-    return 'Console';
+    return 'System Status';
   }
 
   if (pathname.startsWith('/app/life')) {
@@ -229,24 +233,31 @@ export function AppShell() {
   const currentModule = modules.find((m) => location.pathname.startsWith(m.href));
 
   const groupedModules = useMemo(() => {
-    const core = modules.filter((module) => CORE_MODULE_HREFS.has(module.href));
-    const system = modules.filter((module) => !CORE_MODULE_HREFS.has(module.href));
-    return [
-      { label: 'Core', items: core },
-      { label: 'System', items: system },
-    ];
+    return NAV_GROUPS.map((group) => ({
+      label: group.label,
+      items: group.hrefs
+        .map((href) => modules.find((module) => module.href === href))
+        .filter(Boolean),
+    }));
   }, []);
 
-  const quickActions = useMemo(
+  const quickActionGroups = useMemo(
     () => [
-      { href: '/app/work/active-tickets', label: 'Active Tickets' },
-      { href: '/app/uploads', label: 'Upload File' },
-      { href: '/app/console', label: 'View Logs' },
+      {
+        label: 'Work actions',
+        actions: [
+          { href: '/app/work/active-tickets', label: 'Active Tickets' },
+          { href: '/app/uploads', label: 'Upload File' },
+        ],
+      },
+      {
+        label: 'System actions',
+        actions: [{ href: '/app/console', label: 'View Logs' }],
+      },
     ],
     []
   );
 
-  const heroAction = lastUsedModule?.href ? lastUsedModule : { href: '/app/work', label: 'Open Work Hub' };
   const recommendedHref = lastUsedModule?.href || '/app/work';
 
   function onMobileNavChange(e) {
@@ -298,7 +309,7 @@ export function AppShell() {
         const status = result?.data || {};
         const values = [status.backend, status.ai_gateway, status.frontend].map((value) => String(value || '').toLowerCase());
         const downCount = values.filter((value) => value === 'down').length;
-        const degradedCount = values.filter((value) => value === 'degraded').length;
+        const degradedCount = values.filter((value) => value === 'degraded' || value === 'misconfigured').length;
 
         if (downCount > 0) {
           setSystemHealth({
@@ -353,7 +364,7 @@ export function AppShell() {
               </div>
               <div className="shell__brand">
                 <span className="shell__eyebrow">westOS</span>
-                <h1>Platform Control Surface</h1>
+                <h1>Control Center</h1>
               </div>
             </div>
 
@@ -373,15 +384,22 @@ export function AppShell() {
             <div className={`shell__hero-status shell__hero-status--${systemHealth.level}`}>
               <span>{systemHealth.text}</span>
             </div>
-            <NavLink className="ui-button ui-button--secondary shell__hero-action" to={heroAction.href}>
-              {lastUsedModule?.href ? `Open ${lastUsedModule.label}` : 'Open Work Hub'}
+            <NavLink className="ui-button ui-button--secondary shell__hero-action" to="/app/console">
+              Open Console
             </NavLink>
 
             <div className="shell__quick-actions" role="navigation" aria-label="Quick actions">
-              {quickActions.map((action) => (
-                <NavLink key={`quick-${action.href}`} to={action.href} className="shell__quick-chip">
-                  {action.label}
-                </NavLink>
+              {quickActionGroups.map((group) => (
+                <div key={`quick-group-${group.label}`} className="shell__quick-action-group">
+                  <span className="shell__nav-group-label">{group.label}</span>
+                  <div className="shell__quick-action-items">
+                    {group.actions.map((action) => (
+                      <NavLink key={`quick-${action.href}`} to={action.href} className="shell__quick-chip">
+                        {action.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -414,10 +432,6 @@ export function AppShell() {
         </nav>
 
         <div className="shell__sidebar-footer">
-          <div className={`shell__status-chip shell__status-chip--${systemHealth.level}`}>
-            <Activity size={14} />
-            <span>{systemHealth.text}</span>
-          </div>
           <div className="shell__recent">
             <small>{`Last activity: ${recentWorkActivity?.title || 'None'}`}</small>
             <small>{`Last ticket run: ${recentTicketRun?.fileName || 'None'}`}</small>
@@ -432,22 +446,25 @@ export function AppShell() {
             <ArrowLeft size={14} />
           </NavLink>
           <h2 className="shell__context-title">{contextTitle}</h2>
-          {location.pathname.startsWith('/app/ai') ? (
-            <NavLink
-              to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
-              className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
-            >
-              {location.pathname.startsWith('/app/ai/documents') ? 'AI Settings' : 'AI Documents'}
-            </NavLink>
-          ) : null}
-          {location.pathname.startsWith('/app/kb') ? (
-            <NavLink
-              to={location.pathname.startsWith('/app/kb/processed') ? '/app/kb' : '/app/kb/processed'}
-              className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
-            >
-              {location.pathname.startsWith('/app/kb/processed') ? 'Knowledge Base' : 'Processed KB'}
-            </NavLink>
-          ) : null}
+          <div className="shell__topbar-actions">
+            {location.pathname.startsWith('/app/ai') ? (
+              <NavLink
+                to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
+                className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
+              >
+                {location.pathname.startsWith('/app/ai/documents') ? 'AI Settings' : 'AI Documents'}
+              </NavLink>
+            ) : null}
+            {location.pathname.startsWith('/app/kb') ? (
+              <NavLink
+                to={location.pathname.startsWith('/app/kb/processed') ? '/app/kb' : '/app/kb/processed'}
+                className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
+              >
+                {location.pathname.startsWith('/app/kb/processed') ? 'Knowledge Base' : 'Processed KB'}
+              </NavLink>
+            ) : null}
+            <AssistantPopover />
+          </div>
           <div className="shell__mobile-topbar" role="navigation" aria-label="Mobile page selector">
             <select
               className="shell__mobile-select"

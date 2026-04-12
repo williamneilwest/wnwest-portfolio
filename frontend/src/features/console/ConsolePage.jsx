@@ -9,6 +9,9 @@ import { LogNotificationBanner } from './LogNotificationBanner';
 import { LogsPanel } from './LogsPanel';
 
 function formatServiceLabel(label) {
+  if (label === 'frontend') {
+    return 'UI (served by backend)';
+  }
   return String(label || '').replace(/[_-]+/g, ' ').trim();
 }
 
@@ -16,6 +19,9 @@ function mapStatus(value) {
   const normalized = String(value || '').toLowerCase();
   if (normalized === 'ok') {
     return 'ok';
+  }
+  if (normalized === 'misconfigured') {
+    return 'misconfigured';
   }
   if (normalized === 'degraded' || normalized === 'loading') {
     return 'degraded';
@@ -25,11 +31,17 @@ function mapStatus(value) {
 
 function buildOperationalSummary(services) {
   const down = services.filter((service) => service.status === 'down').map((service) => formatServiceLabel(service.label));
+  const misconfigured = services
+    .filter((service) => service.status === 'misconfigured')
+    .map((service) => formatServiceLabel(service.label));
   const degraded = services.filter((service) => service.status === 'degraded').map((service) => formatServiceLabel(service.label));
 
   if (down.length) {
-    const affected = [...down, ...degraded].join(' and ');
-    return `${affected} ${down.length + degraded.length === 1 ? 'is' : 'are'} currently down or degraded.`;
+    const affected = [...down, ...misconfigured, ...degraded].join(' and ');
+    return `${affected} ${down.length + misconfigured.length + degraded.length === 1 ? 'is' : 'are'} currently down or degraded.`;
+  }
+  if (misconfigured.length) {
+    return `${misconfigured.join(' and ')} ${misconfigured.length === 1 ? 'is' : 'are'} reachable but using a misconfigured endpoint.`;
   }
   if (degraded.length) {
     return `${degraded.join(' and ')} ${degraded.length === 1 ? 'is' : 'are'} experiencing issues.`;
@@ -50,11 +62,28 @@ function getServiceUrl(label) {
   return '';
 }
 
+function getPreferredLogContainer(services) {
+  const normalized = Array.isArray(services) ? services : [];
+  const firstImpacted = normalized.find((service) =>
+    ['down', 'degraded', 'misconfigured'].includes(String(service?.status || '').toLowerCase())
+  );
+
+  if (!firstImpacted) {
+    return 'backend';
+  }
+
+  if (firstImpacted.label === 'frontend') {
+    return 'backend';
+  }
+
+  return firstImpacted.label || 'backend';
+}
+
 export function ConsolePage() {
   const [services, setServices] = useState([]);
   const [systemStatus, setSystemStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [requestedLogContainer, setRequestedLogContainer] = useState('');
+  const [requestedLogContainer, setRequestedLogContainer] = useState('backend');
   const logsPanelRef = useRef(null);
 
   async function loadHealth() {
@@ -63,19 +92,23 @@ export function ConsolePage() {
     try {
       const result = await getSystemStatus();
       const status = result.data;
-      setSystemStatus(status);
-      setServices([
+      const nextServices = [
         { label: 'backend', status: mapStatus(status.backend), details: status.details?.backend || {} },
         { label: 'ai-gateway', status: mapStatus(status.ai_gateway), details: status.details?.ai_gateway || {} },
         { label: 'frontend', status: mapStatus(status.frontend), details: status.details?.frontend || {} },
-      ]);
+      ];
+      setSystemStatus(status);
+      setServices(nextServices);
+      setRequestedLogContainer(getPreferredLogContainer(nextServices));
     } catch {
       setSystemStatus(null);
-      setServices([
+      const fallbackServices = [
         { label: 'backend', status: 'down', details: {} },
         { label: 'ai-gateway', status: 'down', details: {} },
         { label: 'frontend', status: 'down', details: {} },
-      ]);
+      ];
+      setServices(fallbackServices);
+      setRequestedLogContainer(getPreferredLogContainer(fallbackServices));
     } finally {
       setIsLoading(false);
     }
@@ -89,10 +122,11 @@ export function ConsolePage() {
   const healthyCount = services.filter((service) => service.status === 'ok').length;
   const downCount = services.filter((service) => service.status === 'down').length;
   const warningCount = services.filter((service) => service.status === 'degraded').length;
-  const overallState = downCount ? 'down' : warningCount ? 'degraded' : 'healthy';
+  const misconfiguredCount = services.filter((service) => service.status === 'misconfigured').length;
+  const overallState = downCount ? 'down' : warningCount || misconfiguredCount ? 'degraded' : 'healthy';
   const stateLabel = overallState === 'healthy' ? 'Healthy' : overallState === 'degraded' ? 'Degraded' : 'Down';
   const summaryText = buildOperationalSummary(services);
-  const hasIssues = downCount > 0 || warningCount > 0;
+  const hasIssues = downCount > 0 || warningCount > 0 || misconfiguredCount > 0;
   const impactedServices = services.filter((service) => service.status !== 'ok');
 
   function focusLogs(container = '') {
@@ -170,6 +204,10 @@ export function ConsolePage() {
         <span className="console-stat-pill console-stat-pill--warning">
           <AlertTriangle size={15} />
           Warning: {warningCount}
+        </span>
+        <span className="console-stat-pill console-stat-pill--warning">
+          <AlertTriangle size={15} />
+          Misconfigured: {misconfiguredCount}
         </span>
         <span className="console-stat-pill console-stat-pill--down">
           <Cpu size={15} />
