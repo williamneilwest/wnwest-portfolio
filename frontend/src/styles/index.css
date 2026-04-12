@@ -48,6 +48,7 @@ body,
 
 body {
   margin: 0;
+  overflow-x: hidden;
 }
 
 body.landing-page {
@@ -83,6 +84,7 @@ textarea {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);
+  max-width: 100%;
 }
 
 .landing {
@@ -693,6 +695,8 @@ textarea {
 
 .shell__topbar {
   z-index: 20;
+  position: sticky;
+  top: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -700,6 +704,9 @@ textarea {
   padding: 0.75rem 0.25rem;
   max-width: 1280px;
   min-height: 3.25rem;
+  background: linear-gradient(180deg, rgba(7, 12, 10, 0.88), rgba(7, 12, 10, 0.72));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .shell__mobile-topbar {
@@ -755,6 +762,18 @@ textarea {
 .shell__topbar-actions {
   margin-left: auto;
   align-items: center;
+}
+
+.shell__mobile-menu-toggle {
+  display: none;
+}
+
+.shell__mobile-drawer-backdrop {
+  display: none;
+}
+
+.shell__mobile-drawer {
+  display: none;
 }
 
 .shell__context-title {
@@ -1257,6 +1276,11 @@ textarea {
   cursor: pointer;
 }
 
+.settings-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .compact-toggle--active {
   border-color: rgba(16, 185, 129, 0.28);
   background: rgba(16, 185, 129, 0.12);
@@ -1723,7 +1747,15 @@ textarea {
 .data-table__toolbar,
 .data-table__pagination {
   justify-content: space-between;
+  flex-wrap: wrap;
   padding: 0.8rem 0.9rem;
+}
+
+.data-table__view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .data-table__search {
@@ -1741,6 +1773,48 @@ textarea {
   min-width: 720px;
   border-collapse: collapse;
   font-size: 0.92rem;
+}
+
+.data-card-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+}
+
+.data-card-row {
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.75rem;
+  color: var(--text);
+}
+
+.data-card-row--selected {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: var(--shadow-glow);
+}
+
+.data-card-row__item {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.data-card-row__item small {
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+}
+
+.data-card-row__item strong {
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .data-table th,
@@ -3597,6 +3671,10 @@ textarea {
   gap: 0.85rem;
 }
 
+.logs-toolbar__toggle {
+  display: none;
+}
+
 .logs-meta {
   margin-top: 0.35rem;
 }
@@ -3638,6 +3716,7 @@ textarea {
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
   font-family: "IBM Plex Mono", monospace;
 }
 
@@ -4250,6 +4329,52 @@ textarea {
     display: none;
   }
 
+  .shell__mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .shell__mobile-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: block;
+    z-index: 34;
+  }
+
+  .shell__mobile-drawer {
+    display: grid;
+    gap: 0.8rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(90vw, 360px);
+    padding: 0.95rem;
+    border-right: 1px solid var(--border);
+    background: var(--bg-panel-strong);
+    z-index: 35;
+    transform: translateX(-104%);
+    transition: transform 180ms ease-in-out;
+    overflow: auto;
+  }
+
+  .shell__mobile-drawer--open {
+    transform: translateX(0);
+  }
+
+  .shell__mobile-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+  }
+
+  .shell__mobile-drawer-nav {
+    display: grid;
+    gap: 0.7rem;
+  }
+
   .shell__topbar,
   .module__header {
     align-items: flex-start;
@@ -4257,6 +4382,8 @@ textarea {
 
   .shell__topbar-actions {
     gap: 0.45rem;
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .assistant-popover__panel {
@@ -4424,6 +4551,38 @@ textarea {
 
   .shell__link-button,
   .ui-button {
+    width: 100%;
+  }
+
+  .data-table__toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-table__search {
+    width: 100%;
+  }
+
+  .data-table__view-toggle {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .data-table__view-toggle .compact-toggle {
+    flex: 1 1 0;
+  }
+
+  .logs-toolbar__toggle {
+    display: inline-flex;
+    margin-bottom: 0.6rem;
+  }
+
+  .logs-toolbar--collapsed {
+    display: none;
+  }
+
+  .logs-toolbar .settings-field,
+  .logs-toolbar .settings-field select {
     width: 100%;
   }
 

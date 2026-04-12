@@ -2,7 +2,9 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Menu,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -175,14 +177,14 @@ function getBackTarget(pathname) {
   return '/';
 }
 
-function renderModuleLink(module, { recommendedHref = '', lastOpenedByModule = {} } = {}) {
+function renderModuleLink(module, { recommendedHref = '', lastOpenedByModule = {}, onNavigate } = {}) {
   const lastOpened = lastOpenedByModule[module.href];
   const lastOpenedLabel = formatRelativeTime(lastOpened);
   const isRecommended = recommendedHref === module.href;
 
   if (module.external) {
     return (
-      <a className="shell__nav-link" href={module.href} rel="noreferrer">
+      <a className="shell__nav-link" href={module.href} rel="noreferrer" onClick={onNavigate}>
         <span className="shell__nav-icon">
           <module.icon size={18} />
         </span>
@@ -198,6 +200,7 @@ function renderModuleLink(module, { recommendedHref = '', lastOpenedByModule = {
   return (
     <NavLink
       to={module.href}
+      onClick={onNavigate}
       className={({ isActive }) => {
         const classes = ['shell__nav-link'];
         if (isActive) {
@@ -230,6 +233,7 @@ export function AppShell() {
   const [lastUsedModule, setLastUsedModule] = useState(() => storage.get(NAV_LAST_USED_KEY) || null);
   const [lastOpenedByModule, setLastOpenedByModule] = useState(() => storage.get(NAV_LAST_USED_MAP_KEY) || {});
   const [systemHealth, setSystemHealth] = useState({ level: 'ok', text: 'All systems operational' });
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const currentModule = modules.find((m) => location.pathname.startsWith(m.href));
 
   const groupedModules = useMemo(() => {
@@ -279,6 +283,31 @@ export function AppShell() {
   useEffect(() => {
     storage.set(STORAGE_KEYS.HERO_EXPANDED, expanded);
   }, [expanded]);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isMobileNavOpen]);
 
   useEffect(() => {
     if (!currentModule?.href) {
@@ -409,7 +438,7 @@ export function AppShell() {
                   <span className="shell__nav-group-label">{group.label}</span>
                   {group.items.map((module) => (
                     <div className="shell__nav-row" key={`mobile-${module.href}`}>
-                      {renderModuleLink(module, { recommendedHref, lastOpenedByModule })}
+                      {renderModuleLink(module, { recommendedHref, lastOpenedByModule, onNavigate: () => setIsMobileNavOpen(false) })}
                     </div>
                   ))}
                 </div>
@@ -447,6 +476,16 @@ export function AppShell() {
           </NavLink>
           <h2 className="shell__context-title">{contextTitle}</h2>
           <div className="shell__topbar-actions">
+            <button
+              type="button"
+              className="compact-toggle shell__mobile-menu-toggle"
+              onClick={() => setIsMobileNavOpen((current) => !current)}
+              aria-expanded={isMobileNavOpen}
+              aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            >
+              {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+              Menu
+            </button>
             {location.pathname.startsWith('/app/ai') ? (
               <NavLink
                 to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
@@ -485,6 +524,44 @@ export function AppShell() {
             </select>
           </div>
         </header>
+
+        {isMobileNavOpen ? (
+          <button
+            type="button"
+            className="shell__mobile-drawer-backdrop"
+            aria-label="Close navigation drawer"
+            onClick={() => setIsMobileNavOpen(false)}
+          />
+        ) : null}
+        <aside className={isMobileNavOpen ? 'shell__mobile-drawer shell__mobile-drawer--open' : 'shell__mobile-drawer'}>
+          <div className="shell__mobile-drawer-head">
+            <strong>Navigation</strong>
+            <button
+              type="button"
+              className="compact-toggle compact-toggle--icon"
+              onClick={() => setIsMobileNavOpen(false)}
+              aria-label="Close navigation drawer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <nav className="shell__mobile-drawer-nav" aria-label="Mobile primary navigation">
+            {groupedModules.map((group) => (
+              <div key={`drawer-group-${group.label}`} className="shell__nav-group">
+                <span className="shell__nav-group-label">{group.label}</span>
+                {group.items.map((module) => (
+                  <div className="shell__nav-row" key={`drawer-${module.href}`}>
+                    {renderModuleLink(module, {
+                      recommendedHref,
+                      lastOpenedByModule,
+                      onNavigate: () => setIsMobileNavOpen(false),
+                    })}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </nav>
+        </aside>
 
         <div className="shell__viewport">
           <Outlet />

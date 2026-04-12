@@ -22,6 +22,12 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return !window.matchMedia('(max-width: 720px)').matches;
+  });
   const logBoxRef = useRef(null);
 
   const canFetchLogs = useMemo(() => Boolean(selectedContainer), [selectedContainer]);
@@ -116,6 +122,24 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
     }
   }, [logs]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+    const mediaQuery = window.matchMedia('(max-width: 720px)');
+    const onChange = (event) => {
+      setControlsOpen(!event.matches);
+    };
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', onChange);
+      return () => mediaQuery.removeEventListener('change', onChange);
+    }
+
+    mediaQuery.addListener(onChange);
+    return () => mediaQuery.removeListener(onChange);
+  }, []);
+
   async function copyLogs() {
     if (!logs) {
       return;
@@ -148,7 +172,16 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
         }
       />
 
-      <div className="logs-toolbar">
+      <button
+        type="button"
+        className="compact-toggle logs-toolbar__toggle"
+        onClick={() => setControlsOpen((current) => !current)}
+        aria-expanded={controlsOpen}
+      >
+        {controlsOpen ? 'Hide controls' : 'Show controls'}
+      </button>
+
+      <div className={controlsOpen ? 'logs-toolbar logs-toolbar--open' : 'logs-toolbar logs-toolbar--collapsed'}>
         <label className="settings-field">
           <span>Source</span>
           <select value={selectedSource} onChange={(event) => setSelectedSource(event.target.value)}>
