@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="mileston reached for ai integration for document analyzer">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/document_ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/document_ai.py" afterDir="false" />
-    </list>
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="corrected json formatting of meta data for ai analysis response" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -145,7 +142,7 @@
       <workItem from="1775965981245" duration="4133000" />
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
-      <workItem from="1775978570958" duration="1847000" />
+      <workItem from="1775978570958" duration="2160000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor AI analysis logic and enhance ticket detail UI handling">
       <option name="closed" value="true" />
@@ -227,7 +224,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775980091887</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="corrected json formatting of meta data for ai analysis response">
+      <option name="closed" value="true" />
+      <created>1775980532519</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1775980532519</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -253,7 +258,8 @@
     <MESSAGE value="Stabilized KB Document AI Aanalysis" />
     <MESSAGE value="stabilized ticket card via manual upload for now" />
     <MESSAGE value="mileston reached for ai integration for document analyzer" />
-    <option name="LAST_COMMIT_MESSAGE" value="mileston reached for ai integration for document analyzer" />
+    <MESSAGE value="corrected json formatting of meta data for ai analysis response" />
+    <option name="LAST_COMMIT_MESSAGE" value="corrected json formatting of meta data for ai analysis response" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

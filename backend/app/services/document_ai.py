@@ -11,30 +11,56 @@ from .settings_store import get_ai_model
 
 
 LOGGER = logging.getLogger(__name__)
-PROMPT_TEMPLATE = """You are a document intelligence engine.
+PROMPT_TEMPLATE = """You are a high-precision document analysis engine.
 
-Your job is to analyze a knowledge base document and return STRICT, VALID JSON only. Do NOT return explanations, markdown, or text outside the JSON.
+Your job is to deeply analyze a knowledge base document and return BOTH:
+
+1. rich, human-quality analysis
+2. structured, machine-usable JSON
+
+You MUST preserve important details and NEVER over-summarize critical information.
 
 ---
 
-## OUTPUT REQUIREMENTS
+## TOKEN / COMPLEXITY MODE
 
-Return a single JSON object with the following structure:
+* Use a HIGH DETAIL level
+* Do NOT compress important details
+* Prefer completeness over brevity
+* Assume output can be up to 4000+ tokens if needed
+
+---
+
+## OUTPUT FORMAT (STRICT)
+
+Return ONLY valid JSON (no markdown, no commentary).
 
 {{
 "title": string,
 "category": string,
+
 "summary": string[],
 "purpose": string,
+
 "systems": string[],
 "users": string[],
+
 "access": {{
 "ad_group": string | null,
 "approval_required": boolean,
 "approval_type": string | null,
 "estimated_time": string | null
 }},
+
 "steps": string[],
+
+"detailed_analysis": {{
+"critical_details": string[],
+"dependencies": string[],
+"constraints": string[],
+"environments": string[]
+}},
+
 "risks": [
 {{
 "issue": string,
@@ -42,10 +68,15 @@ Return a single JSON object with the following structure:
 "mitigation": string
 }}
 ],
+
 "validation": string[],
+
 "missing_info": string[],
+
 "tags": string[],
+
 "search_keywords": string[],
+
 "automation": {{
 "can_auto_request": boolean,
 "can_track_ticket": boolean,
@@ -55,73 +86,98 @@ Return a single JSON object with the following structure:
 
 ---
 
-## STRICT RULES
+## CRITICAL EXTRACTION RULES (NON-NEGOTIABLE)
 
-1. NEVER return large paragraph blobs.
+1. Active Directory Groups:
 
-   * Break everything into arrays or short strings.
+   * If ANY AD group is mentioned, extract it EXACTLY
+   * NEVER return null if present
+   * Example: "AIT-APP-ZIA-ChatGPT"
 
-2. summary:
+2. Systems:
 
-   * 4–8 concise bullet-style strings
-   * Max 12 words each
+   * Include ALL named systems
+   * Examples: ServiceNow, Active Directory, ChatGPT Enterprise
 
-3. steps:
+3. Steps:
 
-   * Ordered, actionable, one step per string
+   * MUST include exact values and selections
+   * DO NOT generalize
+   * Preserve:
 
-4. systems:
+     * form types ("New/Modify Access")
+     * group names
+     * login URLs
+     * authentication steps
 
-   * Extract real system names (e.g., ServiceNow, Active Directory)
+4. Summary:
 
-5. users:
+   * Must include:
 
-   * Who this applies to (e.g., employees, admins)
+     * approval requirement
+     * key system(s)
+     * AD group (if present)
+     * major constraint (e.g., no PHI/PII)
 
-6. access:
+5. Risks:
 
-   * Extract AD group if present
-   * If not present → null
-   * approval_required must be true if any approval is mentioned
+   * PRIORITIZE real risks from document
+   * If PHI/PII is mentioned → MUST include as HIGH severity
+   * Avoid generic filler risks
 
-7. risks:
+6. Missing Info:
 
-   * Convert vague risks into actionable issues + mitigation
-   * Always include at least 2 if possible
+   * MUST include any unclear or missing instructions
+   * Do NOT leave empty if gaps exist
 
-8. missing_info:
+7. Validation:
 
-   * ONLY include if explicitly unclear or missing in document
-   * Do NOT guess
+   * Must reflect real verification steps from document
+   * Not generic guesses
 
-9. tags:
+---
 
-   * Lowercase
-   * 1–2 word max each
-   * Examples: "chatgpt", "access", "servicenow", "ad-group"
+## QUALITY RULES
 
-10. search_keywords:
+* Do NOT reduce content to vague summaries
+* Do NOT invent missing values
+* Use null if truly absent
+* Keep strings concise but specific
+* Prefer arrays over paragraphs
+* Minimum:
 
-* 3–6 phrases someone would search
-* Natural language (not tags)
+  * summary: 4–8 items
+  * steps: 6–12 items (if applicable)
+  * risks: at least 2 if present
 
-11. automation:
+---
+
+## TAGGING RULES
+
+* tags:
+
+  * lowercase
+  * 1–2 words each
+  * derived from systems, actions, and concepts
+
+* search_keywords:
+
+  * 3–6 natural phrases
+  * what a user would type in search
+
+---
+
+## AUTOMATION LOGIC
 
 * can_auto_request = true if request process exists
-* can_track_ticket = true if ticketing system is used
-* requires_human_approval = true if approval required
-
-12. If a value is unknown:
-
-* Use null (NOT empty string, NOT guess)
-
-13. Output must be VALID JSON (no trailing commas)
+* can_track_ticket = true if ticketing system exists
+* requires_human_approval = true if approval mentioned
 
 ---
 
 ## GOAL
 
-Convert unstructured documentation into structured, queryable, automation-ready data for a knowledge system and AI agent.
+Transform the document into a structured, high-fidelity, automation-ready knowledge object WITHOUT losing critical details.
 
 ---
 
