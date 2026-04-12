@@ -6,19 +6,18 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, jsonify, request, send_from_directory, make_response
 import mimetypes
-from werkzeug.utils import secure_filename
 from typing import Optional
 
 # Reuse helpers from email uploads where possible to keep behavior consistent
 from .email_upload import clean_filename, extract_original_name
-from ..services.document_parser import run_document_processing_task
+from ..services.document_parser import run_document_processing_task, parse_document
+from ..services.document_ai import analyze_document
+from ..models.reference import AIDocument, SessionLocal, init_db
+from ..utils.storage import get_kb_category_dir, get_kb_dir
 
 
 kb_bp = Blueprint("kb", __name__)
 LOGGER = logging.getLogger(__name__)
-
-KB_BASE_DIR = "/app/data/kb"
-os.makedirs(KB_BASE_DIR, exist_ok=True)
 
 # Common office/document/image types for KB intake (allow-list, minimal)
 ALLOWED_KB_EXTENSIONS = {
@@ -33,9 +32,7 @@ ALLOWED_KB_EXTENSIONS = {
 def _kb_category_dir(category: str) -> str:
     cat = (category or "").strip().lower() or "uncategorized"
     safe = clean_filename(cat) or "uncategorized"
-    directory = os.path.join(KB_BASE_DIR, safe)
-    os.makedirs(directory, exist_ok=True)
-    return directory
+    return get_kb_category_dir(safe)
 
 
 def _kb_metadata_path(category: str, filename: str) -> str:
@@ -125,7 +122,7 @@ def handle_kb_email():
     """Accept email attachments for Knowledge Base ingestion.
 
     Expected to be called by the mail provider webhook (similar to /webhooks/mailgun).
-    Files will be saved under /app/data/kb/<category>/timestamp_cleanedname.ext
+    Files will be saved under BACKEND_DATA_DIR/kb/<category>/timestamp_cleanedname.ext
     Category is determined via a light heuristic from subject or filename.
     """
     saved = []
@@ -191,7 +188,7 @@ def list_kb():
     q_tags = [t for t in {p.strip().lower() for p in q.split(",")} if t]
 
     try:
-        cat_names = sorted(os.listdir(KB_BASE_DIR))
+        cat_names = sorted(os.listdir(get_kb_dir()))
     except OSError:
         cat_names = []
 
@@ -199,7 +196,7 @@ def list_kb():
         if cat == 'processed':
             continue
 
-        cat_dir = os.path.join(KB_BASE_DIR, cat)
+        cat_dir = os.path.join(get_kb_dir(), cat)
         if not os.path.isdir(cat_dir):
             continue
 
@@ -289,3 +286,103 @@ def get_kb_file(category, filename):
     if mime:
         response.headers["Content-Type"] = mime
     return response
+
+
+@kb_bp.post('/api/kb/analyze')
+def analyze_kb_document():
+    """Analyze a KB document using the AI Gateway/OpenAI via existing AI route.
+
+    Request JSON: { "category": string, "filename": string }
+    Response: Stored AIDocument payload identical to /api/documents/analyze
+    """
+    # Ensure DB is initialized (idempotent)
+    try:
+        init_db()
+    except Exception:
+        pass
+
+    payload = request.get_json(silent=True) or {}
+    category = str(payload.get('category') or '').strip()
+    filename = str(payload.get('filename') or '').strip()
+
+    if not category or not filename:
+        return jsonify({'error': 'category and filename are required.'}), 400
+
+    directory = _kb_category_dir(category)
+    file_path = os.path.join(directory, filename)
+
+    if not os.path.isfile(file_path):
+        return jsonify({'error': 'KB document not found.'}), 404
+
+    # Extract text from the document
+    extracted = parse_document(file_path) or {}
+    text = str(extracted.get('text') or '')
+
+    # Run AI analysis through the existing /api/ai/chat flow (gateway-aware)
+    ai_result = None
+    try:
+        ai_result = analyze_document(text, filename)
+    except Exception as error:
+        LOGGER.warning('AI analysis failed for KB %s/%s: %s', category, filename, error)
+
+    tags = []
+    ai_summary = ''
+    structured = {}
+    if ai_result:
+        ai_summary = str(ai_result.get('summary') or '').strip()
+        tags = ai_result.get('tags') if isinstance(ai_result.get('tags'), list) else []
+        structured = {key: value for key, value in ai_result.items() if key != 'tags'}
+
+    # Persist/update AIDocument record
+    session = SessionLocal()
+    try:
+        existing = session.query(AIDocument).filter(AIDocument.original_path == file_path).one_or_none()
+        if existing is None:
+            mime, _ = mimetypes.guess_type(filename)
+            existing = AIDocument(
+                filename=filename,
+                original_path=file_path,
+                file_type=mime or os.path.splitext(filename)[1].lower().lstrip('.'),
+                source='kb',
+            )
+            session.add(existing)
+
+        mime, _ = mimetypes.guess_type(filename)
+        existing.filename = filename
+        existing.file_type = mime or os.path.splitext(filename)[1].lower().lstrip('.')
+        existing.source = 'kb'
+        existing.parsed_text = text
+        existing.ai_summary = ai_summary
+        existing.ai_structured = json.dumps(structured, ensure_ascii=False)
+        existing.tags = json.dumps(sorted({str(tag or '').strip().lower() for tag in tags if str(tag or '').strip()}), ensure_ascii=False)
+        existing.updated_at = datetime.now(timezone.utc)
+        if existing.created_at is None:
+            existing.created_at = datetime.now(timezone.utc)
+
+        session.commit()
+        session.refresh(existing)
+        # Mirror documents.py serialization
+        try:
+            structured_doc = json.loads(existing.ai_structured or '{}') if existing.ai_structured else {}
+        except json.JSONDecodeError:
+            structured_doc = {}
+        try:
+            tag_list = json.loads(existing.tags or '[]') if existing.tags else []
+        except json.JSONDecodeError:
+            tag_list = []
+
+        return jsonify({
+            'id': existing.id,
+            'filename': existing.filename,
+            'original_path': existing.original_path,
+            'file_type': existing.file_type or '',
+            'source': existing.source or '',
+            'parsed_text': existing.parsed_text or '',
+            'ai_summary': existing.ai_summary or '',
+            'ai_structured': structured_doc if isinstance(structured_doc, dict) else {},
+            'tags': tag_list if isinstance(tag_list, list) else [],
+            'created_at': existing.created_at.isoformat() if existing.created_at else None,
+            'updated_at': existing.updated_at.isoformat() if existing.updated_at else None,
+        })
+    finally:
+        session.close()

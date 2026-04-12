@@ -9,13 +9,11 @@ import logging
 from flask import Blueprint, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 
+from ..utils.storage import get_kb_category_dir, get_uploads_dir
+
 email_upload_bp = Blueprint("email_upload", __name__)
 
 LOGGER = logging.getLogger(__name__)
-DATA_ROOT = "/app/data"
-UPLOAD_DIR = os.path.join(DATA_ROOT, "uploads")
-KB_DIR = os.path.join(DATA_ROOT, "kb")
-KB_UNCATEGORIZED_DIR = os.path.join(KB_DIR, "uncategorized")
 MAX_ATTACHMENT_BYTES = int(os.getenv('MAX_EMAIL_ATTACHMENT_BYTES', str(10 * 1024 * 1024)))
 ALLOWED_ATTACHMENT_EXTENSIONS = {
     extension.strip().lower()
@@ -25,13 +23,18 @@ ALLOWED_ATTACHMENT_EXTENSIONS = {
     ).split(',')
     if extension.strip()
 }
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(KB_DIR, exist_ok=True)
-os.makedirs(KB_UNCATEGORIZED_DIR, exist_ok=True)
+
+
+def _uploads_dir():
+    return get_uploads_dir()
+
+
+def _kb_uncategorized_dir():
+    return get_kb_category_dir('uncategorized')
 
 
 def _metadata_path(filename):
-    return os.path.join(UPLOAD_DIR, f'{filename}.meta.json')
+    return os.path.join(_uploads_dir(), f'{filename}.meta.json')
 
 
 def _metadata_path_for_directory(directory, filename):
@@ -153,7 +156,7 @@ def _extract_recipients(recipient_value: str) -> list[str]:
 
 def resolve_target_from_recipient(recipient: str):
     target = 'uploads'
-    directory = UPLOAD_DIR
+    directory = _uploads_dir()
     normalized = ''
 
     for candidate in _extract_recipients(recipient):
@@ -166,13 +169,13 @@ def resolve_target_from_recipient(recipient: str):
         if local_part == 'kb' and domain.startswith('mail.'):
             normalized = candidate
             target = 'kb'
-            directory = KB_UNCATEGORIZED_DIR
+            directory = _kb_uncategorized_dir()
             break
 
         if not normalized and local_part == 'uploads' and domain.startswith('mail.'):
             normalized = candidate
             target = 'uploads'
-            directory = UPLOAD_DIR
+            directory = _uploads_dir()
 
     if not normalized:
         extracted = _extract_recipients(recipient)
@@ -187,20 +190,41 @@ def resolve_target_from_recipient(recipient: str):
 
 
 def extract_recipient_from_request():
-    candidates = [
-        request.form.get('recipient'),
-        request.form.get('to'),
-        request.form.get('To'),
-        request.headers.get('X-Original-To'),
-        request.headers.get('X-Envelope-To'),
-    ]
+    candidate_map = {
+        'form.to': request.form.get('to'),
+        'form.To': request.form.get('To'),
+        'form.recipient': request.form.get('recipient'),
+        'form.envelope': request.form.get('envelope'),
+        'form.headers': request.form.get('headers'),
+        'header.X-Original-To': request.headers.get('X-Original-To'),
+        'header.X-Envelope-To': request.headers.get('X-Envelope-To'),
+        'header.To': request.headers.get('To'),
+    }
+    recipients = []
 
-    for candidate in candidates:
-        recipients = _extract_recipients(candidate)
-        if recipients:
-            return ', '.join(recipients)
+    for source, candidate in candidate_map.items():
+        extracted = _extract_recipients(candidate)
+        if extracted:
+            LOGGER.info('Email recipient candidates source=%s values=%s', source, extracted)
+            recipients.extend(extracted)
 
-    return ''
+    if not recipients:
+        LOGGER.info(
+            'Email recipient detection found no matches form_keys=%s header_keys=%s',
+            sorted(request.form.keys()),
+            [key for key in ('To', 'X-Original-To', 'X-Envelope-To') if request.headers.get(key)],
+        )
+        return ''
+
+    deduped = []
+    seen = set()
+    for recipient in recipients:
+        if recipient in seen:
+            continue
+        seen.add(recipient)
+        deduped.append(recipient)
+
+    return ', '.join(deduped)
 
 
 def extract_original_name(saved_name: str) -> str:
@@ -293,11 +317,11 @@ def save_uploaded_attachment(file, source='manual'):
             file.stream.seek(0)
         except OSError:
             pass
-    return save_attachment_bytes_to_directory(original_name, content, UPLOAD_DIR, source=source, route='uploads')
+    return save_attachment_bytes_to_directory(original_name, content, _uploads_dir(), source=source, route='uploads')
 
 
 def save_uploaded_attachment_bytes(filename, content, source='manual'):
-    return save_attachment_bytes_to_directory(filename, content, UPLOAD_DIR, source=source, route='uploads')
+    return save_attachment_bytes_to_directory(filename, content, _uploads_dir(), source=source, route='uploads')
 
 
 def _get_sendgrid_attachment_names():
@@ -404,9 +428,10 @@ def handle_incoming_email():
 @email_upload_bp.route("/api/uploads", methods=["GET"])  # parallel API path (back-compat preserved)
 def list_uploads():
     files = []
+    uploads_dir = _uploads_dir()
 
     try:
-        names = os.listdir(UPLOAD_DIR)
+        names = os.listdir(uploads_dir)
     except OSError:
         names = []
 
@@ -415,7 +440,7 @@ def list_uploads():
         if name.endswith('.meta.json'):
             continue
 
-        full_path = os.path.join(UPLOAD_DIR, name)
+        full_path = os.path.join(uploads_dir, name)
 
         # Basic file check
         if not os.path.isfile(full_path):
@@ -449,4 +474,4 @@ def list_uploads():
 @email_upload_bp.route("/uploads/<path:filename>", methods=["GET"])
 @email_upload_bp.route("/api/uploads/<path:filename>", methods=["GET"])  # parallel API path
 def get_upload(filename):
-    return send_from_directory(UPLOAD_DIR, filename)
+    return send_from_directory(_uploads_dir(), filename)

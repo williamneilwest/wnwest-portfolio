@@ -47,6 +47,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_mapping(
         APP_NAME=os.getenv('APP_NAME', 'westOS API'),
+        BACKEND_DATA_DIR=os.getenv('BACKEND_DATA_DIR', '/app/data'),
         USE_AI_GATEWAY=os.getenv('USE_AI_GATEWAY', 'false').lower() == 'true',
         AI_GATEWAY_BASE_URL=os.getenv('AI_GATEWAY_BASE_URL', 'http://ai-gateway:5001'),
         OLLAMA_API_BASE=os.getenv('OLLAMA_API_BASE', 'http://ollama:11434'),
