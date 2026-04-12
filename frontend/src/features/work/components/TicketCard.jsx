@@ -14,8 +14,14 @@ export function TicketCard({ ticket, columns, matchedRules = [], onOpen, navigat
   const hasAiAnalysis = Boolean(ticket?.ai_analysis?.result);
   const canOpenTicketRoute = ticketId && ticketId !== 'Untitled ticket';
   const safeRules = (matchedRules || []).filter((rule) => rule && typeof rule === 'object');
-  const primaryRule = safeRules[0] || null;
-  const suggestionTooltip = safeRules.map((rule) => String(rule?.suggestion || '')).filter(Boolean).join('\n');
+  const visibleRules = safeRules.filter((rule) => {
+    const ruleId = String(rule?.id || '').toLowerCase();
+    const hasTagAssociations = Array.isArray(rule?.associatedGroupTags) && rule.associatedGroupTags.length > 0;
+    const isTagRule = ruleId === 'responder_group' || ruleId.startsWith('kb_tag_') || hasTagAssociations;
+    return !isTagRule;
+  });
+  const primaryRule = visibleRules[0] || null;
+  const suggestionTooltip = visibleRules.map((rule) => String(rule?.suggestion || '')).filter(Boolean).join('\n');
   const cardClassName = ['ticket-card', primaryRule?.highlightClass].filter(Boolean).join(' ');
   const content = (
     <>
@@ -31,14 +37,14 @@ export function TicketCard({ ticket, columns, matchedRules = [], onOpen, navigat
             AI cached
           </span>
         ) : null}
-        {safeRules.length ? (
+        {visibleRules.length ? (
           <span
             className="ticket-card__rule-chip"
             data-tooltip={suggestionTooltip}
             title={suggestionTooltip}
           >
             <Lightbulb size={14} />
-            {safeRules.length === 1 ? 'Suggestion' : `${safeRules.length} suggestions`}
+            {visibleRules.length === 1 ? 'Suggestion' : `${visibleRules.length} suggestions`}
           </span>
         ) : null}
       </div>
@@ -62,9 +68,9 @@ export function TicketCard({ ticket, columns, matchedRules = [], onOpen, navigat
         </span>
       </div>
 
-      {safeRules.length ? (
+      {visibleRules.length ? (
         <div className="ticket-card__suggestions">
-          {safeRules.map((rule, index) => (
+          {visibleRules.map((rule, index) => (
             <p className="ticket-card__suggestion" key={rule.id || `rule-${index}`}>
               {rule?.suggestion || 'Suggestion available'}
             </p>

@@ -254,6 +254,9 @@ export function AppShell() {
   const [lastOpenedByModule, setLastOpenedByModule] = useState(() => storage.get(NAV_LAST_USED_MAP_KEY) || {});
   const [systemHealth, setSystemHealth] = useState({ level: 'ok', text: 'All systems operational' });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)').matches : false
+  );
   const currentModule = modules.find((m) => location.pathname.startsWith(m.href));
 
   const groupedModules = useMemo(() => {
@@ -332,6 +335,26 @@ export function AppShell() {
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [isMobileNavOpen]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 720px)');
+    const sync = (event) => {
+      setIsMobileViewport(event.matches);
+    };
+
+    setIsMobileViewport(mediaQuery.matches);
+    mediaQuery.addEventListener('change', sync);
+
+    return () => {
+      mediaQuery.removeEventListener('change', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setIsMobileNavOpen(false);
+    }
+  }, [isMobileViewport]);
 
   useEffect(() => {
     if (!currentModule?.href) {
@@ -500,16 +523,18 @@ export function AppShell() {
           </button>
           <h2 className="shell__context-title">{contextTitle}</h2>
           <div className="shell__topbar-actions">
-            <button
-              type="button"
-              className="compact-toggle shell__mobile-menu-toggle"
-              onClick={() => setIsMobileNavOpen((current) => !current)}
-              aria-expanded={isMobileNavOpen}
-              aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            >
-              {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
-              Menu
-            </button>
+            {isMobileViewport ? (
+              <button
+                type="button"
+                className="compact-toggle shell__mobile-menu-toggle"
+                onClick={() => setIsMobileNavOpen((current) => !current)}
+                aria-expanded={isMobileNavOpen}
+                aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              >
+                {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+                Menu
+              </button>
+            ) : null}
             {location.pathname.startsWith('/app/ai') ? (
               <NavLink
                 to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}

@@ -188,7 +188,7 @@ textarea {
 
 .landing__module-card:hover,
 .landing__module-card:focus-visible {
-  transform: translateY(-2px);
+  transform: none;
   border-color: rgba(52, 211, 153, 0.3);
   background:
     linear-gradient(180deg, rgba(34, 197, 94, 0.08), rgba(255, 255, 255, 0.03)),
@@ -357,7 +357,7 @@ textarea {
 .readme-toc__links a:hover {
   border-color: rgba(16, 185, 129, 0.28);
   background: rgba(16, 185, 129, 0.08);
-  transform: translateX(2px);
+  transform: none;
 }
 
 .readme-sections {
@@ -661,7 +661,7 @@ textarea {
 
 .shell__nav-link:hover,
 .shell__nav-link--active {
-  transform: translateX(2px) scale(1.01);
+  transform: none;
   border-color: rgba(16, 185, 129, 0.28);
   background:
     linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(20, 184, 166, 0.06)),
@@ -691,7 +691,7 @@ textarea {
   color: var(--text);
   border-color: rgba(16, 185, 129, 0.28);
   background: rgba(16, 185, 129, 0.08);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .shell__nav-icon {
@@ -1060,13 +1060,13 @@ textarea {
 }
 
 .ui-card:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: none;
   border-color: rgba(16, 185, 129, 0.22);
   box-shadow: var(--shadow-glow);
 }
 
 .module--dataset-surface .ui-card:hover {
-  transform: translateY(-1px) scale(1.005);
+  transform: none;
   border-color: rgba(16, 185, 129, 0.16);
   box-shadow: 0 12px 28px rgba(9, 19, 15, 0.24);
 }
@@ -1145,11 +1145,11 @@ textarea {
 }
 
 .ui-button:hover {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .ui-button:active {
-  transform: translateY(0);
+  transform: none;
 }
 
 .ui-button:disabled {
@@ -1452,7 +1452,7 @@ textarea {
 
 .data-tool-card:hover,
 .data-tool-card:focus-visible {
-  transform: translateY(-2px);
+  transform: none;
   border-color: rgba(52, 211, 153, 0.35);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(16, 185, 129, 0.1);
 }
@@ -1531,7 +1531,7 @@ textarea {
 }
 
 .work-quick-action:hover {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .work-quick-action--primary {
@@ -1610,7 +1610,7 @@ textarea {
 
 .work-tool-card:hover,
 .work-tool-card:focus-visible {
-  transform: translateY(-2px);
+  transform: none;
   border-color: rgba(52, 211, 153, 0.35);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(16, 185, 129, 0.1);
 }
@@ -1716,7 +1716,7 @@ textarea {
 }
 
 .life-system-item:hover {
-  transform: translateY(-1px);
+  transform: none;
   border-color: rgba(16, 185, 129, 0.24);
 }
 
@@ -1819,7 +1819,7 @@ textarea {
 }
 
 .chip:hover {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .chip--active {
@@ -2149,14 +2149,14 @@ textarea {
   box-shadow: var(--shadow-soft);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-3px);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transform: none;
+  transition: opacity 160ms ease;
   z-index: 20;
 }
 
 .token-usage:hover .token-usage__tooltip {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .token-usage__row {
@@ -2378,7 +2378,7 @@ textarea {
 .kb-file-row:hover {
   border-color: rgba(16, 185, 129, 0.34);
   box-shadow: 0 8px 20px rgba(5, 20, 14, 0.35);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .kb-file-row__left,
@@ -2963,6 +2963,7 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
   min-height: 0;
+  overflow: hidden;
 }
 
 .ticket-toolbar {
@@ -3122,7 +3123,7 @@ textarea {
 
 .module--dataset-surface .ticket-card-link:hover .ticket-card,
 .module--dataset-surface .ticket-card-link:focus-visible .ticket-card {
-  transform: translateY(-1px) scale(1.005);
+  transform: none;
   border-color: rgba(16, 185, 129, 0.18);
   box-shadow: 0 12px 28px rgba(9, 19, 15, 0.24);
 }
@@ -3178,14 +3179,14 @@ textarea {
   white-space: pre-line;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-4px);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transform: none;
+  transition: opacity 160ms ease;
 }
 
 .ticket-card__rule-chip:hover::after,
 .ticket-card__rule-chip:focus-visible::after {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .ticket-card__header h3,
@@ -3624,6 +3625,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
+  overflow: hidden;
 }
 
 .console-service-card {
@@ -3641,7 +3643,7 @@ textarea {
 }
 
 .console-service-card:hover {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .console-service-card--ok {
@@ -4106,7 +4108,7 @@ textarea {
 
 .association-list__item:hover {
   border-color: rgba(20, 184, 166, 0.28);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .association-list__item--selected {
