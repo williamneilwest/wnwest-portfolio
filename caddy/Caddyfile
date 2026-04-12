@@ -1,3 +1,9 @@
+(auth_protected) {
+	basic_auth {
+		{$CADDY_BASIC_AUTH_USER} {$CADDY_BASIC_AUTH_HASH}
+	}
+}
+
 work.westos.dev {
 	handle /api/* {
 		reverse_proxy backend:5000
@@ -21,6 +27,8 @@ work.westos.dev {
 }
 
 westos.dev {
+	import auth_protected
+
 	handle /api/* {
 		reverse_proxy backend:5000
 	}
@@ -33,7 +41,6 @@ westos.dev {
 		reverse_proxy backend:5000
 	}
 
-	# Knowledge Base endpoints (list + downloads)
 	handle /kb* {
 		reverse_proxy backend:5000
 	}
@@ -44,29 +51,41 @@ westos.dev {
 }
 
 grafana.westos.dev {
+	import auth_protected
 	reverse_proxy grafana:3000
 }
 
 code.westos.dev {
+	import auth_protected
 	reverse_proxy code-server:8080
 }
 
 portainer.westos.dev {
+	import auth_protected
 	reverse_proxy portainer:9000
 }
 
 files.westos.dev {
+	import auth_protected
 	reverse_proxy filebrowser:80
 }
 
 webui.westos.dev {
+	import auth_protected
 	reverse_proxy open-webui:8080
 }
 
 plex.westos.dev {
+	import auth_protected
 	reverse_proxy homelab-plex:32400
 }
 
 torrent.westos.dev {
+	import auth_protected
 	reverse_proxy homelab-qbittorrent:8080
+}
+
+*.westos.dev {
+	import auth_protected
+	respond "Not Found" 404
 }

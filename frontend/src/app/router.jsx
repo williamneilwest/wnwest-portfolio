@@ -16,6 +16,7 @@ import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationP
 import { ConsoleEndpointsPage } from '../features/console/ConsoleEndpointsPage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
 import { AppShell } from './shell/AppShell';
+import { isWorkDomainHost } from './constants/domain';
 
 const routeModules = import.meta.glob('../features/*/routes.jsx');
 const missingRoute = async () => ({ Component: () => null });
@@ -28,7 +29,8 @@ const subdomainRouteMap = {
 };
 const hostnamePrefix = hostname.split('.')[0] || '';
 const defaultAppRoute = subdomainRouteMap[hostnamePrefix] || '/app/life';
-const isWorkSubdomain = hostnamePrefix === 'work';
+const isWorkSubdomain = isWorkDomainHost(hostname);
+const workRedirect = <Navigate replace to="/app/work" />;
 
 const getRoute = (path) => {
   if (!routeModules[path]) {
@@ -63,59 +65,73 @@ export const router = createBrowserRouter(
       },
       {
         path: 'life',
-        lazy: getRoute('../features/life/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/life/routes.jsx') })
       },
       {
         path: 'console',
-        lazy: getRoute('../features/console/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/console/routes.jsx') })
       },
       {
         path: 'system',
-        Component: SystemViewerPage
+        element: isWorkSubdomain ? workRedirect : <SystemViewerPage />
       },
       {
         path: 'console/endpoints',
-        Component: ConsoleEndpointsPage
+        element: isWorkSubdomain ? workRedirect : <ConsoleEndpointsPage />
       },
       {
         path: 'settings',
-        lazy: getRoute('../features/settings/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/settings/routes.jsx') })
       },
       {
         path: 'data',
-        lazy: getRoute('../features/data/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/data/routes.jsx') })
       },
       {
         path: 'reference',
-        lazy: getRoute('../features/reference/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/reference/routes.jsx') })
       },
       {
         path: 'ai',
-        Component: AISettingsPage
+        element: isWorkSubdomain ? workRedirect : <AISettingsPage />
       },
       {
         path: 'ai/documents',
-        Component: DocumentsPage
+        element: isWorkSubdomain ? workRedirect : <DocumentsPage />
       },
       {
         path: 'ai/documents/:id',
-        Component: DocumentDetailPage
+        element: isWorkSubdomain ? workRedirect : <DocumentDetailPage />
       },
       {
         path: 'settings/ai',
-        element: <Navigate replace to="/app/ai" />
+        element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/ai" />
       },
       {
         path: 'uploads',
-        lazy: getRoute('../features/uploads/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/uploads/routes.jsx') })
       },
       {
         path: 'kb',
-        lazy: getRoute('../features/kb/routes.jsx')
+        ...(isWorkSubdomain
+          ? { element: workRedirect }
+          : { lazy: getRoute('../features/kb/routes.jsx') })
       },
       {
         path: 'kb/processed',
-        Component: ProcessedKBPage
+        element: isWorkSubdomain ? workRedirect : <ProcessedKBPage />
       },
       {
         path: 'work',
@@ -173,7 +189,7 @@ export const router = createBrowserRouter(
   },
   {
     path: '/document',
-    element: <Navigate replace to="/app/document" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/document" />
   },
   {
     path: '/work/group-search',
@@ -195,10 +211,15 @@ export const router = createBrowserRouter(
     path: '/readme',
     Component: AppShell,
     children: [
-      {
-        index: true,
-        Component: ReadmePage
-      }
+      isWorkSubdomain
+        ? {
+            index: true,
+            element: workRedirect
+          }
+        : {
+            index: true,
+            Component: ReadmePage
+          }
     ]
   },
   {
@@ -213,55 +234,55 @@ export const router = createBrowserRouter(
   },
   {
     path: '/csv',
-    element: <Navigate replace to="/app/data" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/data" />
   },
   {
     path: '/life',
-    element: <Navigate replace to="/app/life" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/life" />
   },
   {
     path: '/console',
-    element: <Navigate replace to="/app/console" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/console" />
   },
   {
     path: '/system',
-    element: <Navigate replace to="/app/system" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/system" />
   },
   {
     path: '/ai',
-    element: <Navigate replace to="/app/ai" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/ai" />
   },
   {
     path: '/ai/documents',
-    element: <Navigate replace to="/app/ai/documents" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/ai/documents" />
   },
   {
     path: '/admin',
-    element: <Navigate replace to="/app/console" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/console" />
   },
   {
     path: '/settings',
-    element: <Navigate replace to="/app/settings" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/settings" />
   },
   {
     path: '/settings/ai',
-    element: <Navigate replace to="/app/ai" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/ai" />
   },
   {
     path: '/uploads',
-    element: <Navigate replace to="/app/uploads" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/uploads" />
   },
   {
     path: '/kb/processed',
-    element: <Navigate replace to="/app/kb/processed" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/kb/processed" />
   },
   {
     path: '/data',
-    element: <Navigate replace to="/app/data" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/data" />
   },
   {
     path: '/reference',
-    element: <Navigate replace to="/app/reference" />
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/reference" />
   },
   {
     path: '*',

@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getSystemStatus } from '../services/api';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { isWorkDomainHost } from '../constants/domain';
 import { storage } from '../utils/storage';
 import { modules } from './modules';
 import { AssistantPopover } from '../../features/ai/components/AssistantPopover';
@@ -251,6 +252,7 @@ function renderModuleLink(module, { recommendedHref = '', lastOpenedByModule = {
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isWorkDomain = isWorkDomainHost();
   const contextTitle = getContextTitle(location.pathname);
   const backTarget = getBackTarget(location.pathname);
   const [expanded, setExpanded] = useState(false);
@@ -261,35 +263,65 @@ export function AppShell() {
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)').matches : false
   );
-  const currentModule = modules.find((m) => location.pathname.startsWith(m.href));
+  const visibleModules = useMemo(() => {
+    if (!isWorkDomain) {
+      return modules;
+    }
+    return modules.filter((module) => module.href === '/app/work');
+  }, [isWorkDomain]);
+
+  const currentModule = visibleModules.find((m) => location.pathname.startsWith(m.href));
 
   const groupedModules = useMemo(() => {
     return NAV_GROUPS.map((group) => ({
       label: group.label,
       items: group.hrefs
-        .map((href) => modules.find((module) => module.href === href))
+        .map((href) => visibleModules.find((module) => module.href === href))
         .filter(Boolean),
     }));
-  }, []);
+  }, [visibleModules]);
 
   const quickActionGroups = useMemo(
-    () => [
-      {
-        label: 'Work actions',
-        actions: [
-          { href: '/app/work/active-tickets', label: 'Active Tickets' },
-          { href: '/app/uploads', label: 'Upload File' },
-        ],
-      },
-      {
-        label: 'System actions',
-        actions: [{ href: '/app/console', label: 'View Logs' }],
-      },
-    ],
-    []
+    () => {
+      if (isWorkDomain) {
+        return [
+          {
+            label: 'Work actions',
+            actions: [{ href: '/app/work/active-tickets', label: 'Active Tickets' }],
+          },
+        ];
+      }
+
+      return [
+        {
+          label: 'Work actions',
+          actions: [
+            { href: '/app/work/active-tickets', label: 'Active Tickets' },
+            { href: '/app/uploads', label: 'Upload File' },
+          ],
+        },
+        {
+          label: 'System actions',
+          actions: [{ href: '/app/console', label: 'View Logs' }],
+        },
+      ];
+    },
+    [isWorkDomain]
   );
 
   const recommendedHref = lastUsedModule?.href || '/app/work';
+
+  useEffect(() => {
+    if (!isWorkDomain) {
+      return;
+    }
+
+    const workAllowedPaths = ['/app/work', '/work', '/tickets', '/document', '/app/document'];
+    const isAllowed = workAllowedPaths.some((pathPrefix) => location.pathname.startsWith(pathPrefix));
+    if (!isAllowed) {
+      navigate('/app/work', { replace: true });
+    }
+  }, [isWorkDomain, location.pathname, navigate]);
 
   function onTopbarBack() {
     if (typeof window !== 'undefined' && window.history?.state?.idx > 0) {
@@ -558,7 +590,7 @@ export function AppShell() {
                   {location.pathname.startsWith('/app/kb/processed') ? 'Knowledge Base' : 'Processed KB'}
                 </NavLink>
               ) : null}
-              <AssistantPopover />
+              {isWorkDomain ? null : <AssistantPopover />}
             </div>
           </div>
         </header>

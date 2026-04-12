@@ -19,6 +19,20 @@ SPA_EXCLUDED_PREFIXES = (
     '/health',
 )
 
+WORK_ALLOWED_PREFIXES = (
+    '/health',
+    '/flows/work',
+    '/api/work',
+    '/api/tickets',
+    '/api/reference/groups',
+    '/api/reference/users',
+    '/api/kb',
+    '/uploads',
+    '/kb',
+    '/api/email/upload',
+    '/api/files',
+)
+
 
 def _resolve_frontend_build_dir():
     configured = os.getenv('FRONTEND_BUILD_DIR', '').strip()
@@ -67,10 +81,31 @@ def create_app():
         ENABLE_CHUNKING=os.getenv('ENABLE_CHUNKING', 'true').lower() == 'true',
         FRONTEND_BUILD_DIR=str(frontend_build_dir) if frontend_build_dir else '',
         ENABLE_LOG_MONITOR=os.getenv('ENABLE_LOG_MONITOR', 'true').lower() == 'true',
+        WORK_DOMAIN=os.getenv('WORK_DOMAIN', 'work.westos.dev').strip().lower(),
     )
 
     register_routes(app)
     app.register_blueprint(email_upload_bp)
+
+    @app.before_request
+    def restrict_non_work_routes_on_work_domain():
+        host = (request.host or '').split(':', 1)[0].lower()
+        if host != app.config.get('WORK_DOMAIN', 'work.westos.dev'):
+            return None
+
+        if request.method == 'OPTIONS':
+            return None
+
+        request_path = (request.path or '/').rstrip('/') or '/'
+        is_allowed = any(
+            request_path == prefix.rstrip('/') or request_path.startswith(f'{prefix.rstrip("/")}/')
+            for prefix in WORK_ALLOWED_PREFIXES
+        )
+
+        if is_allowed:
+            return None
+
+        return ('Not Found', 404)
 
     if app.config.get('ENABLE_LOG_MONITOR', True):
         get_log_monitor(app)
