@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="ensured all services are added to console page">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/ai.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/ai_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/ai_client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/log_monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/log_monitor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/settings/AISettingsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/settings/AISettingsPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/uploads/DocumentPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/uploads/DocumentPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkInsightsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkInsightsPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="fixed layout issues on tables page" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -155,7 +144,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="4577000" />
+      <workItem from="1776019342314" duration="4900000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor AI analysis logic and enhance ticket detail UI handling">
       <option name="closed" value="true" />
@@ -309,7 +298,23 @@
       <option name="project" value="LOCAL" />
       <updated>1776023248250</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="fixed webui not resolving">
+      <option name="closed" value="true" />
+      <created>1776024020093</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1776024020094</updated>
+    </task>
+    <task id="LOCAL-00021" summary="fixed layout issues on tables page">
+      <option name="closed" value="true" />
+      <created>1776024243988</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1776024243988</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -327,7 +332,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="edited filtering" />
     <MESSAGE value="Refactor AI analysis logic and enhance ticket detail UI handling" />
     <MESSAGE value="edited ai card" />
     <MESSAGE value="enabled hot reload for backend and frontend during development" />
@@ -351,7 +355,9 @@
     <MESSAGE value="refined error handlking " />
     <MESSAGE value="refined logging error display logic" />
     <MESSAGE value="ensured all services are added to console page" />
-    <option name="LAST_COMMIT_MESSAGE" value="ensured all services are added to console page" />
+    <MESSAGE value="fixed webui not resolving" />
+    <MESSAGE value="fixed layout issues on tables page" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed layout issues on tables page" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

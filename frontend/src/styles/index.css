@@ -947,9 +947,9 @@ textarea {
 }
 
 .module--dataset-surface .ui-card:hover {
-  transform: none;
-  border-color: var(--border);
-  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px) scale(1.005);
+  border-color: rgba(16, 185, 129, 0.16);
+  box-shadow: 0 12px 28px rgba(9, 19, 15, 0.24);
 }
 
 .ui-card--accent {
@@ -2947,8 +2947,9 @@ textarea {
 
 .module--dataset-surface .ticket-card-link:hover .ticket-card,
 .module--dataset-surface .ticket-card-link:focus-visible .ticket-card {
-  border-color: var(--border);
-  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px) scale(1.005);
+  border-color: rgba(16, 185, 129, 0.18);
+  box-shadow: 0 12px 28px rgba(9, 19, 15, 0.24);
 }
 
 .ticket-card__header,
@@ -4395,6 +4396,30 @@ textarea {
   .ticket-toolbar__actions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .module--dataset-surface .ticket-toolbar__actions {
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .module--dataset-surface .ticket-toolbar__actions > .compact-toggle,
+  .module--dataset-surface .ticket-toolbar__actions > .ui-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .module--dataset-surface .ticket-view-toggle {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .module--dataset-surface .ticket-view-toggle .compact-toggle {
+    flex: 1 1 calc(33.333% - 0.35rem);
+    min-width: 7rem;
+    justify-content: center;
   }
 
   .shell__link-button,
