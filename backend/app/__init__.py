@@ -23,6 +23,7 @@ WORK_ALLOWED_PREFIXES = (
     '/health',
     '/flows/work',
     '/api/work',
+    '/api/ai',
     '/api/tickets',
     '/api/reference/groups',
     '/api/reference/users',

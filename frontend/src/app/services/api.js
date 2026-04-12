@@ -1,10 +1,33 @@
+import { isWorkDomainHost } from '../constants/domain';
+
 const backendBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
 const aiBaseUrl = backendBaseUrl;
+
+function handleUnauthorizedResponse(response) {
+  if (response.status !== 401) {
+    return;
+  }
+
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (isWorkDomainHost()) {
+    return;
+  }
+
+  if (window.location.pathname === '/auth-required') {
+    return;
+  }
+
+  window.location.assign('/auth-required');
+}
 
 async function request(baseUrl, path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, options);
 
   if (!response.ok) {
+    handleUnauthorizedResponse(response);
     let message = `Request failed with status ${response.status}`;
 
     try {
@@ -24,6 +47,7 @@ async function requestText(baseUrl, path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, options);
 
   if (!response.ok) {
+    handleUnauthorizedResponse(response);
     let message = `Request failed with status ${response.status}`;
 
     try {

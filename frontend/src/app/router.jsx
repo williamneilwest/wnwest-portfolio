@@ -15,6 +15,7 @@ import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
 import { ConsoleEndpointsPage } from '../features/console/ConsoleEndpointsPage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
+import { AccessRequiredPage } from '../features/auth/AccessRequiredPage';
 import { AppShell } from './shell/AppShell';
 import { isWorkDomainHost } from './constants/domain';
 
@@ -221,6 +222,10 @@ export const router = createBrowserRouter(
             Component: ReadmePage
           }
     ]
+  },
+  {
+    path: '/auth-required',
+    element: isWorkSubdomain ? workRedirect : <AccessRequiredPage />
   },
   {
     path: '/tickets',
