@@ -14,6 +14,10 @@
 # 🌐 WORK DOMAIN (PUBLIC)
 # -------------------------
 work.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
 
 	handle /api/* {
 		reverse_proxy backend:5000
@@ -40,6 +44,10 @@ work.westos.dev {
 # 🔐 MAIN APP (APP-LEVEL AUTH)
 # -------------------------
 westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
 
 	route {
 
@@ -70,6 +78,11 @@ westos.dev {
 # -------------------------
 
 grafana.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy grafana:3000
@@ -77,6 +90,11 @@ grafana.westos.dev {
 }
 
 grafana.westos.app {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy grafana:3000
@@ -84,6 +102,11 @@ grafana.westos.app {
 }
 
 code.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy code-server:8080
@@ -91,6 +114,11 @@ code.westos.dev {
 }
 
 portainer.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy portainer:9000
@@ -98,6 +126,11 @@ portainer.westos.dev {
 }
 
 files.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy filebrowser:80
@@ -105,6 +138,11 @@ files.westos.dev {
 }
 
 webui.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy open-webui:8080
@@ -112,6 +150,11 @@ webui.westos.dev {
 }
 
 plex.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy plex:32400
@@ -119,6 +162,11 @@ plex.westos.dev {
 }
 
 plex.westos.app {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy plex:32400
@@ -126,6 +174,11 @@ plex.westos.app {
 }
 
 torrent.westos.dev {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy qbittorrent:8080
@@ -133,6 +186,11 @@ torrent.westos.dev {
 }
 
 qbittorrent.westos.app {
+	@blocked_ips remote_ip 185.177.72.50
+	handle @blocked_ips {
+		abort
+	}
+
 	route {
 		import auth_infra
 		reverse_proxy qbittorrent:8080

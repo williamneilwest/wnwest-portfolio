@@ -1,6 +1,8 @@
 import os
 import atexit
 from pathlib import Path
+from collections import defaultdict, deque
+from time import time
 
 from flask import Flask, request, send_from_directory, session
 from dotenv import load_dotenv
@@ -58,6 +60,10 @@ ADMIN_ONLY_PREFIXES = (
     '/api/reference/users',
     '/api/reference/endpoints/sync',
 )
+
+AUTH_RATE_WINDOW_SECONDS = 60
+AUTH_RATE_MAX_ATTEMPTS = 20
+_AUTH_RATE_BUCKETS = defaultdict(deque)
 
 
 def _normalize_host(raw_host):
@@ -191,6 +197,35 @@ def create_app():
 
     register_routes(app)
     app.register_blueprint(email_upload_bp)
+
+    @app.before_request
+    def limit_auth_bruteforce_attempts():
+        request_path = _normalize_path(request.path)
+        if not request_path.startswith('/api/auth/'):
+            return None
+
+        if request.method == 'OPTIONS':
+            return None
+
+        remote_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip() or 'unknown'
+        now = time()
+        bucket = _AUTH_RATE_BUCKETS[remote_ip]
+        while bucket and now - bucket[0] > AUTH_RATE_WINDOW_SECONDS:
+            bucket.popleft()
+
+        if len(bucket) >= AUTH_RATE_MAX_ATTEMPTS:
+            _log_guard_decision(
+                app,
+                host=_normalize_host(request.host),
+                path=request_path,
+                guard='auth_rate_limit_guard',
+                action='block',
+                reason=f'rate_limited_ip={remote_ip}',
+            )
+            return ('Too Many Requests', 429)
+
+        bucket.append(now)
+        return None
 
     @app.before_request
     def restrict_non_work_routes_on_work_domain():

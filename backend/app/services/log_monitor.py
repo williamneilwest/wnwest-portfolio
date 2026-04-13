@@ -19,6 +19,14 @@ _MISSING_CONTEXT_PATTERN = re.compile(
     r"(error log.*missing|no data provided|no log provided|log missing|provide (the )?specific error message|share (the )?details)",
     re.IGNORECASE,
 )
+_CADDY_DISCONNECT_NOISE_PATTERN = re.compile(
+    r"(aborting with incomplete response|broken pipe|connection reset by peer|stream closed)",
+    re.IGNORECASE,
+)
+_AUTH_PROBE_NOISE_PATTERN = re.compile(
+    r"(unauthorized|missing session authentication|invalid credentials|/api/auth/)",
+    re.IGNORECASE,
+)
 _MAX_BLOCK_LINES = 40
 _MAX_SUMMARY_ITEMS = 64
 _DEFAULT_STALE_SECONDS = 30
@@ -35,6 +43,21 @@ def _clean_line(line):
 
 def _looks_like_missing_context_message(summary):
     return bool(_MISSING_CONTEXT_PATTERN.search(str(summary or "")))
+
+
+def _is_noise_block(text):
+    value = str(text or "")
+    if not value.strip():
+        return True
+
+    if _CADDY_DISCONNECT_NOISE_PATTERN.search(value):
+        return True
+
+    # Skip repetitive unauthorized probe noise from scanners to keep summary actionable.
+    if _AUTH_PROBE_NOISE_PATTERN.search(value):
+        return True
+
+    return False
 
 
 class LogMonitorService:
@@ -145,6 +168,8 @@ class LogMonitorService:
         for block in blocks:
             normalized = block.get("text", "").strip()
             if not normalized:
+                continue
+            if _is_noise_block(normalized):
                 continue
 
             block_hash = hashlib.sha256(normalized.encode("utf-8", errors="ignore")).hexdigest()
