@@ -152,6 +152,12 @@ The Data Tools page must:
 * Reprocess
 * Delete
 
+### Access + Scope
+
+* Intended for authenticated admin operations
+* Must enumerate files from runtime storage only
+* Must not bypass existing `/api/files` and `/api/data/files/*` contracts
+
 ---
 
 # 📥 EMAIL INGESTION PIPELINE (STRICT)
@@ -170,6 +176,13 @@ Email → /webhooks/mailgun → save file → process_uploaded_file()
 
   * multipart file uploads
   * base64 attachments
+  * recipient routing for `kb@...`, `upload@...`, and `uploads@...`
+
+### Processing Behavior
+
+* File save success must not fail if AI post-processing fails
+* AI ingestion must run as best-effort via existing service flow
+* No direct model/provider calls in upload routes
 
 ---
 
@@ -233,6 +246,8 @@ The following indicate system regression:
 * Uploaded files not visible in UI
 * File explorer missing sources
 * Duplicate AI logic introduced
+* `/api/system/regression` missing or returning invalid schema
+* `regression_agent` missing or disabled
 
 ---
 
@@ -252,6 +267,16 @@ The following indicate system regression:
 ### UI
 
 * File explorer → complete + functional
+
+### Regression API
+
+* `GET /api/system/regression` returns:
+  * `status`
+  * `summary`
+  * `matches`
+  * `warnings`
+  * `failures`
+  * `recommended_fixes`
 
 ---
 
@@ -299,6 +324,12 @@ cd frontend
 npm run build
 ```
 
+```bash
+python3 -m py_compile backend/app/services/system_snapshot.py \
+backend/app/services/regression_service.py \
+backend/app/routes/system.py
+```
+
 ---
 
 # 🤖 REGRESSION AGENT USAGE
@@ -308,6 +339,17 @@ The system supports an AI regression agent that:
 * compares system state to this README
 * detects drift, missing features, or violations
 * produces structured reports
+
+### Runtime Contract
+
+* Route: `GET /api/system/regression`
+* Data sources:
+  * repository `README.md`
+  * live route map
+  * runtime data directories
+  * `data/agents.json`
+* AI call path must still be:
+  * `regression_service -> ai_client.send_chat -> ai-gateway`
 
 This README serves as the **single source of truth** for system validation.
 

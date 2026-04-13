@@ -5,15 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="Milestone">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/routes/email_upload.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/email_upload.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/kb.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/kb.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/ai_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/ai_client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/document_ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/document_ai.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/document_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/document_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/system.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/system.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -154,7 +149,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="26099000" />
+      <workItem from="1776019342314" duration="26608000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor AI analysis logic and enhance ticket detail UI handling">
       <option name="closed" value="true" />
@@ -508,7 +503,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776044477052</updated>
     </task>
-    <option name="localTasksCounter" value="45" />
+    <task id="LOCAL-00045" summary="Milestone">
+      <option name="closed" value="true" />
+      <created>1776045874406</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1776045874406</updated>
+    </task>
+    <option name="localTasksCounter" value="46" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

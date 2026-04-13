@@ -207,13 +207,13 @@ def resolve_target_from_recipient(recipient: str):
         if '@' in candidate:
             local_part, domain = candidate.split('@', 1)
 
-        if local_part == 'kb' and domain.startswith('mail.'):
+        if local_part == 'kb':
             normalized = candidate
             target = 'kb'
             directory = _kb_uncategorized_dir()
             break
 
-        if not normalized and local_part in {'upload', 'uploads'} and domain.startswith('mail.'):
+        if not normalized and local_part in {'upload', 'uploads'}:
             normalized = candidate
             target = 'uploads'
             directory = _uploads_dir()

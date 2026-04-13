@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 
 from ..api_response import success_response
 from ..services.auth_store import get_auth_summary
+from ..services.regression_service import run_regression_check
 from ..services.system_aggregator import build_system_map
 from ..services.system_metrics import build_system_status
 from ..services.system_validator import run_system_validation
@@ -62,3 +63,8 @@ def system_map():
 def system_validate():
     # Validation response shape is consumed directly by the System Viewer health panel.
     return jsonify(run_system_validation())
+
+
+@system_bp.get('/api/system/regression')
+def system_regression():
+    return jsonify(run_regression_check())

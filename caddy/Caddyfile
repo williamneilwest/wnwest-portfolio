@@ -46,6 +46,15 @@ work.westos.dev {
 		reverse_proxy backend:5000
 	}
 
+	handle /webhooks/* {
+		reverse_proxy backend:5000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
 	handle {
 		reverse_proxy frontend:5173
 	}
@@ -77,6 +86,15 @@ westos.dev {
 
 	handle /kb* {
 		reverse_proxy backend:5000
+	}
+
+	handle /webhooks/* {
+		reverse_proxy backend:5000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	handle {

@@ -40,6 +40,7 @@ PUBLIC_AUTH_PATH_PREFIX = '/api/auth/'
 PUBLIC_WEBHOOK_PREFIXES = (
     '/webhooks/mailgun',
     '/webhooks/kb',
+    '/api/email/upload',
 )
 PUBLIC_WORK_VIEW_PREFIXES = (
     '/api/tickets',
@@ -56,7 +57,6 @@ AUTH_REQUIRED_PREFIXES = (
     '/api/work/run',
     '/flows/work/analyze-csv',
     '/api/work/analyze-csv',
-    '/api/email/upload',
 )
 ADMIN_ONLY_PREFIXES = (
     '/api/system/',
