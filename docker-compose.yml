@@ -120,6 +120,25 @@ services:
     networks:
       - westos
 
+  terminal-service:
+    build:
+      context: ./services/terminal
+    container_name: terminal-service
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      BACKEND_AUTH_URL: http://backend:5000/api/auth/me
+      TERMINAL_CWD: /home/will/homelab
+      TERMINAL_IDLE_TIMEOUT_MS: 900000
+    expose:
+      - "3001"
+    depends_on:
+      - backend
+    volumes:
+      - ./homelab:/home/will/homelab
+    networks:
+      - westos
+
   caddy:
     image: caddy:2.8.4
     container_name: caddy
@@ -134,6 +153,7 @@ services:
       - ai-gateway
       - ollama
       - open-webui
+      - terminal-service
     ports:
       - "80:80"
       - "443:443"

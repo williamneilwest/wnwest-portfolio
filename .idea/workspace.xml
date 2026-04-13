@@ -5,10 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="edited auth for allowance of work page for users not signed in">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/caddy/Caddyfile" beforeDir="false" afterPath="$PROJECT_DIR$/caddy/Caddyfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/UserGroupAssociationPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/UserGroupAssociationPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -149,15 +151,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="38436000" />
-    </task>
-    <task id="LOCAL-00009" summary="stabilized ticket card via manual upload for now">
-      <option name="closed" value="true" />
-      <created>1775978545811</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1775978545811</updated>
+      <workItem from="1776019342314" duration="39604000" />
     </task>
     <task id="LOCAL-00010" summary="mileston reached for ai integration for document analyzer">
       <option name="closed" value="true" />
@@ -543,7 +537,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776106056114</updated>
     </task>
-    <option name="localTasksCounter" value="58" />
+    <task id="LOCAL-00058" summary="edited auth for allowance of work page for users not signed in">
+      <option name="closed" value="true" />
+      <created>1776106365600</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1776106365600</updated>
+    </task>
+    <option name="localTasksCounter" value="59" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

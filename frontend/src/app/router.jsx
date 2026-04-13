@@ -19,6 +19,7 @@ import { SystemViewerPage } from '../features/system/SystemViewerPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AdminUsersPage } from '../features/auth/AdminUsersPage';
 import { LandingPage } from '../features/landing/LandingPage';
+import { TerminalPage } from '../features/admin/TerminalPage';
 import { AppShell } from './shell/AppShell';
 import { isWorkDomainHost } from './constants/domain';
 import { RequireAuth } from './router/RequireAuth';
@@ -102,6 +103,10 @@ export const router = createBrowserRouter(
       {
         path: 'system',
         element: isWorkSubdomain ? workRedirect : <RequireAdmin><SystemViewerPage /></RequireAdmin>
+      },
+      {
+        path: 'terminal',
+        element: isWorkSubdomain ? workRedirect : <RequireAdmin><TerminalPage /></RequireAdmin>
       },
       {
         path: 'console/endpoints',
@@ -275,6 +280,10 @@ export const router = createBrowserRouter(
   {
     path: '/system',
     element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/system" />
+  },
+  {
+    path: '/terminal',
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/terminal" />
   },
   {
     path: '/ai',

@@ -67,6 +67,10 @@ work.westos.dev {
 westos.dev {
 	import block_common
 
+	handle /ws/terminal {
+		reverse_proxy terminal-service:3001
+	}
+
 	handle /api/* {
 		reverse_proxy backend:5000 {
 			header_up Host {host}
@@ -139,6 +143,11 @@ cockpit.westos.dev {
 webui.westos.dev {
 	import infra_service
 	reverse_proxy open-webui:8080
+}
+
+terminal.westos.dev {
+	import infra_service
+	reverse_proxy terminal-service:3001
 }
 
 plex.westos.app {
