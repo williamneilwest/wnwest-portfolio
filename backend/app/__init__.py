@@ -2,9 +2,10 @@ import os
 import atexit
 from pathlib import Path
 from collections import defaultdict, deque
+from datetime import timedelta
 from time import time
 
-from flask import Flask, request, send_from_directory, session
+from flask import Flask, jsonify, request, send_from_directory, session
 from dotenv import load_dotenv
 
 from .routes.email_upload import email_upload_bp
@@ -41,6 +42,12 @@ PUBLIC_WEBHOOK_PREFIXES = (
     '/webhooks/mailgun',
     '/webhooks/kb',
     '/api/email/upload',
+)
+PUBLIC_MUTATION_PREFIXES = (
+    '/api/auth/',
+    '/api/email/upload',
+    '/webhooks/mailgun',
+    '/webhooks/kb',
 )
 PUBLIC_WORK_VIEW_PREFIXES = (
     '/api/tickets',
@@ -105,16 +112,6 @@ def _is_public_work_view_path(request_path, method):
     if http_method not in {'GET', 'HEAD'}:
         return False
     return _path_matches_prefixes(request_path, PUBLIC_WORK_VIEW_PREFIXES)
-
-
-def _is_public_ticket_summary_path(request_path, method):
-    http_method = str(method or 'GET').upper()
-    if http_method != 'POST':
-        return False
-    parts = [segment for segment in str(request_path or '').split('/') if segment]
-    if len(parts) != 4:
-        return False
-    return parts[0] == 'api' and parts[1] == 'tickets' and parts[3] == 'summary'
 
 
 def _log_guard_decision(app, *, host, path, guard, action, reason):
@@ -197,8 +194,8 @@ def create_app():
         SECRET_KEY=os.getenv('AUTH_SESSION_SECRET', os.getenv('SECRET_KEY', 'westos-session-secret')),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE='Lax',
-        SESSION_COOKIE_SECURE=os.getenv('FLASK_ENV', 'production').lower() != 'development',
-        PERMANENT_SESSION_LIFETIME=60 * 60 * 12,
+        SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', 'true').strip().lower() == 'true',
+        PERMANENT_SESSION_LIFETIME=timedelta(days=7),
     )
 
     from .models.platform import init_platform_db
@@ -326,6 +323,8 @@ def create_app():
         elif _path_matches_prefixes(request_path, AUTH_REQUIRED_PREFIXES):
             auth_error = require_auth()
             if auth_error is not None:
+                if request_path.startswith('/api/ai/'):
+                    return jsonify({'error': 'Authentication required for AI actions'}), 401
                 _log_guard_decision(
                     app,
                     host=host,
@@ -333,6 +332,23 @@ def create_app():
                     guard='rbac_auth_guard',
                     action='block',
                     reason='execution_path_requires_auth',
+                )
+                return auth_error
+
+        if (
+            request_path.startswith('/api/')
+            and request.method.upper() not in {'GET', 'HEAD'}
+            and not _path_matches_prefixes(request_path, PUBLIC_MUTATION_PREFIXES)
+        ):
+            auth_error = require_auth()
+            if auth_error is not None:
+                _log_guard_decision(
+                    app,
+                    host=host,
+                    path=request_path,
+                    guard='non_get_api_auth_guard',
+                    action='block',
+                    reason='non_get_api_requires_authentication',
                 )
                 return auth_error
 
@@ -358,17 +374,6 @@ def create_app():
                 guard='non_work_auth_guard',
                 action='allow',
                 reason='public_work_view',
-            )
-            return None
-
-        if _is_public_ticket_summary_path(request_path, request.method):
-            _log_guard_decision(
-                app,
-                host=host,
-                path=request_path,
-                guard='non_work_auth_guard',
-                action='allow',
-                reason='public_ticket_summary',
             )
             return None
 

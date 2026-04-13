@@ -189,6 +189,18 @@ def latest_tickets():
         return error_response(str(error), 400)
 
 
+@work_bp.get('/api/tickets/metrics')
+def ticket_metrics():
+    try:
+        payload = load_latest_ticket_payload()
+        tickets = payload.get('tickets') if isinstance(payload.get('tickets'), list) else []
+        columns = payload.get('columns') if isinstance(payload.get('columns'), list) else []
+        metrics = compute_ticket_metrics(tickets, columns)
+        return success_response(metrics)
+    except ValueError as error:
+        return error_response(str(error), 400)
+
+
 @work_bp.get('/api/tickets/todo')
 def ticket_todo():
     assignee = str(request.args.get('assignee') or '').strip()
@@ -235,6 +247,14 @@ def get_ticket(ticket_id):
 
 @work_bp.post('/api/tickets/<ticket_id>/summary')
 def summarize_ticket(ticket_id):
+    auth_error = require_auth()
+    if auth_error is not None:
+        return error_response('Authentication required for AI actions', 401)
+
+    # Keep this endpoint aligned with the authenticated /api/ai/chat smart-analysis
+    # behavior so ticket summaries use the same ticket_analyzer pipeline.
+    from .ai import _run_smart_analysis
+
     payload = request.get_json(silent=True) or {}
     ticket = get_ticket_by_id(ticket_id)
     if ticket is None and isinstance(payload.get('ticket'), dict):
@@ -248,27 +268,36 @@ def summarize_ticket(ticket_id):
         'agent_id': str(payload.get('agent_id') or 'ticket_analyzer').strip() or 'ticket_analyzer',
         'ticket': ticket,
         'fileName': str(payload.get('fileName') or '').strip(),
-        'type': 'ticket_summary_public',
+        'type': 'ticket_summary',
+        'smart_analysis': True,
     }
 
     try:
-        result = call_gateway_chat(
-            ai_payload,
-            current_app.config['AI_GATEWAY_BASE_URL'],
-            agent_id=ai_payload['agent_id'],
-            context={
-                'route_selected': '/api/tickets/<ticket_id>/summary',
-                'source_agent': ai_payload['agent_id'],
-                'response_type': 'ticket_summary',
-                'ticket_id': str(ticket_id),
-            },
-        )
-        compat = build_compat_chat_response(ai_payload, result)
+        smart_output = _run_smart_analysis(ai_payload)
+        message = str(smart_output.get('message') or smart_output.get('summary') or '').strip()
+
+        if not message:
+            # Fallback for unexpected empty smart payloads to preserve prior response behavior.
+            result = call_gateway_chat(
+                ai_payload,
+                current_app.config['AI_GATEWAY_BASE_URL'],
+                agent_id=ai_payload['agent_id'],
+                context={
+                    'route_selected': '/api/tickets/<ticket_id>/summary',
+                    'source_agent': ai_payload['agent_id'],
+                    'response_type': 'ticket_summary',
+                    'ticket_id': str(ticket_id),
+                },
+            )
+            compat = build_compat_chat_response(ai_payload, result)
+            message = str(compat.get('message') or compat.get('summary') or '').strip()
+
         return success_response(
             {
                 'ticket_id': str(ticket_id),
-                'summary': compat.get('summary') or compat.get('message') or '',
-                'message': compat.get('message') or compat.get('summary') or '',
+                'summary': message,
+                'message': message,
+                'agent_id': ai_payload['agent_id'],
             }
         )
     except ValueError as error:

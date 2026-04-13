@@ -7,6 +7,7 @@ import { getFeatureAgentId } from '../../../app/services/aiClient';
 import { Card, CardHeader } from '../../../app/ui/Card';
 import { EmptyState } from '../../../app/ui/EmptyState';
 import { getCachedWorkDataset, setCachedWorkDataset } from '../workDatasetCache';
+import { useCurrentUser } from '../../../app/hooks/useCurrentUser';
 import {
   findTicketById,
   getTicketAssignee,
@@ -171,6 +172,7 @@ function resolveUserOpid(candidates, users) {
 }
 
 export function TicketDetail() {
+  const { authenticated } = useCurrentUser();
   const { ticketId: routeTicketId = '' } = useParams();
   const location = useLocation();
   const goBack = useBackNavigation('/app/work/active-tickets');
@@ -431,7 +433,10 @@ export function TicketDetail() {
   }, [ticket, responderRule, userLookupCandidates]);
 
   async function runAnalysis() {
-    if (!ticket) {
+    if (!ticket || !authenticated) {
+      if (!authenticated) {
+        setError('Authentication required for AI actions');
+      }
       return;
     }
 
@@ -591,7 +596,13 @@ export function TicketDetail() {
               title={getTicketId(ticket, columns)}
               description={getTicketTitle(ticket, columns)}
               action={
-                <button className="ui-button ui-button--primary" disabled={loading} onClick={runAnalysis} type="button">
+                <button
+                  className="ui-button ui-button--primary"
+                  disabled={loading || !authenticated}
+                  onClick={runAnalysis}
+                  type="button"
+                  title={!authenticated ? 'Sign in to generate AI summary' : ''}
+                >
                   <Sparkles size={16} />
                   {loading
                     ? 'Analyzing...'

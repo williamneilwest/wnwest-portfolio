@@ -17,6 +17,7 @@ import { ConsoleEndpointsPage } from '../features/console/ConsoleEndpointsPage';
 import { ConsolePage } from '../features/console/ConsolePage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
 import { LoginPage } from '../features/auth/LoginPage';
+import { AdminUsersPage } from '../features/auth/AdminUsersPage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { AppShell } from './shell/AppShell';
 import { isWorkDomainHost } from './constants/domain';
@@ -139,6 +140,10 @@ export const router = createBrowserRouter(
       {
         path: 'settings/ai',
         element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/ai" />
+      },
+      {
+        path: 'admin/users',
+        element: isWorkSubdomain ? workRedirect : <RequireAdmin><AdminUsersPage /></RequireAdmin>
       },
       {
         path: 'uploads',
@@ -282,6 +287,10 @@ export const router = createBrowserRouter(
   {
     path: '/admin',
     element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/console" />
+  },
+  {
+    path: '/admin/users',
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/admin/users" />
   },
   {
     path: '/settings',

@@ -128,7 +128,17 @@ files.westos.dev {
 
 cockpit.westos.dev {
 	import infra_service
-	reverse_proxy host.docker.internal:9090
+	reverse_proxy host.docker.internal:9090 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Origin https://cockpit.westos.dev
+
+		transport http {
+			versions h1
+		}
+	}
 }
 
 webui.westos.dev {
