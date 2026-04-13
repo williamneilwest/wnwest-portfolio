@@ -11,7 +11,7 @@ from typing import Optional
 # Reuse helpers from email uploads where possible to keep behavior consistent
 from .email_upload import clean_filename, extract_original_name, rotate_stored_file_versions
 from ..services.document_parser import run_document_processing_task, parse_document
-from ..services.document_ai import analyze_document
+from ..services.document_ai import analyze_and_store_document, analyze_document
 from ..services.file_registry import upsert_file_metadata
 from ..services.tag_derivation import derive_tags
 from ..services.ticket_match import match_ticket_to_kb
@@ -486,6 +486,11 @@ def analyze_kb_document():
     # Extract text from the document
     extracted = parse_document(file_path) or {}
     text = str(extracted.get('text') or '')
+
+    try:
+        analyze_and_store_document(text, filename)
+    except Exception as error:
+        LOGGER.warning('KB ingestion storage failed for %s/%s: %s', category, filename, error)
 
     # Run AI analysis through the existing /api/ai/chat flow (gateway-aware)
     ai_result = None

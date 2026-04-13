@@ -11,6 +11,8 @@ from werkzeug.utils import secure_filename
 
 from ..services.tag_derivation import derive_tags
 from ..services.file_registry import upsert_file_metadata, move_file_metadata, delete_file_metadata
+from ..services.document_ai import analyze_and_store_document
+from ..services.document_parser import parse_document
 from ..utils.storage import get_kb_category_dir, get_uploads_dir
 
 email_upload_bp = Blueprint("email_upload", __name__)
@@ -24,6 +26,9 @@ ALLOWED_ATTACHMENT_EXTENSIONS = {
         '.csv,.txt,.pdf,.png,.jpg,.jpeg,.gif,.webp,.xlsx,.xls,.doc,.docx',
     ).split(',')
     if extension.strip()
+}
+AGENT_INGESTION_EXTENSIONS = {
+    '.txt', '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.csv', '.md', '.log'
 }
 
 
@@ -208,7 +213,7 @@ def resolve_target_from_recipient(recipient: str):
             directory = _kb_uncategorized_dir()
             break
 
-        if not normalized and local_part == 'uploads' and domain.startswith('mail.'):
+        if not normalized and local_part in {'upload', 'uploads'} and domain.startswith('mail.'):
             normalized = candidate
             target = 'uploads'
             directory = _uploads_dir()
@@ -434,6 +439,17 @@ def save_attachment_bytes_to_directory(filename, content, directory, source='man
         )
     except Exception:
         LOGGER.warning('Failed to sync file metadata for %s', path)
+
+    if route in {'kb', 'uploads'}:
+        try:
+            extension = os.path.splitext(safe_name)[1].lower()
+            if extension in AGENT_INGESTION_EXTENSIONS:
+                extracted = parse_document(path) or {}
+                text = str((extracted or {}).get('text') or '')
+                if text.strip():
+                    analyze_and_store_document(text, safe_name)
+        except Exception as error:
+            LOGGER.warning('KB ingestion analysis failed for %s: %s', path, error)
 
     return {
         "filename": safe_name,

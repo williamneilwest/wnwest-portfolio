@@ -6,176 +6,311 @@
 ```text
 westos/
 ├── ai-gateway/
-│   ├── app/
-│   │   ├── routes/
-│   │   └── services/
-│   ├── Dockerfile
-│   └── wsgi.py
 ├── backend/
-│   ├── app/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── utils/
-│   ├── Dockerfile
-│   └── wsgi.py
-├── caddy/
-│   └── Caddyfile
-├── data/
-├── devtools/
-│   └── docker-compose.yml
 ├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   └── features/
-│   ├── Dockerfile
-│   └── vite.config.js
+├── caddy/
+├── data/
+│   ├── uploads/
+│   ├── kb/
+│   ├── csv_analyses/
+│   ├── ai_analysis_cache/
+│   ├── agents.json
+│   ├── settings.json
+│   └── ai-interactions.jsonl
+├── devtools/
 ├── homelab/
-│   └── docker-compose.yml
 ├── docker-compose.yml
 └── README.md
 ```
 
 </details>
 
-A production-focused operations workspace for:
+---
 
-- ticket dataset analysis
-- knowledge base document management
-- AI-powered document and ticket summarization
-- reference/group lookup workflows
+# 🧠 SYSTEM PURPOSE
 
-This repository contains a React frontend, a Flask backend, and an AI gateway service.
+westOS is a production-focused operations workspace for:
 
-## Architecture
+* ticket dataset analysis
+* knowledge base (KB) document ingestion and management
+* AI-powered document and ticket summarization
+* structured metadata extraction for operational workflows
+* internal tool orchestration and automation
 
-- `frontend/` (`Vite + React`): UI for work tickets, KB, uploads, AI docs, and settings.
-- `backend/` (`Flask`): core APIs, document parsing, KB storage, ticket flows, and metadata.
-- `ai-gateway/` (`Flask`): unified chat/completions gateway (OpenAI-enabled).
-- `data/`: mounted runtime storage for uploads, KB files, and work datasets.
-- `caddy/`: reverse proxy and TLS routing.
+---
 
-## Quick Start
+# 🧱 CORE ARCHITECTURE (REQUIRED)
 
-### 1. Configure environment
+### Services
+
+* `frontend/` (React + Vite)
+* `backend/` (Flask API + orchestration)
+* `ai-gateway/` (Flask AI proxy)
+* `caddy/` (reverse proxy + TLS)
+* `data/` (persistent runtime storage)
+
+---
+
+# 🔁 AI PIPELINE (STRICT REQUIREMENT)
+
+All AI traffic MUST follow:
+
+```text
+frontend → /api/ai/chat → backend → ai_client → ai-gateway → model
+```
+
+### ❌ Violations
+
+* Direct OpenAI calls from backend or frontend
+* Parallel or duplicate AI pipelines
+
+---
+
+# 🤖 AGENT SYSTEM (REQUIRED)
+
+Agents are defined in:
+
+```text
+/data/agents.json
+```
+
+Each agent must include:
+
+* `id`
+* `name`
+* `prompt_template`
+* `enabled`
+
+### Required Agents
+
+* `ticket_analyzer`
+* `kb_ingestion`
+* `regression_agent` (system validation)
+
+---
+
+# 📂 DATA STORAGE CONTRACT (STRICT)
+
+All runtime data MUST exist under:
+
+```text
+/home/will/westos/data/
+```
+
+### Subdirectories
+
+* `uploads/` → raw uploaded files (manual + email)
+* `kb/` → structured KB documents
+* `csv_analyses/` → parsed CSV outputs
+* `ai_analysis_cache/` → temporary AI outputs
+
+---
+
+# 📦 KB DOCUMENT STRUCTURE (REQUIRED)
+
+Each KB document must follow:
+
+```text
+/data/kb/<doc_id>/
+  original.txt
+  summary.txt
+  metadata.json
+```
+
+### metadata.json REQUIRED FIELDS
+
+* `title`
+* `tags`
+* `systems`
+* `actions`
+* `search_hints`
+* `related_ticket_patterns`
+* `confidence`
+
+### OPTIONAL
+
+* `doc_type`
+* `entities`
+* `use_cases`
+
+---
+
+# 📊 FILE EXPLORER (REQUIRED FEATURE)
+
+The Data Tools page must:
+
+### Display files from:
+
+* `/data/uploads`
+* `/data/kb`
+* `/data/csv_analyses`
+
+### Provide actions:
+
+* View
+* Analyze (AI)
+* Reprocess
+* Delete
+
+---
+
+# 📥 EMAIL INGESTION PIPELINE (STRICT)
+
+Flow:
+
+```text
+Email → /webhooks/mailgun → save file → process_uploaded_file()
+```
+
+### Rules
+
+* MUST reuse existing upload processing logic
+* MUST NOT stop after file save
+* MUST support:
+
+  * multipart file uploads
+  * base64 attachments
+
+---
+
+# 📄 DOCUMENT INGESTION (KB)
+
+* Must use `kb_ingestion` agent
+* Must produce:
+
+  * human-readable summary
+  * structured metadata JSON
+* Must store output in `/data/kb/`
+
+---
+
+# 🎟️ TICKET ANALYSIS
+
+* Must use `ticket_analyzer` agent
+* Output must be:
+
+  * concise
+  * casual IT peer tone
+* Must NOT generate formal reports
+
+---
+
+# 🏷️ TAGGING + MATCHING SYSTEM
+
+### Backend source of truth
+
+* `tag_derivation.py`
+* `ticket_match.py`
+
+### Rules
+
+* Tags must be normalized
+* Low-signal tags must be filtered
+* Weighted scoring must remain intact
+
+---
+
+# 🧪 SYSTEM BEHAVIOR EXPECTATIONS
+
+The system MUST support:
+
+* Upload file → visible in UI
+* Email attachment → processed and visible
+* KB ingestion → structured metadata generated
+* Ticket analysis → uses correct agent + tone
+* File explorer → shows all data sources
+
+---
+
+# 🚨 REGRESSION CONDITIONS (FAIL STATES)
+
+The following indicate system regression:
+
+* AI pipeline bypassed
+* Missing or unused agents
+* KB metadata missing required fields
+* Email uploads not processed
+* Uploaded files not visible in UI
+* File explorer missing sources
+* Duplicate AI logic introduced
+
+---
+
+# 🧪 VALIDATION CHECKLIST
+
+### Data
+
+* Upload CSV → appears + processed
+* Upload document → KB ingestion runs
+* Email attachment → appears in system
+
+### AI
+
+* Ticket analysis → correct tone
+* KB ingestion → structured metadata
+
+### UI
+
+* File explorer → complete + functional
+
+---
+
+# ⚙️ ENVIRONMENT SETUP
 
 ```bash
 cp .env.example .env
 ```
 
-Required values:
+Required:
 
-- `OPENAI_API_KEY`
-- `USE_AI_GATEWAY=true`
-- `AI_ANALYSIS_ENABLED=true`
+* `OPENAI_API_KEY`
+* `USE_AI_GATEWAY=true`
+* `AI_ANALYSIS_ENABLED=true`
 
-Optional rollout toggle:
+Optional:
 
-- `ENABLE_WEIGHTED_MATCHING=false` (default; keeps legacy-only ticket-to-KB matching)
+* `ENABLE_WEIGHTED_MATCHING=false`
 
-### 2. Build frontend
+---
+
+# 🛠️ BUILD + RUN
 
 ```bash
 cd frontend
 npm install
 npm run build
-```
 
-### 3. Start stack
-
-```bash
 docker compose up --build
 ```
 
-## Core Backend APIs
+---
 
-### Knowledge Base
-
-- `GET /api/kb`
-  - Lists KB categories/files.
-  - Preserves existing `tags` field.
-  - Adds additive `derived_tags` per file:
-    - `primary_action`
-    - `system_tags`
-    - `action_tags`
-    - `context_tags`
-    - `normalized_tags`
-
-- `POST /api/kb/analyze`
-  - Reprocesses a KB file with document AI.
-  - Writes analysis metadata and refreshes derived tags in metadata.
-
-- `POST /api/kb/match`
-  - Request:
-    ```json
-    { "text": "ticket text here" }
-    ```
-  - Response:
-    - `matches`: scored KB matches with legacy and weighted details.
-    - `weighted_matching_enabled`: whether weighted matching is active.
-
-### Tickets
-
-- `GET /api/tickets/latest`
-  - Returns active ticket dataset payload.
-
-- `GET /api/tickets/<ticket_id>`
-  - Returns a single ticket row.
-
-## Tagging and Matching (Production-Safe Rollout)
-
-### Backend single source of truth
-
-- `backend/app/services/tag_derivation.py`
-  - Canonical tag normalization (`TAG_MAP`)
-  - Low-signal tag handling (`LOW_SIGNAL_TAGS`)
-  - Structured derived output:
-    - `primary_action` (value + confidence)
-    - `system_tags`
-    - `action_tags`
-    - `context_tags`
-    - `normalized_tags`
-
-- `backend/app/services/ticket_match.py`
-  - Weighted scoring:
-    - system: `6`
-    - action: `4`
-    - context: `1`
-    - primary action bonus: `4` (confidence-gated)
-  - Final decision:
-    - legacy hit OR weighted score threshold
-  - Feature-gated rollout via `ENABLE_WEIGHTED_MATCHING`
-
-### Metadata persistence
-
-KB metadata files (`*.meta.json`) now include additive:
-
-- `derived_tags_v1`
-
-Recomputed when:
-
-- KB file is first ingested
-- KB file metadata tags are updated
-- KB document is re-analyzed
-
-## Development Notes
-
-- Existing APIs remain backward compatible.
-- Existing `tags` behavior is preserved.
-- Frontend still contains legacy matching during validation period.
-- Planned cleanup marker exists in frontend:
-  - `TODO: frontend matching to be removed after backend validation.`
-
-## Validation Commands
-
-Backend syntax check:
+# 🧪 VALIDATION COMMANDS
 
 ```bash
-python3 -m py_compile backend/app/routes/kb.py backend/app/routes/email_upload.py backend/app/services/tag_derivation.py backend/app/services/ticket_match.py
+python3 -m py_compile backend/app/routes/kb.py \
+backend/app/routes/email_upload.py \
+backend/app/services/tag_derivation.py \
+backend/app/services/ticket_match.py
 ```
-
-Frontend build:
 
 ```bash
 cd frontend
 npm run build
 ```
+
+---
+
+# 🤖 REGRESSION AGENT USAGE
+
+The system supports an AI regression agent that:
+
+* compares system state to this README
+* detects drift, missing features, or violations
+* produces structured reports
+
+This README serves as the **single source of truth** for system validation.
+
+---
+
+# END

@@ -2,12 +2,15 @@ import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import current_app
 
-from .ai_client import build_compat_chat_response, call_gateway_chat
+from .ai_client import build_compat_chat_response, call_gateway_chat, send_chat
+from .kb_index import update_kb_index
 from .settings_store import get_ai_model
+from .tag_utils import normalize_tags
 
 
 LOGGER = logging.getLogger(__name__)
@@ -323,3 +326,73 @@ def analyze_document(text, filename):
         'input_tokens': input_tokens,
         'output_tokens': output_tokens,
     }
+
+
+def _kb_storage_dir():
+    base_dir = str(current_app.config.get('BACKEND_DATA_DIR', '/app/data')).strip() or '/app/data'
+    kb_dir = os.path.join(base_dir, 'kb')
+    os.makedirs(kb_dir, exist_ok=True)
+    return kb_dir
+
+
+def _normalize_doc_id(filename):
+    basename = Path(str(filename or 'document')).stem
+    normalized = re.sub(r'\s+', '_', basename.strip().lower())
+    normalized = re.sub(r'[^a-z0-9_-]+', '_', normalized).strip('_')
+    return normalized or 'document'
+
+
+def analyze_and_store_document(text, filename):
+    document_text = str(text or '').strip()
+    file_name = Path(str(filename or 'document.txt')).name
+
+    response = send_chat(
+        {
+            'message': 'Analyze this document for KB ingestion',
+            'agent_id': 'kb_ingestion',
+            'context': {
+                'document_text': document_text,
+                'file_name': file_name,
+            },
+            'analysis_mode': 'document_processing',
+        },
+        timeout_seconds=(5, 60),
+    )
+
+    raw_message = str(response.get('message') or '').strip()
+    parsed = extract_json(raw_message) if raw_message else None
+    parsed = parsed if isinstance(parsed, dict) else {}
+
+    human_summary = str(parsed.get('human_summary') or '').strip()
+    if not human_summary:
+        human_summary = raw_message[:800] if raw_message else 'No summary returned.'
+
+    metadata = parsed.get('metadata') if isinstance(parsed.get('metadata'), dict) else {}
+    metadata = dict(metadata)
+
+    metadata['title'] = str(metadata.get('title') or Path(file_name).stem).strip()
+    metadata['doc_type'] = str(metadata.get('doc_type') or 'reference').strip().lower() or 'reference'
+    metadata['systems'] = _normalize_string_list(metadata.get('systems'))
+    metadata['actions'] = _normalize_string_list(metadata.get('actions'))
+    metadata['search_hints'] = _normalize_string_list(metadata.get('search_hints'), lowercase=True)
+    metadata['tags'] = normalize_tags(metadata.get('tags', []))
+    metadata['file_name'] = file_name
+    metadata['created_at'] = datetime.now(timezone.utc).isoformat()
+    metadata['status'] = 'complete'
+
+    doc_id = _normalize_doc_id(file_name)
+    kb_dir = _kb_storage_dir()
+    doc_path = os.path.join(kb_dir, doc_id)
+    os.makedirs(doc_path, exist_ok=True)
+
+    with open(os.path.join(doc_path, 'original.txt'), 'w', encoding='utf-8') as handle:
+        handle.write(document_text)
+
+    with open(os.path.join(doc_path, 'summary.txt'), 'w', encoding='utf-8') as handle:
+        handle.write(human_summary)
+
+    with open(os.path.join(doc_path, 'metadata.json'), 'w', encoding='utf-8') as handle:
+        json.dump(metadata, handle, ensure_ascii=False, indent=2)
+
+    update_kb_index(doc_id, metadata)
+    return {'doc_id': doc_id}

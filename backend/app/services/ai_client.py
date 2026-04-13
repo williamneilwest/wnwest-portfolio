@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import json
 from time import perf_counter
@@ -324,3 +325,17 @@ def build_health_payload(app_name, model, api_base, use_ai_gateway):
         'model': model or 'unconfigured',
         'apiBase': api_base,
     }
+
+
+def send_chat(payload, timeout_seconds=DEFAULT_REQUEST_TIMEOUT):
+    request_payload = payload if isinstance(payload, dict) else {}
+    gateway_base_url = ''
+    if has_app_context():
+        gateway_base_url = str(current_app.config.get('AI_GATEWAY_BASE_URL') or '').strip()
+    if not gateway_base_url:
+        gateway_base_url = str(request_payload.get('gateway_base_url') or '').strip()
+    if not gateway_base_url:
+        gateway_base_url = str(os.getenv('AI_GATEWAY_BASE_URL', 'http://ai-gateway:5001')).strip()
+
+    result = call_gateway_chat(request_payload, gateway_base_url, timeout_seconds=timeout_seconds)
+    return build_compat_chat_response(request_payload, result)

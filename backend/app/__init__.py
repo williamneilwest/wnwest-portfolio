@@ -34,8 +34,13 @@ WORK_ALLOWED_PREFIXES = (
     '/kb',
     '/api/email/upload',
     '/api/files',
+    '/api/data/files',
 )
 PUBLIC_AUTH_PATH_PREFIX = '/api/auth/'
+PUBLIC_WEBHOOK_PREFIXES = (
+    '/webhooks/mailgun',
+    '/webhooks/kb',
+)
 PUBLIC_WORK_VIEW_PREFIXES = (
     '/api/tickets',
     '/uploads',
@@ -47,6 +52,7 @@ PUBLIC_WORK_VIEW_PREFIXES = (
 AUTH_REQUIRED_PREFIXES = (
     '/api/data/',
     '/api/ai/',
+    '/api/files',
     '/api/work/run',
     '/flows/work/analyze-csv',
     '/api/work/analyze-csv',
@@ -86,7 +92,11 @@ def _is_work_domain_request(app, host):
 
 
 def _is_public_non_work_path(request_path):
-    return request_path == '/health' or request_path.startswith(PUBLIC_AUTH_PATH_PREFIX)
+    return (
+        request_path == '/health'
+        or request_path.startswith(PUBLIC_AUTH_PATH_PREFIX)
+        or _path_matches_prefixes(request_path, PUBLIC_WEBHOOK_PREFIXES)
+    )
 
 
 def _is_public_work_view_path(request_path, method):

@@ -1967,6 +1967,64 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.data-tools-explorer__controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.data-tools-explorer__table-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.data-tools-explorer__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.data-tools-explorer__table th,
+.data-tools-explorer__table td {
+  padding: 0.5rem 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.84rem;
+}
+
+.data-tools-explorer__table th {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.data-tools-explorer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.data-tools-explorer__modal {
+  width: min(980px, 100%);
+}
+
+.data-tools-explorer__modal-card {
+  max-height: 86vh;
+  overflow: auto;
+}
+
+@media (min-width: 768px) {
+  .data-tools-explorer__controls {
+    grid-template-columns: minmax(0, 1fr) 180px auto;
+    align-items: center;
+  }
+}
+
 .spin {
   animation: ai-spin 0.9s linear infinite;
 }
@@ -5532,6 +5590,12 @@ textarea {
   max-height: 56vh;
   overflow: auto;
   padding-right: 0.25rem;
+}
+
+.ai-interactions-footer {
+  margin-top: 0.4rem;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .ai-interaction-entry > summary {

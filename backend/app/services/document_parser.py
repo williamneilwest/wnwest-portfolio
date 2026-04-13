@@ -137,7 +137,7 @@ def run_document_processing_task(app, file_path):
     with app.app_context():
         try:
             from ..models.reference import AIDocument, SessionLocal, init_db
-            from .document_ai import analyze_document
+            from .document_ai import analyze_and_store_document, analyze_document
 
             init_db()
             extracted = parse_document(file_path)
@@ -152,6 +152,11 @@ def run_document_processing_task(app, file_path):
             except Exception as error:
                 failure_reason = str(error)
                 LOGGER.warning('Background AI analysis failed for %s: %s', file_path, error)
+
+            try:
+                analyze_and_store_document(text, filename)
+            except Exception as error:
+                LOGGER.warning('KB ingestion store failed for %s: %s', file_path, error)
 
             tags = ai_result.get('tags') if isinstance(ai_result, dict) and isinstance(ai_result.get('tags'), list) else []
             summary = str(ai_result.get('summary') or '').strip() if isinstance(ai_result, dict) else ''

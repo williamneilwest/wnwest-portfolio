@@ -186,6 +186,26 @@ export function getDataTools(fileType) {
   return request(backendBaseUrl, `/api/data/tools/${encodeURIComponent(fileType)}`);
 }
 
+export function getAllFiles() {
+  return request(backendBaseUrl, '/api/files');
+}
+
+export function reprocessFileForKb(fileId) {
+  return request(backendBaseUrl, '/api/files/reprocess', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ fileId })
+  });
+}
+
+export function deleteDataFile(fileId) {
+  return request(backendBaseUrl, `/api/data/files/${encodeURIComponent(fileId)}`, {
+    method: 'DELETE'
+  });
+}
+
 export function getKnowledgeBase() {
   return request(backendBaseUrl, '/api/kb');
 }
