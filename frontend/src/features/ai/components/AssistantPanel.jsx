@@ -14,6 +14,7 @@ const EMPTY_RESPONSE = {
   message: '',
   action: { type: 'none', path: '' },
   kb_response: null,
+  kb_matches: [],
 };
 
 export function AssistantPanel() {
@@ -26,6 +27,16 @@ export function AssistantPanel() {
 
   const canSubmit = useMemo(() => String(query || '').trim().length > 0 && !loading, [loading, query]);
   const hasNavigateAction = response?.action?.type === 'navigate' && Boolean(response?.action?.path);
+  const kbAnswerType = String(response?.kb_response?.answer_type || '').trim().toLowerCase();
+  const hasKbLink = kbAnswerType === 'kb_link' && String(response?.kb_response?.document_id || '').trim();
+  const primaryDocId = String(response?.kb_response?.document_id || '').trim();
+  const alternates = (Array.isArray(response?.kb_matches) ? response.kb_matches : [])
+    .map((item) => ({
+      title: String(item?.title || '').trim(),
+      documentId: String(item?.document_id || item?.doc_id || '').trim(),
+    }))
+    .filter((item) => item.title && item.documentId && item.documentId !== primaryDocId)
+    .slice(0, 3);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -48,6 +59,7 @@ export function AssistantPanel() {
         message: String(payload?.message || '').trim(),
         action: payload?.action && typeof payload.action === 'object' ? payload.action : { type: 'none', path: '' },
         kb_response: payload?.kb_response && typeof payload.kb_response === 'object' ? payload.kb_response : null,
+        kb_matches: Array.isArray(payload?.kb_matches) ? payload.kb_matches : [],
       });
     } catch (requestError) {
       setError(requestError.message || 'Assistant request failed.');
@@ -109,16 +121,25 @@ export function AssistantPanel() {
         <p style={{ margin: 0, color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
           {response.message || 'Assistant responses will appear here.'}
         </p>
-        {response?.kb_response?.steps?.length ? (
-          <ol style={{ marginTop: 10, marginBottom: 0 }}>
-            {response.kb_response.steps.map((step, index) => (
-              <li key={`assistant-panel-step-${index}`}>{step}</li>
-            ))}
-          </ol>
+        {hasKbLink ? (
+          <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+            <strong>{String(response?.kb_response?.title || 'Knowledge Base Article')}</strong>
+            <Button type="button" variant="secondary" onClick={() => navigate(`/app/kb?id=${encodeURIComponent(primaryDocId)}`)}>
+              Open Article
+            </Button>
+            {alternates.length ? alternates.map((item) => (
+              <div key={`assistant-panel-kb-${item.documentId}`} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="status-text">{item.title}</span>
+                <Button type="button" variant="secondary" onClick={() => navigate(`/app/kb?id=${encodeURIComponent(item.documentId)}`)}>
+                  Open Article
+                </Button>
+              </div>
+            )) : null}
+          </div>
         ) : null}
       </div>
 
-      {hasNavigateAction ? (
+      {hasNavigateAction && !hasKbLink ? (
         <div className="landing__actions" style={{ marginTop: 6 }}>
           <Button type="button" variant="secondary" onClick={() => navigate(response.action.path)}>
             Go to {response.action.path}

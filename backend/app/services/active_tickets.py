@@ -31,6 +31,25 @@ TICKET_ID_PATTERNS = (
     re.compile(r'number', re.IGNORECASE),
     re.compile(r'id', re.IGNORECASE),
 )
+STATUS_PATTERNS = (
+    re.compile(r'status', re.IGNORECASE),
+    re.compile(r'state', re.IGNORECASE),
+    re.compile(r'resolution', re.IGNORECASE),
+)
+TITLE_PATTERNS = (
+    re.compile(r'short_description', re.IGNORECASE),
+    re.compile(r'^title$', re.IGNORECASE),
+    re.compile(r'subject', re.IGNORECASE),
+    re.compile(r'summary', re.IGNORECASE),
+    re.compile(r'description', re.IGNORECASE),
+)
+PRIORITY_PATTERNS = (
+    re.compile(r'priority', re.IGNORECASE),
+    re.compile(r'severity', re.IGNORECASE),
+    re.compile(r'impact', re.IGNORECASE),
+    re.compile(r'urgency', re.IGNORECASE),
+)
+ACTIVE_BLOCKLIST = ('closed', 'resolved', 'complete', 'completed', 'done', 'cancelled', 'canceled')
 
 
 def _storage_root():
@@ -170,6 +189,37 @@ def _find_ticket_id_columns(columns):
     return prioritized
 
 
+def _find_first_column(columns, patterns):
+    for pattern in patterns:
+        for column in columns:
+            if pattern.search(str(column or '')):
+                return column
+    return ''
+
+
+def _is_active_status(value):
+    normalized = str(value or '').strip().lower()
+    if not normalized:
+        return True
+    return not any(token in normalized for token in ACTIVE_BLOCKLIST)
+
+
+def _normalize_priority(value):
+    raw = str(value or '').strip()
+    normalized = raw.lower()
+    if not normalized:
+        return 'Medium'
+    if any(token in normalized for token in ('critical', 'p1', 'sev1')):
+        return 'Critical'
+    if any(token in normalized for token in ('high', 'p2', 'sev2')):
+        return 'High'
+    if any(token in normalized for token in ('low', 'p4', 'sev4')):
+        return 'Low'
+    if any(token in normalized for token in ('medium', 'med', 'p3', 'sev3')):
+        return 'Medium'
+    return raw[:24] or 'Medium'
+
+
 def _row_ticket_id(row, columns):
     for column in _find_ticket_id_columns(columns):
         value = str(row.get(column, '')).strip()
@@ -304,3 +354,52 @@ def update_ticket_assignee(ticket_id, assignee):
     _set_cached_metadata(source, last_updated)
     _cached_dataset = dataset
     return get_ticket_by_id(ticket_id)
+
+
+def get_active_tickets_for_assignee(assignee, limit=15):
+    dataset = load_active_ticket_dataset()
+    columns = dataset.get('columns') or []
+    rows = dataset.get('rows') or []
+
+    assignee_column = _find_assignee_column(columns)
+    if not assignee_column:
+        return []
+
+    status_column = _find_first_column(columns, STATUS_PATTERNS)
+    title_column = _find_first_column(columns, TITLE_PATTERNS)
+    priority_column = _find_first_column(columns, PRIORITY_PATTERNS)
+
+    assignee_norm = str(assignee or '').strip().lower()
+    if not assignee_norm:
+        return []
+
+    max_items = max(10, min(20, int(limit or 15)))
+    items = []
+
+    for row in rows:
+        row_assignee = str(row.get(assignee_column, '')).strip()
+        if not row_assignee or row_assignee.lower() != assignee_norm:
+            continue
+        if status_column and not _is_active_status(row.get(status_column)):
+            continue
+
+        ticket_id = _row_ticket_id(row, columns) or str(row.get('id') or '').strip() or 'UNKNOWN'
+        title = str(row.get(title_column, '')).strip() if title_column else ''
+        if not title:
+            title = f'Ticket {ticket_id}'
+        priority = _normalize_priority(row.get(priority_column, 'Medium') if priority_column else 'Medium')
+        description = str(row.get('description') or row.get('details') or title).strip()
+
+        items.append(
+            {
+                'id': ticket_id,
+                'title': title,
+                'description': description[:500],
+                'priority': priority,
+                'assigned_to': row_assignee,
+            }
+        )
+        if len(items) >= max_items:
+            break
+
+    return items

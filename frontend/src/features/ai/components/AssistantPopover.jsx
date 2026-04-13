@@ -85,6 +85,7 @@ export function AssistantPopover() {
     responseType: '',
     originalQuery: '',
     kbResponse: null,
+    kbMatches: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -188,6 +189,7 @@ export function AssistantPopover() {
         setResponse({
           message: 'No logs available to analyze',
           action: { type: 'none', path: '' },
+          kbMatches: [],
         });
         return;
       }
@@ -206,6 +208,7 @@ export function AssistantPopover() {
         responseType: String(payload?.response_type || '').trim(),
         originalQuery: String(payload?.original_user_query || trimmedQuery).trim(),
         kbResponse: payload?.kb_response && typeof payload.kb_response === 'object' ? payload.kb_response : null,
+        kbMatches: Array.isArray(payload?.kb_matches) ? payload.kb_matches : [],
       });
     } catch (requestError) {
       setError(requestError.message || 'Assistant request failed.');
@@ -223,6 +226,19 @@ export function AssistantPopover() {
     setQuery(prompt);
     void submitAssistant(prompt);
   }
+
+  const kbAnswerType = String(response?.kbResponse?.answer_type || response?.responseType || '').trim().toLowerCase();
+  const hasKbLink = kbAnswerType === 'kb_link' && String(response?.kbResponse?.document_id || '').trim();
+  const kbPrimaryTitle = String(response?.kbResponse?.title || '').trim();
+  const kbPrimaryDocId = String(response?.kbResponse?.document_id || '').trim();
+  const kbMatches = Array.isArray(response?.kbMatches) ? response.kbMatches : [];
+  const kbAlternates = kbMatches
+    .map((item) => ({
+      title: String(item?.title || '').trim(),
+      documentId: String(item?.document_id || item?.doc_id || '').trim(),
+    }))
+    .filter((item) => item.title && item.documentId && item.documentId !== kbPrimaryDocId)
+    .slice(0, 3);
 
   return (
     <div className="assistant-popover" ref={rootRef}>
@@ -268,15 +284,27 @@ export function AssistantPopover() {
 
             <div className="assistant-popover__response">
               <p>{response.message || 'Ask for help navigating pages, understanding features, or next steps.'}</p>
-              {response?.kbResponse?.steps?.length ? (
-                <ol className="assistant-popover__steps">
-                  {response.kbResponse.steps.map((step, index) => (
-                    <li key={`assistant-kb-step-${index}`}>{step}</li>
-                  ))}
-                </ol>
-              ) : null}
-              {Array.isArray(response?.kbResponse?.citations) && response.kbResponse.citations.length ? (
-                <p className="status-text">{`KB Source: ${response.kbResponse.citations[0]?.title || response.kbResponse.citations[0]?.doc_id || 'Unknown'}`}</p>
+              {hasKbLink ? (
+                <div className="stack-list" style={{ marginTop: 10 }}>
+                  <p className="status-text" style={{ margin: 0 }}>
+                    <strong>{kbPrimaryTitle || 'Knowledge Base Article'}</strong>
+                  </p>
+                  <Button type="button" variant="secondary" onClick={() => navigate(`/app/kb?id=${encodeURIComponent(kbPrimaryDocId)}`)}>
+                    Open Article
+                  </Button>
+                  {kbAlternates.length ? (
+                    <div className="stack-list" style={{ marginTop: 6 }}>
+                      {kbAlternates.map((item) => (
+                        <div key={`assistant-kb-match-${item.documentId}`} style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span className="status-text">{item.title}</span>
+                          <Button type="button" variant="secondary" onClick={() => navigate(`/app/kb?id=${encodeURIComponent(item.documentId)}`)}>
+                            Open Article
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>
@@ -294,7 +322,7 @@ export function AssistantPopover() {
               <Button type="submit" disabled={!canSubmit}>
                 {loading ? 'Thinking...' : 'Ask'}
               </Button>
-              {response?.action?.type === 'navigate' && response?.action?.path ? (
+              {response?.action?.type === 'navigate' && response?.action?.path && !hasKbLink ? (
                 <Button type="button" variant="secondary" onClick={() => navigate(response.action.path)}>
                   Go to {response.action.path}
                 </Button>

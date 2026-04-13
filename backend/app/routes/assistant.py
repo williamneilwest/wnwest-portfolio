@@ -114,31 +114,29 @@ def assistant():
     # Deterministic routing handoff: KB-like requests are routed before any generic answer generation.
     if route_payload.get('route') == 'kb':
         kb_answer, kb_matches = answer_kb_query(query, route_payload)
-        citations = kb_answer.get('citations') if isinstance(kb_answer.get('citations'), list) else []
-        citation_titles = [str(item.get('title') or '').strip() for item in citations if isinstance(item, dict)]
-        message_parts = [str(kb_answer.get('summary') or '').strip()]
-        if kb_answer.get('steps'):
-            rendered_steps = '\n'.join([f'{index + 1}. {step}' for index, step in enumerate(kb_answer['steps'])])
-            message_parts.append(rendered_steps)
-        if citation_titles:
-            message_parts.append(f'Source: {citation_titles[0]}')
-        message = '\n\n'.join([part for part in message_parts if part]).strip() or 'No KB answer available.'
+        answer_type = str(kb_answer.get('answer_type') or '').strip().lower()
+        document_id = str(kb_answer.get('document_id') or '').strip()
+        message = str(kb_answer.get('message') or '').strip() or 'I found a relevant knowledge base article.'
+        action_path = f'/app/kb?id={document_id}' if answer_type == 'kb_link' and document_id else '/app/kb'
         return jsonify(
             {
                 'message': message,
-                'action': {'type': 'navigate', 'path': '/app/kb'},
+                'action': {'type': 'navigate', 'path': action_path},
                 'routing': route_payload,
                 'source_agent': 'kb_ingestion',
                 'original_user_query': query,
-                'response_type': kb_answer.get('answer_type') or 'no_match',
+                'response_type': answer_type or 'kb_no_match',
                 'kb_response': kb_answer,
                 'kb_matches': [
                     {
-                        'doc_id': item.get('doc_id'),
+                        'document_id': item.get('document_id') or item.get('doc_id'),
                         'title': item.get('title'),
-                        'score': item.get('score'),
+                        'confidence': item.get('confidence') if item.get('confidence') is not None else item.get('score'),
                     }
-                    for item in kb_matches[:3]
+                    for item in (
+                        (kb_answer.get('matches') if isinstance(kb_answer.get('matches'), list) else [])[:3]
+                        or kb_matches[:3]
+                    )
                 ],
             }
         )

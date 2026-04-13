@@ -168,6 +168,12 @@ export function getLatestTickets() {
   return request(backendBaseUrl, '/api/tickets/latest');
 }
 
+export function getTicketsTodo(assignee) {
+  const params = new URLSearchParams();
+  params.set('assignee', String(assignee || '').trim());
+  return request(backendBaseUrl, `/api/tickets/todo?${params.toString()}`);
+}
+
 export function getUploads() {
   return request(backendBaseUrl, '/uploads');
 }

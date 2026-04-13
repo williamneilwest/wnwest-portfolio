@@ -20,9 +20,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLatestTickets, getUploads } from '../../app/services/api';
+import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
+import { TodayTodoCard } from './components/TodayTodoCard';
 import { getCachedWorkDataset, setCachedWorkDataset } from './workDatasetCache';
 
 const LAST_ACTIVITY_KEY = 'westos.work.lastHubActivity';
@@ -180,6 +182,8 @@ export function WorkHubPage() {
   const [lastActivity, setLastActivity] = useState(() => storage.get(LAST_ACTIVITY_KEY) || null);
   const [latestUpload, setLatestUpload] = useState('None');
   const cachedDataset = getCachedWorkDataset();
+  const { user } = useCurrentUser();
+  const currentAssignee = String(user?.username || '').trim();
 
   const recentWorkItems = useMemo(
     () => [
@@ -332,6 +336,8 @@ export function WorkHubPage() {
         title="Tickets"
         subtitle="Primary workflow surface for triage, insights, and imports."
       >
+        <TodayTodoCard assignee={currentAssignee} />
+
         <div className="work-ticket-row">
           {ticketCards.map((item) => (
             <Link
