@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, jsonify, request
 from requests import RequestException
 
 from ..services.ai_client import build_compat_chat_response, call_gateway_chat
+from ..services.kb_router import answer_kb_query, classify_route
 
 
 assistant_bp = Blueprint('assistant', __name__)
@@ -106,8 +107,41 @@ def assistant():
         return jsonify({'error': 'query is required'}), 400
 
     normalized_query = _normalize_text(query)
+    route_payload = classify_route(query)
     intent = _detect_intent(normalized_query)
     suggested_route = _extract_route(normalized_query)
+
+    # Deterministic routing handoff: KB-like requests are routed before any generic answer generation.
+    if route_payload.get('route') == 'kb':
+        kb_answer, kb_matches = answer_kb_query(query, route_payload)
+        citations = kb_answer.get('citations') if isinstance(kb_answer.get('citations'), list) else []
+        citation_titles = [str(item.get('title') or '').strip() for item in citations if isinstance(item, dict)]
+        message_parts = [str(kb_answer.get('summary') or '').strip()]
+        if kb_answer.get('steps'):
+            rendered_steps = '\n'.join([f'{index + 1}. {step}' for index, step in enumerate(kb_answer['steps'])])
+            message_parts.append(rendered_steps)
+        if citation_titles:
+            message_parts.append(f'Source: {citation_titles[0]}')
+        message = '\n\n'.join([part for part in message_parts if part]).strip() or 'No KB answer available.'
+        return jsonify(
+            {
+                'message': message,
+                'action': {'type': 'navigate', 'path': '/app/kb'},
+                'routing': route_payload,
+                'source_agent': 'kb_ingestion',
+                'original_user_query': query,
+                'response_type': kb_answer.get('answer_type') or 'no_match',
+                'kb_response': kb_answer,
+                'kb_matches': [
+                    {
+                        'doc_id': item.get('doc_id'),
+                        'title': item.get('title'),
+                        'score': item.get('score'),
+                    }
+                    for item in kb_matches[:3]
+                ],
+            }
+        )
 
     action = {'type': 'none', 'path': ''}
     if intent in {'navigation', 'guide'} and suggested_route:
@@ -120,6 +154,10 @@ def assistant():
             {
                 'message': prompt,
                 'analysis_mode': 'preview',
+                'route_selected': route_payload.get('route') or 'general',
+                'source_agent': 'global_assistant',
+                'original_user_query': query,
+                'response_type': 'assistant_reply',
             },
             current_app.config['AI_GATEWAY_BASE_URL'],
         )
@@ -132,4 +170,13 @@ def assistant():
         else:
             message = 'I can help with navigation, feature explanations, and upload workflows. Ask what you want to do next.'
 
-    return jsonify({'message': message, 'action': action})
+    return jsonify(
+        {
+            'message': message,
+            'action': action,
+            'routing': route_payload,
+            'source_agent': 'global_assistant',
+            'original_user_query': query,
+            'response_type': 'assistant_reply',
+        }
+    )

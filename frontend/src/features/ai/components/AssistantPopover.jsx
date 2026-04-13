@@ -77,7 +77,15 @@ export function AssistantPopover() {
   const inputRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [response, setResponse] = useState({ message: '', action: { type: 'none', path: '' } });
+  const [response, setResponse] = useState({
+    message: '',
+    action: { type: 'none', path: '' },
+    routing: null,
+    sourceAgent: '',
+    responseType: '',
+    originalQuery: '',
+    kbResponse: null,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -193,6 +201,11 @@ export function AssistantPopover() {
       setResponse({
         message: sanitizeAssistantMessage(payload?.message, 'I can help with app navigation and next steps.'),
         action: payload?.action && typeof payload.action === 'object' ? payload.action : { type: 'none', path: '' },
+        routing: payload?.routing && typeof payload.routing === 'object' ? payload.routing : null,
+        sourceAgent: String(payload?.source_agent || '').trim(),
+        responseType: String(payload?.response_type || '').trim(),
+        originalQuery: String(payload?.original_user_query || trimmedQuery).trim(),
+        kbResponse: payload?.kb_response && typeof payload.kb_response === 'object' ? payload.kb_response : null,
       });
     } catch (requestError) {
       setError(requestError.message || 'Assistant request failed.');
@@ -255,6 +268,16 @@ export function AssistantPopover() {
 
             <div className="assistant-popover__response">
               <p>{response.message || 'Ask for help navigating pages, understanding features, or next steps.'}</p>
+              {response?.kbResponse?.steps?.length ? (
+                <ol className="assistant-popover__steps">
+                  {response.kbResponse.steps.map((step, index) => (
+                    <li key={`assistant-kb-step-${index}`}>{step}</li>
+                  ))}
+                </ol>
+              ) : null}
+              {Array.isArray(response?.kbResponse?.citations) && response.kbResponse.citations.length ? (
+                <p className="status-text">{`KB Source: ${response.kbResponse.citations[0]?.title || response.kbResponse.citations[0]?.doc_id || 'Unknown'}`}</p>
+              ) : null}
             </div>
           </div>
 

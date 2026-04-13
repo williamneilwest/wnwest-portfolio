@@ -13,6 +13,7 @@ const QUICK_PROMPTS = [
 const EMPTY_RESPONSE = {
   message: '',
   action: { type: 'none', path: '' },
+  kb_response: null,
 };
 
 export function AssistantPanel() {
@@ -46,6 +47,7 @@ export function AssistantPanel() {
       setResponse({
         message: String(payload?.message || '').trim(),
         action: payload?.action && typeof payload.action === 'object' ? payload.action : { type: 'none', path: '' },
+        kb_response: payload?.kb_response && typeof payload.kb_response === 'object' ? payload.kb_response : null,
       });
     } catch (requestError) {
       setError(requestError.message || 'Assistant request failed.');
@@ -107,6 +109,13 @@ export function AssistantPanel() {
         <p style={{ margin: 0, color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
           {response.message || 'Assistant responses will appear here.'}
         </p>
+        {response?.kb_response?.steps?.length ? (
+          <ol style={{ marginTop: 10, marginBottom: 0 }}>
+            {response.kb_response.steps.map((step, index) => (
+              <li key={`assistant-panel-step-${index}`}>{step}</li>
+            ))}
+          </ol>
+        ) : null}
       </div>
 
       {hasNavigateAction ? (

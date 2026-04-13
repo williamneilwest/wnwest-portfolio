@@ -1393,6 +1393,16 @@ textarea {
   color: var(--text-muted);
 }
 
+.assistant-popover__steps {
+  margin: 0.6rem 0 0;
+  padding-left: 1rem;
+  color: var(--text-muted);
+}
+
+.assistant-popover__steps li {
+  margin: 0.2rem 0;
+}
+
 .shell__home-back {
   display: inline-flex;
   align-items: center;

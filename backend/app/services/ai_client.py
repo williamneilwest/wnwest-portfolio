@@ -15,6 +15,7 @@ DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
 DEFAULT_READ_TIMEOUT_SECONDS = 20
 DEFAULT_REQUEST_TIMEOUT = (DEFAULT_CONNECT_TIMEOUT_SECONDS, DEFAULT_READ_TIMEOUT_SECONDS)
 MAX_PROMPT_CHARS = 12000
+LOCAL_LOG_METADATA_KEYS = {'route_selected', 'source_agent', 'original_user_query', 'response_type'}
 ACK_PATTERNS = [
     r'thank you for contacting.*?(?=\n|$)',
     r'your ticket has been received.*?(?=\n|$)',
@@ -177,10 +178,15 @@ def sanitize_payload(payload):
 
     if isinstance(payload.get('messages'), list):
         sanitized['messages'] = normalize_messages(payload, preserve_prompt=preserve_prompt)
+        for key in LOCAL_LOG_METADATA_KEYS:
+            sanitized.pop(key, None)
         return sanitized
 
     if 'message' in payload:
         sanitized['message'] = str(payload.get('message', '') or '').strip() if preserve_prompt else clean_ticket_text(payload.get('message', ''))
+
+    for key in LOCAL_LOG_METADATA_KEYS:
+        sanitized.pop(key, None)
 
     return sanitized
 
@@ -261,6 +267,9 @@ def call_gateway_chat(payload, gateway_base_url, timeout_seconds=DEFAULT_REQUEST
         log_payload["agent_id"] = logged_agent_id
     if next_payload.get("analysis_mode"):
         log_payload["analysis_mode"] = next_payload.get("analysis_mode")
+    for key in LOCAL_LOG_METADATA_KEYS:
+        if key in next_payload:
+            log_payload[key] = next_payload.get(key)
 
     write_ai_interaction(log_payload, result, duration_ms, provider="ai-gateway", interaction_type=interaction_type)
     return result
