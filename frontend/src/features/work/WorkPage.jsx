@@ -27,10 +27,12 @@ import { DataTable } from '../../components/dataset/DataTable';
 import { DataCardList } from '../../components/dataset/DataCardList';
 import {
   compareValues,
+  detectTicketColumn,
   filterRowsByGlobalSearch,
   formatColumnLabel,
   getCellText,
   inferColumnType,
+  normalizeColumns,
   rowMatchesGlobalSearch,
 } from '../../components/dataset/utils';
 import { DatasetPage } from '../../pages/dataset/DatasetPage';
@@ -716,6 +718,7 @@ export function WorkPage() {
     [analysis, selectedRow]
   );
   const datasetColumns = latestDataset.columns || [];
+  const ticketColumn = useMemo(() => detectTicketColumn(datasetColumns), [datasetColumns]);
   const datasetAssigneeColumn = useMemo(() => getTicketColumns(datasetColumns).assignee, [datasetColumns]);
   const datasetDescriptionColumn = useMemo(() => getDescriptionColumn(datasetColumns), [datasetColumns]);
   const datasetRows = useMemo(
@@ -842,14 +845,34 @@ export function WorkPage() {
     }
 
     setDatasetVisibleColumns((current) => {
-      const next = current.filter((column) => datasetColumns.includes(column));
+      const next = normalizeColumns(current.filter((column) => datasetColumns.includes(column)));
       if (next.length) {
-        return next;
+        if (!ticketColumn) {
+          return next;
+        }
+        return normalizeColumns(Array.from(new Set([ticketColumn, ...next])));
       }
 
-      return getStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, datasetColumns);
+      const storedColumns = normalizeColumns(getStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, datasetColumns));
+      if (!ticketColumn) {
+        return storedColumns;
+      }
+      return normalizeColumns(Array.from(new Set([ticketColumn, ...storedColumns])));
     });
-  }, [datasetColumns]);
+  }, [datasetColumns, ticketColumn]);
+
+  function handleDatasetVisibleColumnsChange(nextColumns) {
+    const normalizedNext = normalizeColumns(
+      (Array.isArray(nextColumns) ? nextColumns : []).filter((column) => datasetColumns.includes(column))
+    );
+
+    if (!ticketColumn) {
+      setDatasetVisibleColumns(normalizedNext);
+      return;
+    }
+
+    setDatasetVisibleColumns(normalizeColumns(Array.from(new Set([ticketColumn, ...normalizedNext]))));
+  }
 
   const datasetMetadata = useMemo(
     () => ({
@@ -857,9 +880,10 @@ export function WorkPage() {
       columnCount: datasetColumns.length,
       inferredTypes: Object.fromEntries(datasetColumns.map((column) => [column, inferColumnType(latestDataset?.rows || [], column)])),
       categoryField: analysis?.categoryColumn || '',
+      ticketColumn,
       fileName: formatDataFileName(latestFileName) || 'Unknown',
     }),
-    [analysis?.categoryColumn, datasetColumns, latestDataset?.rows, latestFileName]
+    [analysis?.categoryColumn, datasetColumns, latestDataset?.rows, latestFileName, ticketColumn]
   );
 
   const datasetState = useMemo(
@@ -1084,7 +1108,7 @@ export function WorkPage() {
 
           <DatasetPage
             datasetState={datasetState}
-            onVisibleColumnsChange={setDatasetVisibleColumns}
+            onVisibleColumnsChange={handleDatasetVisibleColumnsChange}
             onUploadClick={() => fileInputRef.current?.click()}
             onToggleHistory={() => {
               setIsHistoryExpanded((current) => !current);
@@ -1209,6 +1233,7 @@ export function WorkPage() {
                             || `row-${index}`
                           }
                           config={{
+                            variant: 'ticket',
                             primaryField: 'number',
                             secondaryField: datasetDescriptionColumn,
                             badgeField: 'state',

@@ -3126,7 +3126,14 @@ textarea {
   font-size: 0.9rem;
   line-height: 1.25;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.dataset-card__ticket-number {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .dataset-card__badge {
@@ -3142,11 +3149,48 @@ textarea {
   max-width: 100%;
 }
 
+.dataset-card__badge--priority {
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.dataset-card__badge--critical {
+  border-color: rgba(244, 63, 94, 0.34);
+  background: rgba(244, 63, 94, 0.16);
+  color: #fecdd3;
+}
+
+.dataset-card__badge--high {
+  border-color: rgba(251, 146, 60, 0.3);
+  background: rgba(251, 146, 60, 0.14);
+  color: #fed7aa;
+}
+
+.dataset-card__badge--medium {
+  border-color: rgba(250, 204, 21, 0.28);
+  background: rgba(250, 204, 21, 0.14);
+  color: #fef08a;
+}
+
+.dataset-card__badge--low {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.1);
+  color: #bbf7d0;
+}
+
 .dataset-card__subtitle {
   margin: 0;
   color: var(--text-muted);
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.dataset-card__subtitle--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .dataset-card__meta {
@@ -3176,6 +3220,11 @@ textarea {
   white-space: normal;
 }
 
+.dataset-card__meta--ticket {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
 .dataset-card__action {
   display: inline-flex;
   align-items: center;
@@ -3200,6 +3249,12 @@ textarea {
   border: 1px solid rgba(59, 130, 246, 0.24);
   background: rgba(59, 130, 246, 0.12);
   color: #bfdbfe;
+}
+
+@media (max-width: 760px) {
+  .dataset-card__meta--ticket {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dataset-metrics-grid {

@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import threading
+import re
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, jsonify, request, send_from_directory, make_response
@@ -53,7 +54,9 @@ def _kb_write_metadata(category: str, filename: str, payload: dict):
 def _touch_kb_access(category: str, filename: str):
     metadata = _kb_read_metadata(category, filename)
     metadata["lastOpenedAt"] = datetime.now(timezone.utc).isoformat()
-    metadata["accessCount"] = int(metadata.get("accessCount") or 0) + 1
+    next_access_count = int(metadata.get("access_count") or metadata.get("accessCount") or 0) + 1
+    metadata["access_count"] = next_access_count
+    metadata["accessCount"] = next_access_count
     _kb_write_metadata(category, filename, metadata)
 
 
@@ -153,6 +156,18 @@ def _build_kb_url(category: str, filename: str) -> str:
     return f"/kb/{safe_cat}/{filename}"
 
 
+def _normalize_version_group_name(filename: str) -> str:
+    value = str(filename or '').strip().lower()
+    if not value:
+        return ''
+
+    # Remove ".old" marker first, then extension.
+    value = re.sub(r'\.old$', '', value)
+    value = re.sub(r'\.[^.]+$', '', value)
+    value = re.sub(r'\s+', ' ', value).strip()
+    return value
+
+
 def _build_structured_payload(ai_result, text, failure_reason=''):
     if isinstance(ai_result, dict):
         structured = {key: value for key, value in ai_result.items() if key != 'tags'}
@@ -181,7 +196,7 @@ def _queue_document_processing(app, path: str):
 
 
 def _list_kb_categories(q_tags: list[str] | None = None) -> list[dict]:
-    categories = []
+    categories_map = {}
     q_tags = q_tags or []
 
     try:
@@ -197,7 +212,7 @@ def _list_kb_categories(q_tags: list[str] | None = None) -> list[dict]:
         if not os.path.isdir(cat_dir):
             continue
 
-        items = []
+        grouped_items = {}
         try:
             names = os.listdir(cat_dir)
         except OSError:
@@ -205,6 +220,9 @@ def _list_kb_categories(q_tags: list[str] | None = None) -> list[dict]:
 
         for name in names:
             if name.endswith('.meta.json'):
+                continue
+            if name.lower().endswith('.old'):
+                # Never show rotated old versions in listing UI.
                 continue
             full_path = os.path.join(cat_dir, name)
             if not os.path.isfile(full_path):
@@ -246,7 +264,10 @@ def _list_kb_categories(q_tags: list[str] | None = None) -> list[dict]:
                     },
                 )
 
-            items.append({
+            resolved_category = str(metadata.get("category") or cat or "uncategorized").strip().lower() or "uncategorized"
+            grouping_name = _normalize_version_group_name(original_name or name) or _normalize_version_group_name(name)
+            group_key = f'{resolved_category}::{grouping_name}'
+            candidate = {
                 "filename": name,
                 "originalName": original_name,
                 "url": _build_kb_url(cat, name),
@@ -258,16 +279,42 @@ def _list_kb_categories(q_tags: list[str] | None = None) -> list[dict]:
                 "derived_tags": derived_tags,
                 "analysis": metadata.get("analysis") if isinstance(metadata.get("analysis"), dict) else None,
                 "lastOpenedAt": metadata.get("lastOpenedAt"),
-                "accessCount": int(metadata.get("accessCount") or 0),
-            })
+                "access_count": int(metadata.get("access_count") or metadata.get("accessCount") or 0),
+                "accessCount": int(metadata.get("access_count") or metadata.get("accessCount") or 0),
+                "category": resolved_category,
+            }
 
-        items.sort(key=lambda x: (x["modifiedAt"] or ""), reverse=True)
-        categories.append({
-            "category": cat,
-            "files": items,
-        })
+            existing = grouped_items.get(group_key)
+            if existing is None:
+                grouped_items[group_key] = candidate
+                continue
 
-    categories.sort(key=lambda x: x["category"])
+            existing_modified = str(existing.get("modifiedAt") or "")
+            candidate_modified = str(candidate.get("modifiedAt") or "")
+            if candidate_modified > existing_modified:
+                grouped_items[group_key] = candidate
+
+        for item in grouped_items.values():
+            resolved_category = str(item.get("category") or "uncategorized").strip().lower() or "uncategorized"
+            categories_map.setdefault(resolved_category, []).append(item)
+
+    categories = []
+    for category_name in sorted(categories_map.keys()):
+        files = categories_map.get(category_name) or []
+        files.sort(
+            key=lambda file_item: (
+                int(file_item.get("accessCount") or 0),
+                str(file_item.get("lastOpenedAt") or ""),
+                str(file_item.get("modifiedAt") or ""),
+            ),
+            reverse=True,
+        )
+        categories.append(
+            {
+                "category": category_name,
+                "files": files,
+            }
+        )
     return categories
 
 
@@ -350,7 +397,20 @@ def list_kb():
     q = (request.args.get("q") or request.args.get("tag") or "").strip().lower()
     q_tags = [t for t in {p.strip().lower() for p in q.split(",")} if t]
     categories = _list_kb_categories(q_tags=q_tags)
-    return jsonify({"categories": categories})
+    docs = []
+    for category in categories:
+        for file_item in (category.get("files") or []):
+            if isinstance(file_item, dict):
+                docs.append(file_item)
+    docs.sort(
+        key=lambda item: (
+            int(item.get("accessCount") or 0),
+            str(item.get("lastOpenedAt") or ""),
+            str(item.get("modifiedAt") or ""),
+        ),
+        reverse=True,
+    )
+    return jsonify({"most_accessed": docs[:5], "categories": categories})
 
 
 @kb_bp.route("/api/kb/most-accessed", methods=["GET"])
@@ -381,6 +441,7 @@ def list_most_accessed_kb():
                     "tags": file_item.get("tags") if isinstance(file_item.get("tags"), list) else [],
                     "analysis": file_item.get("analysis") if isinstance(file_item.get("analysis"), dict) else None,
                     "lastOpenedAt": file_item.get("lastOpenedAt"),
+                    "access_count": int(file_item.get("access_count") or file_item.get("accessCount") or 0),
                     "accessCount": int(file_item.get("accessCount") or 0),
                 }
             )

@@ -79,7 +79,7 @@ export function KnowledgeBasePage() {
   const location = useLocation();
 
   async function loadKnowledgeBase() {
-    const [kbPayload, mostAccessedPayload] = await Promise.all([getKnowledgeBase(), getMostAccessedKnowledgeBase(40)]);
+    const [kbPayload, mostAccessedPayload] = await Promise.all([getKnowledgeBase(), getMostAccessedKnowledgeBase(5)]);
     setData(kbPayload && typeof kbPayload === 'object' ? kbPayload : { categories: [] });
     setMostAccessedData(
       mostAccessedPayload && typeof mostAccessedPayload === 'object'
@@ -133,6 +133,7 @@ export function KnowledgeBasePage() {
   }, [categories]);
 
   const mostAccessedFiles = useMemo(() => {
+    const fromKbPayload = Array.isArray(data?.most_accessed) ? data.most_accessed : [];
     const docs = Array.isArray(mostAccessedData.documents) ? mostAccessedData.documents : [];
     const fromEndpoint = [...docs].sort((left, right) => {
       const a = scoreMostAccessed(left);
@@ -143,11 +144,15 @@ export function KnowledgeBasePage() {
     });
 
     if (fromEndpoint.length) {
-      return fromEndpoint;
+      return fromEndpoint.slice(0, 5);
     }
 
-    return fallbackMostAccessed;
-  }, [fallbackMostAccessed, mostAccessedData.documents]);
+    if (fromKbPayload.length) {
+      return [...fromKbPayload].slice(0, 5);
+    }
+
+    return fallbackMostAccessed.slice(0, 5);
+  }, [data?.most_accessed, fallbackMostAccessed, mostAccessedData.documents]);
 
   const filteredMostAccessedFiles = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
