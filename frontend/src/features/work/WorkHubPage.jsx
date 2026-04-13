@@ -2,10 +2,12 @@ import { BarChart3, Clock3, FileSpreadsheet, Mail, Search, Users, UsersRound } f
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getUploads } from '../../app/services/api';
+import { getLatestTickets } from '../../app/services/api';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
 import { getCachedWorkDataset } from './workDatasetCache';
+import { setCachedWorkDataset } from './workDatasetCache';
 
 const LAST_ACTIVITY_KEY = 'westos.work.lastHubActivity';
 
@@ -78,7 +80,7 @@ function ToolCard({ module, compact = false, onOpen }) {
           <p title={module.description}>{module.description}</p>
         </div>
       </div>
-      <span className="compact-toggle">{module.cta}</span>
+      <span className="work-tool-card__cta">{module.cta}</span>
     </Link>
   );
 }
@@ -89,6 +91,40 @@ export function WorkHubPage() {
   const cachedDataset = getCachedWorkDataset();
 
   const quickActions = useMemo(() => coreModules.slice(0, 3), []);
+
+  useEffect(() => {
+    if (cachedDataset?.rows?.length) {
+      return;
+    }
+
+    let isMounted = true;
+    async function warmActiveTicketCache() {
+      try {
+        const payload = await getLatestTickets();
+        if (!isMounted) {
+          return;
+        }
+        const latestTicketsPayload = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+        const columns = Array.isArray(latestTicketsPayload?.columns) ? latestTicketsPayload.columns : [];
+        const rows = Array.isArray(latestTicketsPayload?.tickets) ? latestTicketsPayload.tickets : [];
+        if (!rows.length) {
+          return;
+        }
+        setCachedWorkDataset({
+          fileName: String(latestTicketsPayload?.fileName || 'ActiveTicketsLAH.csv').trim() || 'ActiveTicketsLAH.csv',
+          columns,
+          rows,
+        });
+      } catch {
+        // Warm-cache failures should never block hub UX.
+      }
+    }
+
+    void warmActiveTicketCache();
+    return () => {
+      isMounted = false;
+    };
+  }, [cachedDataset?.rows?.length]);
 
   useEffect(() => {
     let isMounted = true;

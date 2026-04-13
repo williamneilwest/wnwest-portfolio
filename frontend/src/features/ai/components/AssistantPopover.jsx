@@ -236,21 +236,29 @@ export function AssistantPopover() {
             </button>
           </header>
 
-          <div className="assistant-popover__quick-actions">
-            {QUICK_ACTIONS.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                className="compact-toggle"
-                onClick={() => onQuickAction(prompt)}
-                disabled={loading}
-              >
-                {prompt}
-              </button>
-            ))}
+          <div className="assistant-popover__body">
+            <div className="assistant-popover__quick-actions">
+              {QUICK_ACTIONS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="compact-toggle"
+                  onClick={() => onQuickAction(prompt)}
+                  disabled={loading}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+
+            {error ? <p className="status-text status-text--error">{error}</p> : null}
+
+            <div className="assistant-popover__response">
+              <p>{response.message || 'Ask for help navigating pages, understanding features, or next steps.'}</p>
+            </div>
           </div>
 
-          <form className="assistant-popover__form" onSubmit={onSubmit}>
+          <form className="assistant-popover__form assistant-popover__form--sticky" onSubmit={onSubmit}>
             <input
               ref={inputRef}
               className="ticket-queue__filter"
@@ -259,22 +267,17 @@ export function AssistantPopover() {
               placeholder="Ask for guidance..."
               disabled={loading}
             />
-            <Button type="submit" disabled={!canSubmit}>
-              {loading ? 'Thinking...' : 'Ask'}
-            </Button>
+            <div className="assistant-popover__actions">
+              <Button type="submit" disabled={!canSubmit}>
+                {loading ? 'Thinking...' : 'Ask'}
+              </Button>
+              {response?.action?.type === 'navigate' && response?.action?.path ? (
+                <Button type="button" variant="secondary" onClick={() => navigate(response.action.path)}>
+                  Go to {response.action.path}
+                </Button>
+              ) : null}
+            </div>
           </form>
-
-          {error ? <p className="status-text status-text--error">{error}</p> : null}
-
-          <div className="assistant-popover__response">
-            <p>{response.message || 'Ask for help navigating pages, understanding features, or next steps.'}</p>
-          </div>
-
-          {response?.action?.type === 'navigate' && response?.action?.path ? (
-            <Button type="button" variant="secondary" onClick={() => navigate(response.action.path)}>
-              Go to {response.action.path}
-            </Button>
-          ) : null}
         </section>
       ) : null}
     </div>

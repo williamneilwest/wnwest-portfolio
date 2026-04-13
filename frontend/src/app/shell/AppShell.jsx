@@ -264,7 +264,7 @@ export function AppShell() {
   const [systemHealth, setSystemHealth] = useState({ level: 'ok', text: 'All systems operational' });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)').matches : false
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { authenticated, isAdmin } = useCurrentUser();
@@ -350,7 +350,7 @@ export function AppShell() {
       return;
     }
 
-    const isSmallScreen = window.matchMedia('(max-width: 720px)').matches;
+    const isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
     setExpanded(isSmallScreen);
   }, []);
 
@@ -384,7 +384,7 @@ export function AppShell() {
   }, [isMobileNavOpen]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 720px)');
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
     const sync = (event) => {
       setIsMobileViewport(event.matches);
     };
@@ -480,6 +480,8 @@ export function AppShell() {
       window.clearInterval(timer);
     };
   }, [authenticated, isWorkDomain]);
+
+  const showDesktopTopbarExtras = !isMobileViewport;
 
   return (
     <div className="shell">
@@ -587,13 +589,12 @@ export function AppShell() {
                 aria-expanded={isMobileNavOpen}
                 aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
               >
-                {isMobileNavOpen ? <X size={16} /> : <Menu size={16} />}
-                Menu
+                {isMobileNavOpen ? <X size={15} /> : <Menu size={15} />}
               </button>
             ) : null}
             <div className="shell__topbar-actions">
-              <AuthHeaderControl onOpenLogin={() => setIsLoginModalOpen(true)} />
-              {location.pathname.startsWith('/app/ai') ? (
+              {showDesktopTopbarExtras ? <AuthHeaderControl onOpenLogin={() => setIsLoginModalOpen(true)} /> : null}
+              {showDesktopTopbarExtras && location.pathname.startsWith('/app/ai') ? (
                 <NavLink
                   to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
                   className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}
@@ -601,7 +602,7 @@ export function AppShell() {
                   {location.pathname.startsWith('/app/ai/documents') ? 'AI Settings' : 'AI Documents'}
                 </NavLink>
               ) : null}
-              {location.pathname.startsWith('/app/kb') ? (
+              {showDesktopTopbarExtras && location.pathname.startsWith('/app/kb') ? (
                 <NavLink
                   to={location.pathname.startsWith('/app/kb/processed') ? '/app/kb' : '/app/kb/processed'}
                   className={({ isActive }) => (isActive ? 'compact-toggle compact-toggle--active' : 'compact-toggle')}

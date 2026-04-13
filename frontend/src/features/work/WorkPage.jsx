@@ -518,7 +518,7 @@ export function WorkPage() {
     return () => {
       isMounted = false;
     };
-  }, [isActiveTicketsRoute]);
+  }, [authenticated, isActiveTicketsRoute]);
 
   useEffect(() => {
     let isMounted = true;

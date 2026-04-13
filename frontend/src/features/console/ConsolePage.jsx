@@ -78,6 +78,12 @@ function getServiceUrl(label) {
   if (normalized === 'code-server' || normalized.includes('code-server') || normalized === 'code') {
     return 'https://code.westos.dev';
   }
+  if (normalized === 'plex' || normalized.includes('plex')) {
+    return 'https://plex.westos.dev';
+  }
+  if (normalized === 'qbittorrent' || normalized.includes('qbit') || normalized.includes('torrent')) {
+    return 'https://torrent.westos.dev';
+  }
   return '';
 }
 
