@@ -126,6 +126,11 @@ files.westos.dev {
 	reverse_proxy filebrowser:80
 }
 
+cockpit.westos.dev {
+	import infra_service
+	reverse_proxy host.docker.internal:9090
+}
+
 webui.westos.dev {
 	import infra_service
 	reverse_proxy open-webui:8080

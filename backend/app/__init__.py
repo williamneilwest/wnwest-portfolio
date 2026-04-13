@@ -44,6 +44,7 @@ PUBLIC_WEBHOOK_PREFIXES = (
 )
 PUBLIC_WORK_VIEW_PREFIXES = (
     '/api/tickets',
+    '/api/work/tickets',
     '/uploads',
     '/api/uploads',
     '/api/kb',
@@ -104,6 +105,16 @@ def _is_public_work_view_path(request_path, method):
     if http_method not in {'GET', 'HEAD'}:
         return False
     return _path_matches_prefixes(request_path, PUBLIC_WORK_VIEW_PREFIXES)
+
+
+def _is_public_ticket_summary_path(request_path, method):
+    http_method = str(method or 'GET').upper()
+    if http_method != 'POST':
+        return False
+    parts = [segment for segment in str(request_path or '').split('/') if segment]
+    if len(parts) != 4:
+        return False
+    return parts[0] == 'api' and parts[1] == 'tickets' and parts[3] == 'summary'
 
 
 def _log_guard_decision(app, *, host, path, guard, action, reason):
@@ -347,6 +358,17 @@ def create_app():
                 guard='non_work_auth_guard',
                 action='allow',
                 reason='public_work_view',
+            )
+            return None
+
+        if _is_public_ticket_summary_path(request_path, request.method):
+            _log_guard_decision(
+                app,
+                host=host,
+                path=request_path,
+                guard='non_work_auth_guard',
+                action='allow',
+                reason='public_ticket_summary',
             )
             return None
 

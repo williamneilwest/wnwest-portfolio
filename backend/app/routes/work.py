@@ -2,7 +2,9 @@ import logging
 from datetime import datetime
 from io import BytesIO
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, current_app, request
+from requests import RequestException
+from requests.exceptions import Timeout
 
 from ..api_response import error_response, success_response
 from .email_upload import (
@@ -24,10 +26,11 @@ from ..services.active_tickets import (
 )
 from ..services.analysis_store import get_analysis_file, list_recent_analyses, save_analysis
 from ..services.csv_analyzer import build_csv_analysis
+from ..services.authz import require_auth
+from ..services.ai_client import build_compat_chat_response, call_gateway_chat
 
 work_bp = Blueprint('work', __name__)
 LOGGER = logging.getLogger(__name__)
-
 
 @work_bp.get('/flows/work/recent-analyses')
 def recent_analyses():
@@ -230,8 +233,58 @@ def get_ticket(ticket_id):
     return success_response(ticket)
 
 
+@work_bp.post('/api/tickets/<ticket_id>/summary')
+def summarize_ticket(ticket_id):
+    payload = request.get_json(silent=True) or {}
+    ticket = get_ticket_by_id(ticket_id)
+    if ticket is None and isinstance(payload.get('ticket'), dict):
+        ticket = payload.get('ticket')
+
+    if not isinstance(ticket, dict):
+        return error_response(f'Ticket {ticket_id} was not found.', 404)
+
+    ai_payload = {
+        'analysis_mode': 'deep',
+        'agent_id': str(payload.get('agent_id') or 'ticket_analyzer').strip() or 'ticket_analyzer',
+        'ticket': ticket,
+        'fileName': str(payload.get('fileName') or '').strip(),
+        'type': 'ticket_summary_public',
+    }
+
+    try:
+        result = call_gateway_chat(
+            ai_payload,
+            current_app.config['AI_GATEWAY_BASE_URL'],
+            agent_id=ai_payload['agent_id'],
+            context={
+                'route_selected': '/api/tickets/<ticket_id>/summary',
+                'source_agent': ai_payload['agent_id'],
+                'response_type': 'ticket_summary',
+                'ticket_id': str(ticket_id),
+            },
+        )
+        compat = build_compat_chat_response(ai_payload, result)
+        return success_response(
+            {
+                'ticket_id': str(ticket_id),
+                'summary': compat.get('summary') or compat.get('message') or '',
+                'message': compat.get('message') or compat.get('summary') or '',
+            }
+        )
+    except ValueError as error:
+        return error_response(str(error), 400)
+    except Timeout:
+        return error_response('AI request timed out.', 504)
+    except RequestException as error:
+        return error_response(f'AI request failed: {error}', 502)
+
+
 @work_bp.post('/api/tickets/update-assignee')
 def update_assignee():
+    auth_error = require_auth()
+    if auth_error is not None:
+        return auth_error
+
     payload = request.get_json(silent=True) or {}
     ticket_id = str(payload.get('ticket_id', '')).strip()
     assignee = str(payload.get('assignee', '')).strip()
@@ -248,3 +301,27 @@ def update_assignee():
         return error_response(f'Ticket {ticket_id} was not found.', 404)
 
     return success_response(ticket)
+
+
+@work_bp.post('/api/tickets')
+def create_ticket():
+    auth_error = require_auth()
+    if auth_error is not None:
+        return auth_error
+    return error_response('Ticket creation is not enabled in this module.', 405)
+
+
+@work_bp.put('/api/tickets/<ticket_id>')
+def replace_ticket(ticket_id):
+    auth_error = require_auth()
+    if auth_error is not None:
+        return auth_error
+    return error_response(f'Ticket updates are not enabled for {ticket_id}.', 405)
+
+
+@work_bp.delete('/api/tickets/<ticket_id>')
+def delete_ticket(ticket_id):
+    auth_error = require_auth()
+    if auth_error is not None:
+        return auth_error
+    return error_response(f'Ticket deletes are not enabled for {ticket_id}.', 405)

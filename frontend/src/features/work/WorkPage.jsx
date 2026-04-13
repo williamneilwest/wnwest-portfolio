@@ -371,8 +371,10 @@ function matchesColumnFilter(value, columnType, filter = {}) {
   return !filter.text || cellText.toLowerCase().includes(filter.text.trim().toLowerCase());
 }
 
-export function WorkPage() {
+export function WorkPage({ readOnly = false }) {
   const { authenticated, user } = useCurrentUser();
+  const isPublicView = readOnly || !authenticated;
+  const canMutate = authenticated && !readOnly;
   const navigate = useNavigate();
   const location = useLocation();
   const isActiveTicketsRoute = location.pathname.startsWith('/app/work/active-tickets');
@@ -902,6 +904,11 @@ export function WorkPage() {
       return;
     }
 
+    if (readOnly) {
+      setDatasetVisibleColumns(normalizeColumns(datasetColumns));
+      return;
+    }
+
     setDatasetVisibleColumns((current) => {
       const next = normalizeColumns(current.filter((column) => datasetColumns.includes(column)));
       if (next.length) {
@@ -917,7 +924,7 @@ export function WorkPage() {
       }
       return normalizeColumns(Array.from(new Set([ticketColumn, ...storedColumns])));
     });
-  }, [datasetColumns, ticketColumn]);
+  }, [datasetColumns, readOnly, ticketColumn]);
 
   function handleDatasetVisibleColumnsChange(nextColumns) {
     const normalizedNext = normalizeColumns(
@@ -1176,7 +1183,11 @@ export function WorkPage() {
           <DatasetPage
             datasetState={datasetState}
             onVisibleColumnsChange={handleDatasetVisibleColumnsChange}
-            onUploadClick={() => fileInputRef.current?.click()}
+            onUploadClick={() => {
+              if (canMutate) {
+                fileInputRef.current?.click();
+              }
+            }}
             onToggleHistory={() => {
               setIsHistoryExpanded((current) => !current);
               setIsUploadsExpanded(false);
@@ -1227,8 +1238,8 @@ export function WorkPage() {
                 </button>
                 <button
                   className="compact-toggle"
-                  disabled={!analysis || loadingAI || isLoadingSavedRun || !authenticated}
-                  title={!authenticated ? 'Sign in to use this feature' : ''}
+                  disabled={!analysis || loadingAI || isLoadingSavedRun || !canMutate}
+                  title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
                   onClick={handleAiAnalysis}
                   type="button"
                 >
@@ -1271,8 +1282,8 @@ export function WorkPage() {
                 </button>
               </>
             )}
-            uploadDisabled={!authenticated}
-            uploadDisabledReason="Sign in to use this feature"
+            uploadDisabled={!canMutate}
+            uploadDisabledReason={readOnly ? 'Read-only view' : 'Sign in to use this feature'}
             showChangeDatasetSection={false}
             showColumnSelector={false}
           >
@@ -1298,6 +1309,7 @@ export function WorkPage() {
                         }
                       >
                         <DataCardList
+                          readOnly={isPublicView}
                           rows={cardRows}
                           visibleColumns={datasetVisibleColumns}
                           onRowSelect={handlePreviewRowSelect}
@@ -1327,6 +1339,7 @@ export function WorkPage() {
                       </ErrorBoundary>
                     ) : datasetView === 'table' ? (
                       <DataTable
+                        readOnly={isPublicView}
                         onRowSelect={handlePreviewRowSelect}
                         onSort={(column) =>
                           setDatasetSortConfig((current) => {
@@ -1422,10 +1435,14 @@ export function WorkPage() {
                     <div className="dataset-panel__action-grid">
                       <button
                         className="compact-toggle dataset-panel__action"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => {
+                          if (canMutate) {
+                            fileInputRef.current?.click();
+                          }
+                        }}
                         type="button"
-                        disabled={!authenticated}
-                        title={!authenticated ? 'Sign in to use this feature' : ''}
+                        disabled={!canMutate}
+                        title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
                       >
                         <Upload size={15} />
                         Upload New File

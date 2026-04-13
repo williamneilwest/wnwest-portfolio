@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Clock3, MessageSquareText, ShieldCheck, ShieldX, Sparkles, UserRound } from 'lucide-react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useBackNavigation } from '../../../app/hooks/useBackNavigation';
-import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, getUserGroups } from '../../../app/services/api';
-import { chatAI, getFeatureAgentId } from '../../../app/services/aiClient';
+import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, getUserGroups, summarizeTicket } from '../../../app/services/api';
+import { getFeatureAgentId } from '../../../app/services/aiClient';
 import { Card, CardHeader } from '../../../app/ui/Card';
 import { EmptyState } from '../../../app/ui/EmptyState';
 import { getCachedWorkDataset, setCachedWorkDataset } from '../workDatasetCache';
@@ -440,13 +440,14 @@ export function TicketDetail() {
     const startedAt = performance.now();
 
     try {
-      const result = await chatAI({
+      const result = await summarizeTicket(decodedTicketId, {
         analysis_mode: 'deep',
         agent_id: getFeatureAgentId('ticket_analysis', 'ticket_analyzer'),
         ticket,
         fileName: dataset?.fileName,
       });
-      const message = result.message || result.summary || '';
+      const payload = result?.data && typeof result.data === 'object' ? result.data : result;
+      const message = payload?.message || payload?.summary || '';
       const durationSeconds = Number(((performance.now() - startedAt) / 1000).toFixed(2));
       const nextAnalysis = {
         result: message,

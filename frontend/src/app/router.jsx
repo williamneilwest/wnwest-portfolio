@@ -12,6 +12,7 @@ import { GroupSearchToolPage } from '../features/work/GroupSearchToolPage';
 import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
+import { WorkHubPage } from '../features/work/WorkHubPage';
 import { ConsoleEndpointsPage } from '../features/console/ConsoleEndpointsPage';
 import { ConsolePage } from '../features/console/ConsolePage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
@@ -55,6 +56,20 @@ const getRoute = (path) => {
 
 export const router = createBrowserRouter(
   [
+    {
+      path: '/app/work',
+      element: <AppShell />,
+      children: [
+        {
+          index: true,
+          Component: WorkHubPage
+        },
+        {
+          path: 'active-tickets',
+          element: <WorkPage readOnly />
+        }
+      ]
+    },
     {
     path: '/',
     element: isWorkSubdomain ? <Navigate replace to="/app/work" /> : <LandingPage />
