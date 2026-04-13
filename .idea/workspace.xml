@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="edited ActiveTickets page" />
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="edited ActiveTickets page">
+      <change beforePath="$PROJECT_DIR$/backend/app/services/active_tickets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/active_tickets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/utils/aiAnalysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/utils/aiAnalysis.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -144,15 +148,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="35355000" />
-    </task>
-    <task id="LOCAL-00005" summary="added kb upload code">
-      <option name="closed" value="true" />
-      <created>1775971594602</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1775971594602</updated>
+      <workItem from="1776019342314" duration="36163000" />
     </task>
     <task id="LOCAL-00006" summary="Stabilized KB Document AI Aanalysis">
       <option name="closed" value="true" />
@@ -538,7 +534,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776095162311</updated>
     </task>
-    <option name="localTasksCounter" value="54" />
+    <task id="LOCAL-00054" summary="edited ActiveTickets page">
+      <option name="closed" value="true" />
+      <created>1776095627125</created>
+      <option name="number" value="00054" />
+      <option name="presentableId" value="LOCAL-00054" />
+      <option name="project" value="LOCAL" />
+      <updated>1776095627125</updated>
+    </task>
+    <option name="localTasksCounter" value="55" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

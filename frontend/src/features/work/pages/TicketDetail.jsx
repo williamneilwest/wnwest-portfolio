@@ -18,6 +18,8 @@ import {
   getTicketColumns,
   isSuppressedTicketColumn,
   parseTicketAiAnalysis,
+  resolve_combined_notes,
+  clean_note_value,
   updateTicketAnalysis,
 } from '../utils/aiAnalysis';
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from '../utils/ticketRules';
@@ -213,6 +215,37 @@ export function TicketDetail() {
     () => parseTicketAiAnalysis(analysisResult),
     [analysisResult]
   );
+
+  useEffect(() => {
+    if (!ticket || (typeof import.meta !== 'undefined' && !import.meta?.env?.DEV)) {
+      return;
+    }
+
+    const rawNoteKeys = [
+      'combined_notes',
+      'comments_and_work_notes',
+      'work_notes',
+      'comments',
+      'work_notes_list',
+      'workflow_activity',
+      'wf_activity',
+      'u_task_1.comments_and_work_notes',
+      'u_task_1.work_notes',
+      'u_task_1.comments',
+      'u_task_1.work_notes_list',
+      'u_task_1.wf_activity',
+    ];
+
+    const presentRawNoteKeys = rawNoteKeys.filter((key) => clean_note_value(ticket?.[key]));
+    const combinedNotes = resolve_combined_notes(ticket);
+
+    if (!combinedNotes && presentRawNoteKeys.length) {
+      console.info('[TicketDetail] Combined notes empty despite note-related fields present', {
+        ticketId: getTicketId(ticket, columns),
+        fields: presentRawNoteKeys,
+      });
+    }
+  }, [ticket, columns]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });

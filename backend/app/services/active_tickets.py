@@ -52,6 +52,16 @@ PRIORITY_PATTERNS = (
 )
 ACTIVE_BLOCKLIST = ('closed', 'resolved', 'complete', 'completed', 'done', 'cancelled', 'canceled')
 TICKET_NUMBER_VALUE_PATTERN = re.compile(r'\b(?:INC|TASK|REQ)\s*[-_]?\s*\d+\b', re.IGNORECASE)
+EMPTY_NOTE_TOKENS = {'', 'null', 'none', 'nan', '[]', '{}'}
+NOTE_FIELD_CANDIDATES = {
+    'comments': ('comments', 'u_task_1.comments'),
+    'work_notes': ('work_notes', 'u_task_1.work_notes'),
+    'comments_and_work_notes': ('comments_and_work_notes', 'u_task_1.comments_and_work_notes'),
+    'work_notes_list': ('work_notes_list', 'u_task_1.work_notes_list'),
+    'workflow_activity': ('workflow_activity', 'wf_activity', 'u_task_1.wf_activity'),
+    'description': ('description', 'u_task_1.description'),
+    'short_description': ('short_description', 'u_task_1.short_description'),
+}
 
 
 def _storage_root():
@@ -134,8 +144,29 @@ def _parse_csv_bytes(content):
     headers = normalize_headers(reader.fieldnames)
     reader.fieldnames = headers
     rows = [dict(row) for row in reader]
+    combined_notes_empty = 0
+    normalization_fallback_rows = 0
+
+    for index, row in enumerate(rows):
+        normalized, fallback_used = normalize_ticket_row(row)
+        rows[index] = normalized
+        if fallback_used:
+            normalization_fallback_rows += 1
+        if not normalized.get('combined_notes'):
+            combined_notes_empty += 1
 
     LOGGER.info('Active ticket dataset loaded with %s records.', len(rows))
+    if normalization_fallback_rows:
+        LOGGER.debug(
+            'Active ticket note normalization used legacy/raw key fallback for %s rows.',
+            normalization_fallback_rows,
+        )
+    if combined_notes_empty:
+        LOGGER.debug(
+            'Active ticket rows with empty combined_notes after normalization: %s of %s.',
+            combined_notes_empty,
+            len(rows),
+        )
 
     return {
         'columns': headers,
@@ -287,6 +318,91 @@ def _is_flagged_row(row):
     return False
 
 
+def clean_note_value(value):
+    if value is None:
+        return ''
+
+    text = str(value).strip()
+    if not text:
+        return ''
+    if text.lower() in EMPTY_NOTE_TOKENS:
+        return ''
+    return text
+
+
+def _resolve_row_value(row, keys):
+    for key in keys:
+        if key not in row:
+            continue
+        cleaned = clean_note_value(row.get(key))
+        if cleaned:
+            return cleaned, key
+    return '', ''
+
+
+def resolve_combined_notes(row):
+    first_candidates = (
+        ('comments_and_work_notes', NOTE_FIELD_CANDIDATES['comments_and_work_notes']),
+        ('work_notes', NOTE_FIELD_CANDIDATES['work_notes']),
+        ('comments', NOTE_FIELD_CANDIDATES['comments']),
+        ('work_notes_list', NOTE_FIELD_CANDIDATES['work_notes_list']),
+        ('workflow_activity', NOTE_FIELD_CANDIDATES['workflow_activity']),
+    )
+    last_context = ('description', NOTE_FIELD_CANDIDATES['description'])
+    chunks = []
+    seen = set()
+
+    for _, keys in first_candidates:
+        value, _ = _resolve_row_value(row, keys)
+        normalized = re.sub(r'\s+', ' ', value).strip().lower()
+        if not value or normalized in seen:
+            continue
+        seen.add(normalized)
+        chunks.append(value)
+
+    if not chunks:
+        description, _ = _resolve_row_value(row, last_context[1])
+        if description:
+            chunks.append(description)
+
+    return '\n\n'.join(chunks).strip()
+
+
+def normalize_ticket_row(row):
+    normalized = dict(row) if isinstance(row, dict) else {}
+    fallback_used = False
+
+    for canonical_key, keys in NOTE_FIELD_CANDIDATES.items():
+        if clean_note_value(normalized.get(canonical_key)):
+            continue
+        resolved, source_key = _resolve_row_value(normalized, keys)
+        if resolved:
+            normalized[canonical_key] = resolved
+            if source_key and source_key != canonical_key:
+                fallback_used = True
+
+    combined_notes = resolve_combined_notes(normalized)
+    normalized['combined_notes'] = combined_notes
+    return normalized, fallback_used
+
+
+def _ensure_combined_notes(rows):
+    if not isinstance(rows, list):
+        return rows
+
+    updated_rows = []
+    for row in rows:
+        if not isinstance(row, dict):
+            updated_rows.append(row)
+            continue
+        if clean_note_value(row.get('combined_notes')):
+            updated_rows.append(row)
+            continue
+        normalized, _ = normalize_ticket_row(row)
+        updated_rows.append(normalized)
+    return updated_rows
+
+
 def _row_ticket_id(row, columns):
     for column in _find_ticket_id_columns(columns):
         value = str(row.get(column, '')).strip()
@@ -432,6 +548,7 @@ def load_active_ticket_dataset(force_reload=False):
         cached_name = (_cached_metadata or {}).get('file_name') if isinstance(_cached_metadata, dict) else None
         cached_mtime = (_cached_metadata or {}).get('file_mtime') if isinstance(_cached_metadata, dict) else None
         if current_name == cached_name and current_mtime == cached_mtime:
+            _cached_dataset['rows'] = _ensure_combined_notes(_cached_dataset.get('rows', []))
             return _cached_dataset
 
         if _cached_metadata is None:

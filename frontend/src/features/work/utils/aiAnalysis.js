@@ -4,14 +4,40 @@ const ASSIGNEE_PATTERNS = [/assigned_to/i, /assignee/i, /owner/i, /agent/i];
 const STATUS_PATTERNS = [/^state$/i, /^status$/i, /priority/i, /severity/i];
 const ACTIVE_PATTERNS = [/^active$/i, /is_active/i, /open/i];
 const UPDATED_PATTERNS = [/sys_updated_on/i, /updated/i, /last.?updated/i, /modified/i];
-const PRIMARY_NOTE_COLUMN = 'comments_and_work_notes';
+const PRIMARY_NOTE_COLUMN = 'combined_notes';
 const SUPPRESSED_COLUMNS = new Set(['comments', 'work_notes']);
 const NOTE_COLUMN_PATTERNS = [
+  /^combined_?notes?$/i,
   /^comments_and_work_notes$/i,
   /^comments?_and_?work_?notes?$/i,
   /^comments?\s*and\s*work\s*notes?$/i,
   /^comments?$/i,
   /^work_?notes?$/i,
+  /^work_?notes_?list$/i,
+  /^wf_?activity$/i,
+  /^workflow_?activity$/i,
+  /^u_task_1\.comments$/i,
+  /^u_task_1\.work_notes$/i,
+  /^u_task_1\.comments_and_work_notes$/i,
+  /^u_task_1\.work_notes_list$/i,
+  /^u_task_1\.wf_activity$/i,
+];
+const EMPTY_NOTE_TOKENS = new Set(['', 'null', 'none', 'nan', '[]', '{}']);
+const NOTE_FALLBACK_COLUMNS = [
+  'combined_notes',
+  'comments_and_work_notes',
+  'work_notes',
+  'comments',
+  'work_notes_list',
+  'workflow_activity',
+  'wf_activity',
+  'u_task_1.comments_and_work_notes',
+  'u_task_1.work_notes',
+  'u_task_1.comments',
+  'u_task_1.work_notes_list',
+  'u_task_1.wf_activity',
+  'description',
+  'u_task_1.description',
 ];
 const IGNORED_NOTE_CONTENTS = new Set(['text has been sent']);
 const ACKNOWLEDGEMENT_PATTERN = /\back?no?w?l?e?d?g(?:e|ed|ement|ing)\b|\backnolwedge\b/i;
@@ -43,6 +69,61 @@ const TICKET_VALUE_PATTERN = /\b(?:INC|TASK|REQ)\s*[-_]?\s*\d+\b/i;
 
 function normalizeValue(value) {
   return String(value ?? '').trim();
+}
+
+export function clean_note_value(value) {
+  const text = normalizeValue(value);
+  if (!text) {
+    return '';
+  }
+  if (EMPTY_NOTE_TOKENS.has(text.toLowerCase())) {
+    return '';
+  }
+  return text;
+}
+
+function getFirstCleanValue(ticket, keys = []) {
+  for (const key of keys) {
+    if (!ticket || !(key in ticket)) {
+      continue;
+    }
+    const cleaned = clean_note_value(ticket[key]);
+    if (cleaned) {
+      return cleaned;
+    }
+  }
+  return '';
+}
+
+export function resolve_combined_notes(ticket) {
+  const firstPass = [
+    ['comments_and_work_notes', ['combined_notes', 'comments_and_work_notes', 'u_task_1.comments_and_work_notes']],
+    ['work_notes', ['work_notes', 'u_task_1.work_notes']],
+    ['comments', ['comments', 'u_task_1.comments']],
+    ['work_notes_list', ['work_notes_list', 'u_task_1.work_notes_list']],
+    ['workflow_activity', ['workflow_activity', 'wf_activity', 'u_task_1.wf_activity']],
+  ];
+  const pieces = [];
+  const seen = new Set();
+
+  for (const [, keys] of firstPass) {
+    const value = getFirstCleanValue(ticket, keys);
+    const dedupeKey = normalizeNoteContent(value);
+    if (!value || seen.has(dedupeKey)) {
+      continue;
+    }
+    seen.add(dedupeKey);
+    pieces.push(value);
+  }
+
+  if (!pieces.length) {
+    const description = getFirstCleanValue(ticket, ['description', 'u_task_1.description']);
+    if (description) {
+      pieces.push(description);
+    }
+  }
+
+  return pieces.join('\n\n').trim();
 }
 
 function normalizeNoteContent(value) {
@@ -279,12 +360,21 @@ export function isActiveTicket(ticket, columns = Object.keys(ticket || {})) {
 
 export function getTicketNotes(ticket, columns = Object.keys(ticket || {})) {
   const fieldMap = getTicketColumns(columns);
-  const notes = fieldMap.noteColumns.flatMap((column) =>
+  const combinedNotes = resolve_combined_notes(ticket);
+  const sourceColumns = combinedNotes
+    ? ['combined_notes']
+    : Array.from(
+      new Set([
+        ...fieldMap.noteColumns,
+        ...NOTE_FALLBACK_COLUMNS.filter((column) => clean_note_value(ticket?.[column])),
+      ])
+    );
+  const notes = sourceColumns.flatMap((column) =>
     splitNoteEntries(ticket?.[column])
       .map((entry, index) => {
         const cleanedBody = normalizeNoteDisplayContent(cleanNoteBody(entry));
         const author = extractAuthor(entry);
-        const type = extractNoteType(entry, formatLabel(column));
+        const type = extractNoteType(entry, column === 'combined_notes' ? 'Combined Notes' : formatLabel(column));
 
         return {
           id: `${column}-${index}`,
@@ -298,6 +388,20 @@ export function getTicketNotes(ticket, columns = Object.keys(ticket || {})) {
       })
       .filter((note) => !shouldIgnoreNote(note.content))
   );
+
+  if (combinedNotes && !notes.length) {
+    return [
+      {
+        id: 'combined-notes-0',
+        label: 'Combined Notes',
+        type: 'Combined Notes',
+        value: combinedNotes,
+        content: combinedNotes,
+        timestamp: null,
+        author: '',
+      },
+    ];
+  }
 
   return dedupeNotes(notes).sort((left, right) => {
     const leftTime = left.timestamp instanceof Date ? left.timestamp.getTime() : -Infinity;
