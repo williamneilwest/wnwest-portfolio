@@ -220,12 +220,143 @@ def _normalize_priority(value):
     return raw[:24] or 'Medium'
 
 
+def _is_flagged_row(row):
+    if not isinstance(row, dict):
+        return False
+    for key, value in row.items():
+        label = str(key or '').strip().lower()
+        if 'flag' not in label:
+            continue
+        normalized = str(value or '').strip().lower()
+        if normalized in {'true', '1', 'yes', 'y', 'flagged'}:
+            return True
+    return False
+
+
 def _row_ticket_id(row, columns):
     for column in _find_ticket_id_columns(columns):
         value = str(row.get(column, '')).strip()
         if value:
             return value
     return ''
+
+
+def _resolve_column(columns, patterns):
+    return _find_first_column(columns, patterns)
+
+
+def _resolve_ticket_title(row, columns):
+    title_column = _resolve_column(columns, TITLE_PATTERNS)
+    title = str(row.get(title_column, '')).strip() if title_column else ''
+    if title:
+        return title
+    return str(row.get('short_description') or row.get('description') or '').strip()
+
+
+def _resolve_ticket_priority(row, columns):
+    priority_column = _resolve_column(columns, PRIORITY_PATTERNS)
+    priority_value = row.get(priority_column, '') if priority_column else row.get('priority', '')
+    return _normalize_priority(priority_value)
+
+
+def normalize_ticket(ticket):
+    row = ticket if isinstance(ticket, dict) else {}
+
+    def _pick(*keys):
+        for key in keys:
+            value = row.get(key, '')
+            if value is None:
+                continue
+            text = str(value).strip()
+            if text:
+                return text
+        return ''
+
+    return {
+        'id': _pick('number', 'Number'),
+        'title': _pick('short_description', 'Short description'),
+        'assigned_to': _pick('assigned_to', 'Assigned to', 'Assignee'),
+        'status': _pick('status', 'State'),
+        'priority': _pick('priority', 'Priority'),
+    }
+
+
+def compute_ticket_metrics(tickets, columns):
+    rows = tickets if isinstance(tickets, list) else []
+    headers = columns if isinstance(columns, list) else []
+    status_column = _resolve_column(headers, STATUS_PATTERNS)
+    open_count = 0
+    flagged_count = 0
+
+    for row in rows:
+        if status_column:
+            if _is_active_status(row.get(status_column)):
+                open_count += 1
+        else:
+            open_count += 1
+        if _is_flagged_row(row):
+            flagged_count += 1
+
+    return {
+        'total': len(rows),
+        'flagged': flagged_count,
+        'visible_columns': len(headers) if headers else 0,
+        'open': open_count,
+    }
+
+
+def build_todo_from_tickets(tickets, assignee, columns, limit=10):
+    rows = tickets if isinstance(tickets, list) else []
+    max_items = max(1, min(10, int(limit or 10)))
+    assignee_norm = str(assignee or '').strip().lower()
+
+    if not assignee_norm:
+        return []
+
+    normalized_tickets = []
+    for row in rows:
+        normalized = normalize_ticket(row)
+        if not normalized.get('id'):
+            normalized['id'] = _row_ticket_id(row, columns if isinstance(columns, list) else []) or 'UNKNOWN'
+        if not normalized.get('title'):
+            normalized['title'] = str(row.get('description') or row.get('short_description') or f"Ticket {normalized['id']}").strip()
+        if not normalized.get('priority'):
+            normalized['priority'] = _normalize_priority(row.get('priority') or row.get('Priority') or '')
+        normalized_tickets.append(normalized)
+
+    items = []
+    filtered_count = 0
+    for ticket in normalized_tickets:
+        assigned_to = str(ticket.get('assigned_to', '') or '').strip()
+        status = str(ticket.get('status', '') or '').strip()
+
+        if not assigned_to:
+            continue
+        if assignee_norm not in assigned_to.lower():
+            continue
+        if status and not _is_active_status(status):
+            continue
+        filtered_count += 1
+
+        ticket_id = str(ticket.get('id', '') or '').strip() or 'UNKNOWN'
+        title = str(ticket.get('title', '') or '').strip() or f'Ticket {ticket_id}'
+        priority = _normalize_priority(ticket.get('priority', ''))
+
+        items.append(
+            {
+                'id': ticket_id,
+                'title': title,
+                'priority': priority,
+                'completed': False,
+            }
+        )
+        if len(items) >= max_items:
+            break
+
+    print('ASSIGNEE FILTER:', assignee)
+    print('MATCHES FOUND:', filtered_count)
+
+    return items
 
 
 def load_active_ticket_dataset(force_reload=False):
@@ -365,41 +496,17 @@ def get_active_tickets_for_assignee(assignee, limit=15):
     if not assignee_column:
         return []
 
-    status_column = _find_first_column(columns, STATUS_PATTERNS)
-    title_column = _find_first_column(columns, TITLE_PATTERNS)
-    priority_column = _find_first_column(columns, PRIORITY_PATTERNS)
-
     assignee_norm = str(assignee or '').strip().lower()
     if not assignee_norm:
         return []
-
-    max_items = max(10, min(20, int(limit or 15)))
-    items = []
-
-    for row in rows:
-        row_assignee = str(row.get(assignee_column, '')).strip()
-        if not row_assignee or row_assignee.lower() != assignee_norm:
-            continue
-        if status_column and not _is_active_status(row.get(status_column)):
-            continue
-
-        ticket_id = _row_ticket_id(row, columns) or str(row.get('id') or '').strip() or 'UNKNOWN'
-        title = str(row.get(title_column, '')).strip() if title_column else ''
-        if not title:
-            title = f'Ticket {ticket_id}'
-        priority = _normalize_priority(row.get(priority_column, 'Medium') if priority_column else 'Medium')
-        description = str(row.get('description') or row.get('details') or title).strip()
-
-        items.append(
-            {
-                'id': ticket_id,
-                'title': title,
-                'description': description[:500],
-                'priority': priority,
-                'assigned_to': row_assignee,
-            }
-        )
-        if len(items) >= max_items:
-            break
-
-    return items
+    todo = build_todo_from_tickets(rows, assignee_norm, columns, limit=max(10, min(20, int(limit or 15))))
+    return [
+        {
+            'id': item.get('id'),
+            'title': item.get('title'),
+            'description': item.get('summary'),
+            'priority': item.get('priority'),
+            'assigned_to': assignee,
+        }
+        for item in todo
+    ]

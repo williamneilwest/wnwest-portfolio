@@ -164,8 +164,13 @@ export function getTicket(ticketId) {
   return request(backendBaseUrl, `/api/tickets/${encodeURIComponent(ticketId)}`);
 }
 
-export function getLatestTickets() {
-  return request(backendBaseUrl, '/api/tickets/latest');
+export function getLatestTickets({ assignee = '' } = {}) {
+  const params = new URLSearchParams();
+  if (String(assignee || '').trim()) {
+    params.set('assignee', String(assignee).trim());
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return request(backendBaseUrl, `/api/work/tickets${suffix}`);
 }
 
 export function getTicketsTodo(assignee) {

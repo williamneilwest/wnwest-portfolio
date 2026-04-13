@@ -4,15 +4,12 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="enhanced global ai agent">
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="Milestone! Stable">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/assistant.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/assistant.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/routes/work.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/work.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/services/active_tickets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/active_tickets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/ai/components/AssistantPanel.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/ai/components/AssistantPanel.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/ai/components/AssistantPopover.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/ai/components/AssistantPopover.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -154,15 +151,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="30566000" />
-    </task>
-    <task id="LOCAL-00001" summary="Refactor AI analysis logic and enhance ticket detail UI handling">
-      <option name="closed" value="true" />
-      <created>1775904360002</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1775904360002</updated>
+      <workItem from="1776019342314" duration="32200000" />
     </task>
     <task id="LOCAL-00002" summary="edited ai card">
       <option name="closed" value="true" />
@@ -548,7 +537,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776048195105</updated>
     </task>
-    <option name="localTasksCounter" value="50" />
+    <task id="LOCAL-00050" summary="Milestone! Stable">
+      <option name="closed" value="true" />
+      <created>1776050267240</created>
+      <option name="number" value="00050" />
+      <option name="presentableId" value="LOCAL-00050" />
+      <option name="project" value="LOCAL" />
+      <updated>1776050267240</updated>
+    </task>
+    <option name="localTasksCounter" value="51" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -566,7 +563,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added ai assistnt" />
     <MESSAGE value="refined error handlking " />
     <MESSAGE value="refined logging error display logic" />
     <MESSAGE value="ensured all services are added to console page" />
@@ -591,7 +587,8 @@
     <MESSAGE value="Milestone" />
     <MESSAGE value="fixed email routing" />
     <MESSAGE value="enhanced global ai agent" />
-    <option name="LAST_COMMIT_MESSAGE" value="enhanced global ai agent" />
+    <MESSAGE value="Milestone! Stable" />
+    <option name="LAST_COMMIT_MESSAGE" value="Milestone! Stable" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

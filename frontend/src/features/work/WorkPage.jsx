@@ -40,6 +40,7 @@ import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
 import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from './utils/ticketRules';
+import { TodayTodoCard } from './components/TodayTodoCard';
 
 const DEFAULT_CARD_ASSIGNEE = 'William West';
 const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
@@ -360,7 +361,7 @@ function matchesColumnFilter(value, columnType, filter = {}) {
 }
 
 export function WorkPage() {
-  const { authenticated } = useCurrentUser();
+  const { authenticated, user } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
   const isActiveTicketsRoute = location.pathname.startsWith('/app/work/active-tickets');
@@ -407,6 +408,13 @@ export function WorkPage() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [isLoadingSavedRun, setIsLoadingSavedRun] = useState(false);
   const [kbTagWords, setKbTagWords] = useState([]);
+  const [autoMetrics, setAutoMetrics] = useState({
+    total: 0,
+    flagged: 0,
+    visible_columns: 0,
+    open: 0,
+  });
+  const [autoTodo, setAutoTodo] = useState([]);
   const csvUploads = useMemo(
     () =>
       uploadedFiles.filter((file) => {
@@ -559,7 +567,8 @@ export function WorkPage() {
       setSelectedRow(null);
 
       try {
-        const payload = await getLatestTickets();
+        const assignee = String(user?.username || '').trim();
+        const payload = await getLatestTickets({ assignee });
         const latestTicketsPayload = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
         if (!isMounted) {
           return;
@@ -578,6 +587,12 @@ export function WorkPage() {
         setLatestDataset({ columns, rows });
         setLatestFileName(fileName);
         setLatestMessage(String(latestTicketsPayload?.message || '').trim());
+        setAutoMetrics(
+          latestTicketsPayload?.metrics && typeof latestTicketsPayload.metrics === 'object'
+            ? latestTicketsPayload.metrics
+            : { total: rows.length, flagged: 0, visible_columns: columns.length, open: rows.length }
+        );
+        setAutoTodo(Array.isArray(latestTicketsPayload?.todo) ? latestTicketsPayload.todo : []);
         setCachedWorkDataset(nextDataset);
       } catch (requestError) {
         if (!isMounted) {
@@ -586,6 +601,8 @@ export function WorkPage() {
         setAnalysis(null);
         setLatestDataset({ columns: [], rows: [] });
         setLatestFileName(ACTIVE_TICKETS_FIXED_FILE);
+        setAutoMetrics({ total: 0, flagged: 0, visible_columns: 0, open: 0 });
+        setAutoTodo([]);
         setError(requestError.message || 'Active Tickets dataset could not be loaded.');
       } finally {
         if (isMounted) {
@@ -599,7 +616,7 @@ export function WorkPage() {
     return () => {
       isMounted = false;
     };
-  }, [isActiveTicketsRoute]);
+  }, [isActiveTicketsRoute, user?.username]);
 
   useEffect(() => {
     if (!recentAnalyses.length || isLoadingSavedRun || latestFileName || csvUploads.length) {
@@ -1266,8 +1283,8 @@ export function WorkPage() {
                     ) : (
                       <div className="dataset-metrics-grid">
                         <div className="metric-tile"><span>Rows in view</span><strong>{visibleTickets.length}</strong></div>
-                        <div className="metric-tile"><span>Flagged rows</span><strong>{visibleTickets.filter((item) => (item.matchedRules || []).length > 0).length}</strong></div>
-                        <div className="metric-tile"><span>Visible columns</span><strong>{datasetVisibleColumns.length}</strong></div>
+                        <div className="metric-tile"><span>Flagged rows</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
+                        <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || datasetVisibleColumns.length)}</strong></div>
                         <div className="metric-tile"><span>Current page</span><strong>{datasetPage + 1}</strong></div>
                       </div>
                     )
@@ -1388,8 +1405,15 @@ export function WorkPage() {
             </div>
           ) : null}
 
-          <section className="analysis-grid">
-            <Card className="analysis-grid__wide">
+          <section className="analysis-grid work-todo-insights-grid">
+            <TodayTodoCard
+              assignee={String(user?.username || DEFAULT_CARD_ASSIGNEE)}
+              items={autoTodo}
+              message={autoTodo.length ? '' : 'No tasks for today 🎉'}
+              fetchOnMount={false}
+            />
+
+            <Card className="work-insights-pane">
               <CardHeader
                 eyebrow="AI Insights"
                 title="Structured analysis"
@@ -1430,11 +1454,12 @@ export function WorkPage() {
                   </div>
                 </div>
               ) : (
-                <EmptyState
-                  icon={<MessageSquareText size={20} />}
-                  title="No AI analysis yet"
-                  description="Run AI analysis to generate a structured review."
-                />
+                <div className="dataset-metrics-grid">
+                  <div className="metric-tile"><span>Total tickets</span><strong>{Number(autoMetrics?.total || latestDataset?.rows?.length || 0)}</strong></div>
+                  <div className="metric-tile"><span>Open tickets</span><strong>{Number(autoMetrics?.open || 0)}</strong></div>
+                  <div className="metric-tile"><span>Flagged tickets</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
+                  <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || latestDataset?.columns?.length || 0)}</strong></div>
+                </div>
               )}
             </Card>
           </section>

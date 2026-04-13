@@ -1,10 +1,8 @@
 import logging
-import json
-import re
 from datetime import datetime
 from io import BytesIO
 
-from flask import Blueprint, Response, current_app, request
+from flask import Blueprint, Response, request
 
 from ..api_response import error_response, success_response
 from .email_upload import (
@@ -16,120 +14,19 @@ from .email_upload import (
     save_attachment_bytes_to_directory,
 )
 from ..services.active_tickets import (
+    build_todo_from_tickets,
+    compute_ticket_metrics,
     SOURCE_EMAIL,
-    get_active_tickets_for_assignee,
     get_ticket_by_id,
+    load_active_ticket_dataset,
     load_latest_ticket_payload,
     update_ticket_assignee,
 )
 from ..services.analysis_store import get_analysis_file, list_recent_analyses, save_analysis
-from ..services.ai_client import build_compat_chat_response, call_gateway_chat
 from ..services.csv_analyzer import build_csv_analysis
 
 work_bp = Blueprint('work', __name__)
 LOGGER = logging.getLogger(__name__)
-
-
-def _extract_json_block(value):
-    text = str(value or '').strip()
-    if not text:
-        return {}
-    try:
-        parsed = json.loads(text)
-        return parsed if isinstance(parsed, dict) else {}
-    except json.JSONDecodeError:
-        pass
-
-    match = re.search(r'\{[\s\S]*\}', text)
-    if not match:
-        return {}
-    try:
-        parsed = json.loads(match.group(0))
-        return parsed if isinstance(parsed, dict) else {}
-    except json.JSONDecodeError:
-        return {}
-
-
-def _build_todo_fallback_items(tickets):
-    items = []
-    for ticket in tickets:
-        summary = str(ticket.get('description') or '').strip()
-        if summary:
-            summary = re.split(r'(?<=[.!?])\s+', summary)[0].strip()
-        if not summary:
-            summary = 'Review and complete the next required action.'
-        items.append(
-            {
-                'id': str(ticket.get('id') or '').strip() or 'UNKNOWN',
-                'title': str(ticket.get('title') or '').strip() or 'Untitled ticket',
-                'summary': summary[:180],
-                'priority': str(ticket.get('priority') or 'Medium').strip() or 'Medium',
-                'completed': False,
-            }
-        )
-    return items
-
-
-def _transform_tickets_to_todo_items(assignee, tickets):
-    prompt = (
-        'You are an IT task assistant.\n\n'
-        'Convert the following active tickets into a concise daily to-do list.\n\n'
-        'Rules:\n'
-        '- Each item should be actionable\n'
-        '- Keep summaries short (1 sentence)\n'
-        '- Focus on what needs to be done\n'
-        '- Do NOT repeat full ticket descriptions\n'
-        '- Prioritize clarity over detail\n\n'
-        'Return JSON format:\n\n'
-        '{\n'
-        '  "items": [\n'
-        '    {\n'
-        '      "id": "",\n'
-        '      "title": "",\n'
-        '      "summary": "",\n'
-        '      "priority": ""\n'
-        '    }\n'
-        '  ]\n'
-        '}\n\n'
-        f'Tickets:\n{json.dumps(tickets, ensure_ascii=True, indent=2)}'
-    )
-
-    try:
-        result = call_gateway_chat(
-            {
-                'message': prompt,
-                'analysis_mode': 'ticket_todo',
-                'route_selected': 'work',
-                'source_agent': 'ticket_analyzer',
-                'original_user_query': f'Daily actionable to-do list for {assignee}',
-                'response_type': 'ticket_todo',
-            },
-            current_app.config.get('AI_GATEWAY_BASE_URL', ''),
-            agent_id='ticket_analyzer',
-            context={'assignee': assignee, 'tickets': tickets},
-        )
-        compat = build_compat_chat_response({'message': prompt}, result)
-        parsed = _extract_json_block(compat.get('message') if isinstance(compat, dict) else '')
-    except Exception as error:
-        LOGGER.warning('Ticket todo AI transform failed: %s', error)
-        parsed = {}
-
-    raw_items = parsed.get('items') if isinstance(parsed.get('items'), list) else []
-    normalized_items = []
-    for item in raw_items:
-        if not isinstance(item, dict):
-            continue
-        normalized_items.append(
-            {
-                'id': str(item.get('id') or '').strip() or 'UNKNOWN',
-                'title': str(item.get('title') or '').strip() or 'Untitled ticket',
-                'summary': str(item.get('summary') or '').strip() or 'Review and complete the next required action.',
-                'priority': str(item.get('priority') or 'Medium').strip() or 'Medium',
-                'completed': False,
-            }
-        )
-
-    return normalized_items or _build_todo_fallback_items(tickets)
 
 
 @work_bp.get('/flows/work/recent-analyses')
@@ -271,11 +168,19 @@ def upload_email_csv():
         )
 
 @work_bp.get('/work/tickets')
+@work_bp.get('/api/work/tickets')
 @work_bp.get('/api/tickets')
 @work_bp.get('/api/tickets/latest')
 def latest_tickets():
     try:
         payload = load_latest_ticket_payload()
+        tickets = payload.get('tickets') if isinstance(payload.get('tickets'), list) else []
+        columns = payload.get('columns') if isinstance(payload.get('columns'), list) else []
+        assignee = str(request.args.get('assignee') or '').strip()
+        metrics = compute_ticket_metrics(tickets, columns)
+        todo = build_todo_from_tickets(tickets, assignee, columns, limit=10) if assignee else []
+        payload['metrics'] = metrics
+        payload['todo'] = todo
         return success_response(payload)
     except ValueError as error:
         return error_response(str(error), 400)
@@ -287,10 +192,13 @@ def ticket_todo():
     if not assignee:
         return error_response('assignee is required.', 400)
 
-    tickets = get_active_tickets_for_assignee(assignee, limit=15)
+    dataset = load_active_ticket_dataset()
+    tickets = dataset.get('rows') if isinstance(dataset.get('rows'), list) else []
+    columns = dataset.get('columns') if isinstance(dataset.get('columns'), list) else []
+    todo = build_todo_from_tickets(tickets, assignee, columns, limit=10)
     response_date = datetime.now().date().isoformat()
 
-    if not tickets:
+    if not todo:
         return success_response(
             {
                 'assignee': assignee,
@@ -300,12 +208,11 @@ def ticket_todo():
             }
         )
 
-    items = _transform_tickets_to_todo_items(assignee, tickets)
     return success_response(
         {
             'assignee': assignee,
             'date': response_date,
-            'items': items,
+            'items': todo,
         }
     )
 
