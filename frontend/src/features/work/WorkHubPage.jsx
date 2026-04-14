@@ -14,17 +14,14 @@ import {
   Upload,
   User,
   Users,
-  UsersRound,
   Wrench,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLatestTickets, getUploads } from '../../app/services/api';
-import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
-import { TodayTodoCard } from './components/TodayTodoCard';
 import { getCachedWorkDataset, setCachedWorkDataset } from './workDatasetCache';
 
 const LAST_ACTIVITY_KEY = 'westos.work.lastHubActivity';
@@ -43,51 +40,31 @@ const domainCards = [
     title: 'Users',
     description: 'User identity, groups, and account actions.',
     icon: Users,
-    actions: [
-      { label: 'Lookup User', href: '/app/work/get-user-groups' },
-      { label: 'Group Search', href: '/app/work/group-search' },
-      { label: 'Association Script', href: '/app/work/user-group-association' },
-    ],
+    href: '/app/work/users',
   },
   {
     title: 'Devices',
     description: 'Computer lookup, assignment checks, and operational context.',
     icon: Monitor,
-    actions: [
-      { label: 'Device Lookup', href: '/app/work/group-search' },
-      { label: 'Active Tickets', href: '/app/work/active-tickets' },
-      { label: 'Dataset Table', href: '/app/work/table' },
-    ],
+    href: '/app/work/devices',
   },
   {
     title: 'Printers',
     description: 'Printer registration and group-driven assignment workflow.',
     icon: Printer,
-    actions: [
-      { label: 'Register Flow', href: '/app/work/user-group-association' },
-      { label: 'Lookup Groups', href: '/app/work/group-search' },
-      { label: 'User Groups', href: '/app/work/get-user-groups' },
-    ],
+    href: '/app/work/printers',
   },
   {
     title: 'Software',
     description: 'Application checks and deployment support actions.',
     icon: HardDrive,
-    actions: [
-      { label: 'AI Insights', href: '/app/work/ai-metrics' },
-      { label: 'Data Tools', href: '/app/data' },
-      { label: 'Uploads', href: '/app/uploads' },
-    ],
+    href: '/app/work/software',
   },
   {
     title: 'Hardware',
     description: 'Asset lookup and supporting investigation tooling.',
     icon: Shield,
-    actions: [
-      { label: 'Reference', href: '/app/reference' },
-      { label: 'Group Search', href: '/app/work/group-search' },
-      { label: 'Ticket Queue', href: '/app/work/active-tickets' },
-    ],
+    href: '/app/work/hardware',
   },
 ];
 
@@ -151,7 +128,12 @@ function CollapsibleSection({ title, subtitle, defaultOpen = true, children }) {
 
 function DomainCard({ domain, onOpen }) {
   return (
-    <article className="ui-card work-domain-card">
+    <Link
+      className="ui-card work-domain-card work-domain-card--nav"
+      to={domain.href}
+      onClick={() => onOpen({ title: domain.title, href: domain.href })}
+      state={{ from: '/app/work', label: 'Work Hub' }}
+    >
       <div className="work-domain-card__head">
         <span className="work-domain-card__icon" aria-hidden="true">
           <domain.icon size={16} />
@@ -161,20 +143,8 @@ function DomainCard({ domain, onOpen }) {
           <p>{domain.description}</p>
         </div>
       </div>
-      <div className="work-domain-card__actions">
-        {domain.actions.map((action) => (
-          <Link
-            key={`${domain.title}-${action.label}`}
-            className="work-domain-card__action"
-            to={action.href}
-            onClick={() => onOpen({ title: `${domain.title} / ${action.label}`, href: action.href })}
-            state={{ from: '/app/work', label: 'Work Hub' }}
-          >
-            {action.label}
-          </Link>
-        ))}
-      </div>
-    </article>
+      <small className="work-domain-card__hint">Click to open</small>
+    </Link>
   );
 }
 
@@ -182,26 +152,6 @@ export function WorkHubPage() {
   const [lastActivity, setLastActivity] = useState(() => storage.get(LAST_ACTIVITY_KEY) || null);
   const [latestUpload, setLatestUpload] = useState('None');
   const cachedDataset = getCachedWorkDataset();
-  const { user } = useCurrentUser();
-  const currentAssignee = String(user?.username || '').trim();
-
-  const recentWorkItems = useMemo(
-    () => [
-      { label: 'Last ticket opened', value: lastActivity?.title || 'None', icon: Ticket },
-      {
-        label: 'Last user searched',
-        value: storage.get('westos.work.lastUserSearch') || 'None',
-        icon: Users,
-      },
-      {
-        label: 'Last device accessed',
-        value: storage.get('westos.work.lastDeviceAccess') || 'None',
-        icon: Monitor,
-      },
-      { label: 'Recent upload', value: latestUpload, icon: Upload },
-    ],
-    [lastActivity?.title, latestUpload]
-  );
 
   useEffect(() => {
     if (cachedDataset?.rows?.length) {
@@ -304,23 +254,6 @@ export function WorkHubPage() {
       </nav>
 
       <CollapsibleSection
-        title="What Are You Working On?"
-        subtitle="Recent work context across tickets, users, devices, and uploads."
-      >
-        <div className="work-recent-grid">
-          {recentWorkItems.map((item) => (
-            <article key={item.label} className="work-recent-item">
-              <span>
-                <item.icon size={14} />
-                {item.label}
-              </span>
-              <strong title={item.value}>{item.value}</strong>
-            </article>
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
         title="Core Domains"
         subtitle="Primary operational domains grouped by responsibility."
       >
@@ -335,8 +268,6 @@ export function WorkHubPage() {
         title="Tickets"
         subtitle="Primary workflow surface for triage, insights, and imports."
       >
-        <TodayTodoCard assignee={currentAssignee} />
-
         <div className="work-ticket-row">
           {ticketCards.map((item) => (
             <Link

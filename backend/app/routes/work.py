@@ -26,7 +26,7 @@ from ..services.active_tickets import (
 )
 from ..services.analysis_store import get_analysis_file, list_recent_analyses, save_analysis
 from ..services.csv_analyzer import build_csv_analysis
-from ..services.authz import require_auth
+from ..services.authz import RUN_AI, require_auth, require_permission
 from ..services.ai_client import build_compat_chat_response, call_gateway_chat
 
 work_bp = Blueprint('work', __name__)
@@ -247,9 +247,9 @@ def get_ticket(ticket_id):
 
 @work_bp.post('/api/tickets/<ticket_id>/summary')
 def summarize_ticket(ticket_id):
-    auth_error = require_auth()
-    if auth_error is not None:
-        return error_response('Authentication required for AI actions', 401)
+    permission_error = require_permission(RUN_AI)
+    if permission_error is not None:
+        return permission_error
 
     # Keep this endpoint aligned with the authenticated /api/ai/chat smart-analysis
     # behavior so ticket summaries use the same ticket_analyzer pipeline.

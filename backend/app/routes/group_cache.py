@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from ..models.reference import Group, SessionLocal, init_db
+from ..services.authz import RUN_FLOWS_READ, RUN_FLOWS_WRITE, get_current_user, has_permission, require_permission
 from ..services.group_metadata import merge_group_tags
 from ..services.group_lookup import (
     get_user_groups_via_flow,
@@ -113,8 +114,23 @@ def lookup_groups_api():
     if not q:
         return jsonify({'success': True, 'source': 'cache', 'cacheHit': False, 'items': []})
 
+    permission_error = require_permission(RUN_FLOWS_READ)
+    if permission_error is not None:
+        return permission_error
+
+    current_user = get_current_user()
+    current_user_id = int(current_user.id) if current_user is not None else None
+
     try:
-        result = lookup_groups(q)
+        if has_permission(RUN_FLOWS_WRITE):
+            result = lookup_groups(q, user_id=current_user_id)
+        else:
+            result = {
+                'source': 'cache',
+                'items': search_cached_groups(q),
+                'cacheHit': True,
+                'upserted': {'created': 0, 'updated': 0, 'total': 0},
+            }
     except Exception as exc:
         return jsonify({'success': False, 'error': str(exc)}), 502
 
@@ -125,12 +141,19 @@ def lookup_groups_api():
 def lookup_groups_flow_api():
     """Flow-only group lookup that bypasses the cache and always calls Power Automate."""
 
+    permission_error = require_permission(RUN_FLOWS_WRITE)
+    if permission_error is not None:
+        return permission_error
+
     q = (request.args.get('q') or '').strip()
     if not q:
         return jsonify({'success': True, 'source': 'flow', 'cacheHit': False, 'items': []})
 
+    current_user = get_current_user()
+    current_user_id = int(current_user.id) if current_user is not None else None
+
     try:
-        result = lookup_groups_via_flow(q)
+        result = lookup_groups_via_flow(q, user_id=current_user_id)
     except Exception as exc:
         return jsonify({'success': False, 'error': str(exc)}), 502
 
@@ -141,12 +164,19 @@ def lookup_groups_flow_api():
 def user_group_membership_api():
     """Flow-backed lookup for all group IDs assigned to a user opid."""
 
+    permission_error = require_permission(RUN_FLOWS_WRITE)
+    if permission_error is not None:
+        return permission_error
+
     user_opid = (request.args.get('user_opid') or '').strip()
     if not user_opid:
         return jsonify({'success': False, 'error': 'user_opid is required'}), 400
 
+    current_user = get_current_user()
+    current_user_id = int(current_user.id) if current_user is not None else None
+
     try:
-        result = get_user_groups_via_flow(user_opid)
+        result = get_user_groups_via_flow(user_opid, user_id=current_user_id)
     except Exception as exc:
         return jsonify({'success': False, 'error': str(exc)}), 502
 

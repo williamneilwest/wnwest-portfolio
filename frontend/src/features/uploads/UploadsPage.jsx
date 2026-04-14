@@ -83,6 +83,7 @@ export function UploadsPage() {
                   });
 
               const primaryLabel = csvFile ? 'View Table' : 'Open';
+              const tableHref = `/app/work/table?url=${encodeURIComponent(file.url)}&fileName=${encodeURIComponent(file.filename)}&modifiedAt=${encodeURIComponent(file.modifiedAt || '')}`;
               const routeState = {
                 from: `${location.pathname}${location.search || ''}`,
                 label: 'Uploads',
@@ -109,6 +110,13 @@ export function UploadsPage() {
                   <a className="compact-toggle" download={file.filename} href={file.url}>
                     Download
                   </a>
+                  <Link
+                    className="compact-toggle"
+                    to={tableHref}
+                    state={routeState}
+                  >
+                    Open in Table
+                  </Link>
                   <button
                     type="button"
                     className="compact-toggle"
@@ -144,6 +152,13 @@ export function UploadsPage() {
                     <a className="upload-row-menu__action" download={file.filename} href={file.url}>
                       Download
                     </a>
+                    <Link
+                      className="upload-row-menu__action"
+                      to={tableHref}
+                      state={routeState}
+                    >
+                      Open in Table
+                    </Link>
                     <button
                       type="button"
                       className="upload-row-menu__action"

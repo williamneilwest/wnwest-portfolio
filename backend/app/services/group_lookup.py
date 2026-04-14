@@ -6,6 +6,7 @@ from sqlalchemy import func
 
 from ..models.reference import Group, SessionLocal, init_db
 from .group_metadata import merge_group_tags, normalize_tags
+from .flow_runs import track_flow_run
 
 
 DEFAULT_SCRIPT_NAME = 'Search Groups'
@@ -267,7 +268,7 @@ def resolve_groups_by_ids(group_ids):
         session.close()
 
 
-def lookup_groups_via_flow(search_text):
+def lookup_groups_via_flow(search_text, user_id=None):
     query = (search_text or '').strip()
     if not query:
         return {'source': 'flow', 'items': [], 'cacheHit': False, 'upserted': {'created': 0, 'updated': 0, 'total': 0}}
@@ -286,38 +287,46 @@ def lookup_groups_via_flow(search_text):
         },
     }
 
-    response = requests.post(
-        flow_url,
-        json=payload,
-        headers={'Content-Type': 'application/json'},
-        timeout=timeout,
+    def _execute():
+        response = requests.post(
+            flow_url,
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+
+        raw_text = response.text or ''
+        parsed_body = None
+        try:
+            parsed_body = response.json()
+        except ValueError:
+            parsed_body = raw_text
+
+        groups = _extract_groups(parsed_body)
+        upserted = upsert_groups(groups)
+
+        return {
+            'source': 'flow',
+            'items': upserted['items'],
+            'cacheHit': False,
+            'upserted': {
+                'created': upserted['created'],
+                'updated': upserted['updated'],
+                'total': upserted['total'],
+            },
+            'raw': raw_text,
+        }
+
+    return track_flow_run(
+        'Search Groups',
+        user_id,
+        {'scriptName': script_name, 'variables': {'searchText': query}},
+        _execute,
     )
-    response.raise_for_status()
-
-    raw_text = response.text or ''
-    parsed_body = None
-    try:
-        parsed_body = response.json()
-    except ValueError:
-        parsed_body = raw_text
-
-    groups = _extract_groups(parsed_body)
-    upserted = upsert_groups(groups)
-
-    return {
-        'source': 'flow',
-        'items': upserted['items'],
-        'cacheHit': False,
-        'upserted': {
-            'created': upserted['created'],
-            'updated': upserted['updated'],
-            'total': upserted['total'],
-        },
-        'raw': raw_text,
-    }
 
 
-def lookup_groups(search_text):
+def lookup_groups(search_text, user_id=None):
     query = (search_text or '').strip()
     if not query:
         return {'source': 'cache', 'items': [], 'cacheHit': False, 'upserted': {'created': 0, 'updated': 0, 'total': 0}}
@@ -331,10 +340,10 @@ def lookup_groups(search_text):
             'upserted': {'created': 0, 'updated': 0, 'total': 0},
         }
 
-    return lookup_groups_via_flow(query)
+    return lookup_groups_via_flow(query, user_id=user_id)
 
 
-def get_user_groups_via_flow(user_opid):
+def get_user_groups_via_flow(user_opid, user_id=None):
     normalized_user_opid = str(user_opid or '').strip()
     if not normalized_user_opid:
         raise RuntimeError('user_opid is required')
@@ -353,28 +362,36 @@ def get_user_groups_via_flow(user_opid):
         },
     }
 
-    response = requests.post(
-        flow_url,
-        json=payload,
-        headers={'Content-Type': 'application/json'},
-        timeout=timeout,
+    def _execute():
+        response = requests.post(
+            flow_url,
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+
+        raw_text = response.text or ''
+        try:
+            parsed_body = response.json()
+        except ValueError:
+            parsed_body = raw_text
+
+        resolved = resolve_groups_by_ids(_extract_group_ids(parsed_body))
+
+        return {
+            'source': 'flow',
+            'userOpid': normalized_user_opid,
+            'items': resolved['items'],
+            'identifiedCount': resolved['identifiedCount'],
+            'totalCount': resolved['totalCount'],
+            'created': resolved['created'],
+            'raw': raw_text,
+        }
+
+    return track_flow_run(
+        'Get User Groups',
+        user_id,
+        {'scriptName': script_name, 'variables': {'user_opid': normalized_user_opid}},
+        _execute,
     )
-    response.raise_for_status()
-
-    raw_text = response.text or ''
-    try:
-        parsed_body = response.json()
-    except ValueError:
-        parsed_body = raw_text
-
-    resolved = resolve_groups_by_ids(_extract_group_ids(parsed_body))
-
-    return {
-        'source': 'flow',
-        'userOpid': normalized_user_opid,
-        'items': resolved['items'],
-        'identifiedCount': resolved['identifiedCount'],
-        'totalCount': resolved['totalCount'],
-        'created': resolved['created'],
-        'raw': raw_text,
-    }

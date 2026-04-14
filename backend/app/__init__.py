@@ -37,6 +37,7 @@ WORK_ALLOWED_PREFIXES = (
     '/api/files',
     '/api/data/files',
     '/api/profile',
+    '/api/flows',
 )
 PUBLIC_AUTH_PATH_PREFIX = '/api/auth/'
 PUBLIC_WEBHOOK_PREFIXES = (
@@ -68,6 +69,7 @@ AUTH_REQUIRED_PREFIXES = (
     '/api/work/analyze-csv',
 )
 ADMIN_ONLY_PREFIXES = (
+    '/api/admin',
     '/api/system/',
     '/api/console/',
     '/api/logs',
@@ -289,7 +291,7 @@ def create_app():
 
     @app.before_request
     def enforce_non_work_authentication():
-        from .services.authz import require_auth, require_role
+        from .services.authz import RUN_AI, require_auth, require_permission, require_role
 
         host = _normalize_host(request.host)
         request_path = _normalize_path(request.path)
@@ -335,6 +337,10 @@ def create_app():
                     reason='execution_path_requires_auth',
                 )
                 return auth_error
+            if request_path.startswith('/api/ai/'):
+                permission_error = require_permission(RUN_AI)
+                if permission_error is not None:
+                    return jsonify({'error': 'Forbidden'}), 403
 
         if (
             request_path.startswith('/api/')

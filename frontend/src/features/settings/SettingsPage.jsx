@@ -1,10 +1,13 @@
-import { Database, Shield, SlidersHorizontal } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, Database, RotateCcw, Shield, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../app/ui/Button';
 import { getSettings } from '../../app/services/api';
+import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
+import { modules } from '../../app/shell/modules';
+import { clearNavPreferences, getNavPreferences, setNavPreferences } from '../../app/utils/navPreferences';
 import { storage } from '../../app/utils/storage';
 
 function PlaceholderSettingCard({ icon: Icon, title, description }) {
@@ -21,9 +24,11 @@ function PlaceholderSettingCard({ icon: Icon, title, description }) {
 }
 
 export function SettingsPage() {
+  const { isAdmin } = useCurrentUser();
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [navPrefs, setNavPrefs] = useState(() => getNavPreferences());
 
   useEffect(() => {
     let isMounted = true;
@@ -47,6 +52,66 @@ export function SettingsPage() {
       isMounted = false;
     };
   }, []);
+
+  const configurableModules = useMemo(
+    () =>
+      modules.filter((module) => module.href !== '/app/settings').map((module) => ({
+        ...module,
+        hidden: navPrefs.hidden.includes(module.href),
+      })),
+    [navPrefs.hidden]
+  );
+
+  const orderedModules = useMemo(() => {
+    const order = new Map((navPrefs.order || []).map((href, index) => [href, index]));
+    return [...configurableModules].sort((left, right) => {
+      const leftIndex = order.has(left.href) ? order.get(left.href) : Number.MAX_SAFE_INTEGER;
+      const rightIndex = order.has(right.href) ? order.get(right.href) : Number.MAX_SAFE_INTEGER;
+      if (leftIndex !== rightIndex) {
+        return leftIndex - rightIndex;
+      }
+      return left.label.localeCompare(right.label);
+    });
+  }, [configurableModules, navPrefs.order]);
+
+  function persistNext(next) {
+    setNavPrefs(next);
+    setNavPreferences(next);
+  }
+
+  function toggleModuleVisibility(href) {
+    const hiddenSet = new Set(navPrefs.hidden || []);
+    if (hiddenSet.has(href)) {
+      hiddenSet.delete(href);
+    } else {
+      hiddenSet.add(href);
+    }
+    persistNext({
+      order: navPrefs.order || [],
+      hidden: Array.from(hiddenSet),
+    });
+  }
+
+  function moveModule(href, direction) {
+    const currentOrder = (navPrefs.order || []).filter((item) => item !== '/app/settings');
+    const allHrefs = orderedModules.map((item) => item.href);
+    const baseOrder = currentOrder.length ? currentOrder : allHrefs;
+    const nextOrder = [...baseOrder];
+    const currentIndex = nextOrder.indexOf(href);
+    if (currentIndex < 0) {
+      return;
+    }
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= nextOrder.length) {
+      return;
+    }
+    const [moved] = nextOrder.splice(currentIndex, 1);
+    nextOrder.splice(targetIndex, 0, moved);
+    persistNext({
+      order: nextOrder,
+      hidden: navPrefs.hidden || [],
+    });
+  }
 
   if (!settings) {
     return (
@@ -102,6 +167,66 @@ export function SettingsPage() {
           title="Workspace Preferences"
         />
       </div>
+
+      {isAdmin ? (
+        <Card className="reference-card reference-card--wide">
+          <CardHeader
+            eyebrow="Admin"
+            title="Sidebar Navigation"
+            description="Add/remove and rearrange sidebar module options."
+            action={
+              <button
+                type="button"
+                className="compact-toggle"
+                onClick={() => {
+                  clearNavPreferences();
+                  setNavPrefs(getNavPreferences());
+                }}
+              >
+                <RotateCcw size={14} />
+                Reset
+              </button>
+            }
+          />
+          <div className="stack-list">
+            {orderedModules.map((module, index) => (
+              <div className="stack-row" key={`nav-pref-${module.href}`}>
+                <span className="stack-row__label">
+                  <span>
+                    <strong>{module.label}</strong>
+                    <small>{module.href}</small>
+                  </span>
+                </span>
+                <div className="stack-row__actions">
+                  <button
+                    type="button"
+                    className="compact-toggle"
+                    onClick={() => moveModule(module.href, 'up')}
+                    disabled={index === 0}
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="compact-toggle"
+                    onClick={() => moveModule(module.href, 'down')}
+                    disabled={index === orderedModules.length - 1}
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className={module.hidden ? 'compact-toggle' : 'compact-toggle compact-toggle--active'}
+                    onClick={() => toggleModuleVisibility(module.href)}
+                  >
+                    {module.hidden ? 'Show' : 'Hide'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
     </section>
   );
 }

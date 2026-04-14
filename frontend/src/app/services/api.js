@@ -183,12 +183,6 @@ export function getLatestTickets({ assignee = '' } = {}) {
   return request(backendBaseUrl, `/api/work/tickets${suffix}`);
 }
 
-export function getTicketsTodo(assignee) {
-  const params = new URLSearchParams();
-  params.set('assignee', String(assignee || '').trim());
-  return request(backendBaseUrl, `/api/tickets/todo?${params.toString()}`);
-}
-
 export function getUploads() {
   return request(backendBaseUrl, '/uploads');
 }
@@ -380,6 +374,25 @@ export function getAiHealth() {
   return request(aiBaseUrl, '/api/ai/health');
 }
 
+export function getFlowRuns({ flowName = '', status = '', userId = '', limit = 100 } = {}) {
+  const params = new URLSearchParams();
+  if (String(flowName || '').trim()) {
+    params.set('flow_name', String(flowName).trim());
+  }
+  if (String(status || '').trim()) {
+    params.set('status', String(status).trim());
+  }
+  if (String(userId || '').trim()) {
+    params.set('user_id', String(userId).trim());
+  }
+  params.set('limit', String(limit || 100));
+  return request(backendBaseUrl, `/api/flows/runs?${params.toString()}`);
+}
+
+export function getFlowRunById(runId) {
+  return request(backendBaseUrl, `/api/flows/runs/${encodeURIComponent(String(runId || ''))}`);
+}
+
 export function getAiInteractionLogs(limit = 200) {
   const params = new URLSearchParams();
   params.set('limit', String(limit));
@@ -484,5 +497,52 @@ export function askAssistant({ query, currentRoute, context }) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
+  });
+}
+
+export function getAdminFlowTemplates() {
+  return request(backendBaseUrl, '/api/admin/flow-templates');
+}
+
+export function createAdminFlowTemplate(template) {
+  return request(backendBaseUrl, '/api/admin/flow-templates', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(template || {})
+  });
+}
+
+export function updateAdminFlowTemplate(templateId, template) {
+  return request(backendBaseUrl, `/api/admin/flow-templates/${encodeURIComponent(String(templateId || ''))}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(template || {})
+  });
+}
+
+export function runAdminFlowTemplate(templateId, variables = {}) {
+  return request(backendBaseUrl, `/api/admin/flow-templates/${encodeURIComponent(String(templateId || ''))}/run`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ variables: variables || {} })
+  });
+}
+
+export function runFlow(template, variables = {}) {
+  return request(backendBaseUrl, '/api/admin/flow-templates/run', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      template: template || {},
+      variables: variables || {}
+    })
   });
 }

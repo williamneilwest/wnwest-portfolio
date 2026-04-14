@@ -45,10 +45,8 @@ import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
 import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from './utils/ticketRules';
-import { TodayTodoCard } from './components/TodayTodoCard';
 import { IdentityAccessModule } from './components/IdentityAccessModule';
 
-const DEFAULT_CARD_ASSIGNEE = 'William West';
 const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
 const TABLE_PAGE_SIZE = 50;
 const PREVIEW_COLUMN_PREFERENCE_KEY = 'westos.work.previewColumns';
@@ -421,6 +419,7 @@ export function WorkPage({ readOnly = false }) {
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isUploadsExpanded, setIsUploadsExpanded] = useState(false);
   const [isEditDatasetOpen, setIsEditDatasetOpen] = useState(false);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState(() => (isActiveTicketsRoute ? 'tickets' : 'overview'));
   const [datasetVisibleColumns, setDatasetVisibleColumns] = useState([]);
   const [columnFilters, setColumnFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
@@ -434,7 +433,6 @@ export function WorkPage({ readOnly = false }) {
     visible_columns: 0,
     open: 0,
   });
-  const [autoTodo, setAutoTodo] = useState([]);
   const csvUploads = useMemo(
     () =>
       uploadedFiles.filter((file) => {
@@ -622,7 +620,6 @@ export function WorkPage({ readOnly = false }) {
             ? latestTicketsPayload.metrics
             : { total: rows.length, flagged: 0, visible_columns: columns.length, open: rows.length }
         );
-        setAutoTodo(Array.isArray(latestTicketsPayload?.todo) ? latestTicketsPayload.todo : []);
         setCachedWorkDataset(nextDataset);
       } catch (requestError) {
         if (!isMounted) {
@@ -634,7 +631,6 @@ export function WorkPage({ readOnly = false }) {
         setLatestLastUpdated(null);
         setLatestSource('');
         setAutoMetrics({ total: 0, flagged: 0, visible_columns: 0, open: 0 });
-        setAutoTodo([]);
         setError(requestError.message || 'Active Tickets dataset could not be loaded.');
       } finally {
         if (isMounted) {
@@ -1025,6 +1021,25 @@ export function WorkPage({ readOnly = false }) {
       })),
     [paginatedVisibleTickets]
   );
+  const overviewPreviewRows = useMemo(() => {
+    return visibleTickets.slice(0, 8).map(({ ticket }) => {
+      const ticketName = getTicketId(ticket, datasetColumns);
+      const description = datasetDescriptionColumn ? getCellText(ticket, datasetDescriptionColumn).trim() : '';
+      return {
+        id: ticketName || 'Unknown ticket',
+        description: description || 'No short description available.',
+        assignee: getTicketAssignee(ticket, datasetColumns).trim() || 'Unassigned',
+      };
+    });
+  }, [datasetColumns, datasetDescriptionColumn, visibleTickets]);
+  const workspaceTabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'tickets', label: 'Tickets' },
+    { id: 'identity', label: 'Identity' },
+    { id: 'data', label: 'Data' },
+    { id: 'ai', label: 'AI' },
+    { id: 'tools', label: 'Tools' },
+  ];
 
   async function runAnalysis(file) {
     setError('');
@@ -1234,338 +1249,441 @@ export function WorkPage({ readOnly = false }) {
             type="file"
           />
 
-          <div className="work-modules-stack">
-            <ModuleCard title="Active Tickets" collapsible>
-              <DatasetPage
-                datasetState={datasetState}
-                onVisibleColumnsChange={handleDatasetVisibleColumnsChange}
-                onUploadClick={() => {
-                  if (canMutate) {
-                    fileInputRef.current?.click();
-                  }
-                }}
-                onToggleHistory={() => {
-                  setIsHistoryExpanded((current) => !current);
-                  setIsUploadsExpanded(false);
-                }}
-                onToggleUploads={() => {
-                  setIsUploadsExpanded((current) => !current);
-                  setIsHistoryExpanded(false);
-                }}
-                isHistoryExpanded={isHistoryExpanded}
-                isUploadsExpanded={isUploadsExpanded}
-                recentAnalyses={recentAnalyses}
-                isLoadingRecent={isLoadingRecent}
-                onRecentRunSelect={handleRecentRunSelection}
-                uploadedFiles={csvUploads}
-                isLoadingUploads={isLoadingUploads}
-                onUploadSelect={(file) => void handleUploadedFileSelection(file)}
-                leftControls={(
-                  <input
-                    aria-label="Search dataset rows"
-                    className="data-table__search"
-                    onChange={(event) => setDatasetGlobalSearch(event.target.value)}
-                    placeholder="Search..."
-                    type="text"
-                    value={datasetGlobalSearch}
-                  />
-                )}
-                rightControls={(
-                  <>
-                    {datasetAssigneeColumn ? (
-                      <select
-                        className="ticket-queue__filter"
-                        onChange={(event) => setAssigneeFilter(event.target.value)}
-                        value={assigneeFilter}
-                      >
-                        <option value="">Assignee</option>
-                        {assigneeOptions.map((assignee) => (
-                          <option key={assignee} value={assignee}>{assignee}</option>
-                        ))}
-                      </select>
-                    ) : null}
-                    {datasetSiteColumn ? (
-                      <select
-                        className="ticket-queue__filter"
-                        onChange={(event) => setSiteFilter(event.target.value)}
-                        value={siteFilter}
-                      >
-                        <option value="">Site</option>
-                        {siteOptions.map((site) => (
-                          <option key={site} value={site}>{site}</option>
-                        ))}
-                      </select>
-                    ) : null}
-                    <button
-                      aria-pressed={showOnlyFlaggedTickets}
-                      className={showOnlyFlaggedTickets ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                      onClick={() => setShowOnlyFlaggedTickets((current) => !current)}
-                      type="button"
-                    >
-                      Flagged
-                    </button>
-                    <button
-                      className="compact-toggle"
-                      disabled={!analysis || loadingAI || isLoadingSavedRun || !canMutate}
-                      title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
-                      onClick={handleAiAnalysis}
-                      type="button"
-                    >
-                      <MessageSquareText size={14} />
-                      {loadingAI ? 'AI...' : 'Run AI'}
-                    </button>
-                    <div className="ticket-view-toggle" role="tablist" aria-label="Dataset view">
-                      <button
-                        aria-pressed={datasetView === 'cards'}
-                        className={datasetView === 'cards' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                        onClick={() => setDatasetView('cards')}
-                        type="button"
-                      >
-                        Cards
-                      </button>
-                      <button
-                        aria-pressed={datasetView === 'table'}
-                        className={datasetView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                        onClick={() => setDatasetView('table')}
-                        type="button"
-                      >
-                        Table
-                      </button>
-                      <button
-                        aria-pressed={datasetView === 'metrics'}
-                        className={datasetView === 'metrics' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                        onClick={() => setDatasetView('metrics')}
-                        type="button"
-                      >
-                        Metrics
-                      </button>
-                    </div>
-                    <button
-                      className={isEditDatasetOpen ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                      onClick={() => setIsEditDatasetOpen(true)}
-                      type="button"
-                    >
-                      <SlidersHorizontal size={14} />
-                      Edit Dataset
-                    </button>
-                  </>
-                )}
-                uploadDisabled={!canMutate}
-                uploadDisabledReason={readOnly ? 'Read-only view' : 'Sign in to use this feature'}
-                showChangeDatasetSection={false}
-                showColumnSelector={false}
+          <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
+            {workspaceTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeWorkspaceTab === tab.id}
+                className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                onClick={() => setActiveWorkspaceTab(tab.id)}
               >
-                <section className="analysis-grid">
-                  <Card className="analysis-grid__wide">
-                    <div className="ticket-source-banner ticket-source-banner--compact">
-                      <span>Active File: {formatDataFileName(latestFileName) || 'Unknown'}</span>
-                      <span>{datasetVisibleColumns.length} columns visible</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="work-modules-stack">
+            {activeWorkspaceTab === 'overview' ? (
+              <>
+                <ModuleCard title="Workspace Snapshot" collapsible>
+                  <div className="dataset-metrics-grid">
+                    <div className="metric-tile"><span>Dataset</span><strong>{formatDataFileName(latestFileName) || 'Unknown'}</strong></div>
+                    <div className="metric-tile"><span>Last uploaded</span><strong>{formatUploadTimestamp(latestLastUpdated)}</strong></div>
+                    <div className="metric-tile"><span>Source</span><strong>{formatUploadSource(latestSource || 'manual')}</strong></div>
+                    <div className="metric-tile"><span>Rows in scope</span><strong>{visibleTickets.length}</strong></div>
+                  </div>
+                </ModuleCard>
+
+                <ModuleCard title="Active Tickets Preview" collapsible defaultCollapsed>
+                  {overviewPreviewRows.length ? (
+                    <div className="stack-list">
+                      {overviewPreviewRows.map((ticket) => (
+                        <article className="stack-row" key={`${ticket.id}-${ticket.assignee}`}>
+                          <span className="stack-row__label">
+                            <span>
+                              <strong>{ticket.id}</strong>
+                              <small>{ticket.description}</small>
+                            </span>
+                          </span>
+                          <strong>{ticket.assignee}</strong>
+                        </article>
+                      ))}
                     </div>
+                  ) : (
+                    <EmptyState icon={<FileSpreadsheet size={20} />} title="No tickets to preview" description="Load a dataset to view a ticket preview." />
+                  )}
+                </ModuleCard>
 
-                    {latestMessage ? <p className="status-text">{latestMessage}</p> : null}
+                <ModuleCard title="Today’s To-Do" collapsible defaultCollapsed>
+                  <p className="status-text">An AI-generated daily to-do list is on the way.</p>
+                </ModuleCard>
 
-                    {latestDataset?.rows?.length ? (
-                      visibleTickets.length ? (
-                        datasetView === 'cards' ? (
-                          <ErrorBoundary
-                            fallback={
-                              <EmptyState
-                                icon={<FileSpreadsheet size={20} />}
-                                title="Card view unavailable"
-                                description="A rendering issue occurred in card mode."
-                              />
-                            }
-                          >
-                            <DataCardList
-                              readOnly={isPublicView}
-                              rows={cardRows}
-                              visibleColumns={datasetVisibleColumns}
-                              onRowSelect={handlePreviewRowSelect}
-                              rowKey={(row, index) =>
-                                row?.id
-                                || row?.ticket_number
-                                || row?.number
-                                || row?.sys_id
-                                || getTicketId(row, datasetColumns)
-                                || `row-${index}`
+                <ModuleCard title="Quick Stats" collapsible defaultCollapsed>
+                  <div className="dataset-metrics-grid">
+                    <div className="metric-tile"><span>Total tickets</span><strong>{Number(autoMetrics?.total || latestDataset?.rows?.length || 0)}</strong></div>
+                    <div className="metric-tile"><span>Open tickets</span><strong>{Number(autoMetrics?.open || 0)}</strong></div>
+                    <div className="metric-tile"><span>Flagged tickets</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
+                    <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || latestDataset?.columns?.length || 0)}</strong></div>
+                  </div>
+                </ModuleCard>
+              </>
+            ) : null}
+
+            {activeWorkspaceTab === 'tickets' ? (
+              <ModuleCard title="Active Tickets" collapsible>
+                <DatasetPage
+                  datasetState={datasetState}
+                  onVisibleColumnsChange={handleDatasetVisibleColumnsChange}
+                  onUploadClick={() => {
+                    if (canMutate) {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onToggleHistory={() => {
+                    setIsHistoryExpanded((current) => !current);
+                    setIsUploadsExpanded(false);
+                  }}
+                  onToggleUploads={() => {
+                    setIsUploadsExpanded((current) => !current);
+                    setIsHistoryExpanded(false);
+                  }}
+                  isHistoryExpanded={isHistoryExpanded}
+                  isUploadsExpanded={isUploadsExpanded}
+                  recentAnalyses={recentAnalyses}
+                  isLoadingRecent={isLoadingRecent}
+                  onRecentRunSelect={handleRecentRunSelection}
+                  uploadedFiles={csvUploads}
+                  isLoadingUploads={isLoadingUploads}
+                  onUploadSelect={(file) => void handleUploadedFileSelection(file)}
+                  leftControls={(
+                    <input
+                      aria-label="Search dataset rows"
+                      className="data-table__search"
+                      onChange={(event) => setDatasetGlobalSearch(event.target.value)}
+                      placeholder="Search..."
+                      type="text"
+                      value={datasetGlobalSearch}
+                    />
+                  )}
+                  rightControls={(
+                    <>
+                      {datasetAssigneeColumn ? (
+                        <select
+                          className="ticket-queue__filter"
+                          onChange={(event) => setAssigneeFilter(event.target.value)}
+                          value={assigneeFilter}
+                        >
+                          <option value="">Assignee</option>
+                          {assigneeOptions.map((assignee) => (
+                            <option key={assignee} value={assignee}>{assignee}</option>
+                          ))}
+                        </select>
+                      ) : null}
+                      {datasetSiteColumn ? (
+                        <select
+                          className="ticket-queue__filter"
+                          onChange={(event) => setSiteFilter(event.target.value)}
+                          value={siteFilter}
+                        >
+                          <option value="">Site</option>
+                          {siteOptions.map((site) => (
+                            <option key={site} value={site}>{site}</option>
+                          ))}
+                        </select>
+                      ) : null}
+                      <button
+                        aria-pressed={showOnlyFlaggedTickets}
+                        className={showOnlyFlaggedTickets ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                        onClick={() => setShowOnlyFlaggedTickets((current) => !current)}
+                        type="button"
+                      >
+                        Flagged
+                      </button>
+                      <button
+                        className="compact-toggle"
+                        disabled={!analysis || loadingAI || isLoadingSavedRun || !canMutate}
+                        title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
+                        onClick={handleAiAnalysis}
+                        type="button"
+                      >
+                        <MessageSquareText size={14} />
+                        {loadingAI ? 'AI...' : 'Run AI'}
+                      </button>
+                      <div className="ticket-view-toggle" role="tablist" aria-label="Dataset view">
+                        <button
+                          aria-pressed={datasetView === 'cards'}
+                          className={datasetView === 'cards' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                          onClick={() => setDatasetView('cards')}
+                          type="button"
+                        >
+                          Cards
+                        </button>
+                        <button
+                          aria-pressed={datasetView === 'table'}
+                          className={datasetView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                          onClick={() => setDatasetView('table')}
+                          type="button"
+                        >
+                          Table
+                        </button>
+                        <button
+                          aria-pressed={datasetView === 'metrics'}
+                          className={datasetView === 'metrics' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                          onClick={() => setDatasetView('metrics')}
+                          type="button"
+                        >
+                          Metrics
+                        </button>
+                      </div>
+                      <button
+                        className={isEditDatasetOpen ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                        onClick={() => setIsEditDatasetOpen(true)}
+                        type="button"
+                      >
+                        <SlidersHorizontal size={14} />
+                        Edit Dataset
+                      </button>
+                    </>
+                  )}
+                  uploadDisabled={!canMutate}
+                  uploadDisabledReason={readOnly ? 'Read-only view' : 'Sign in to use this feature'}
+                  showChangeDatasetSection={false}
+                  showColumnSelector={false}
+                >
+                  <section className="analysis-grid">
+                    <Card className="analysis-grid__wide">
+                      <div className="ticket-source-banner ticket-source-banner--compact">
+                        <span>Active File: {formatDataFileName(latestFileName) || 'Unknown'}</span>
+                        <span>{datasetVisibleColumns.length} columns visible</span>
+                      </div>
+
+                      {latestMessage ? <p className="status-text">{latestMessage}</p> : null}
+
+                      {latestDataset?.rows?.length ? (
+                        visibleTickets.length ? (
+                          datasetView === 'cards' ? (
+                            <ErrorBoundary
+                              fallback={
+                                <EmptyState
+                                  icon={<FileSpreadsheet size={20} />}
+                                  title="Card view unavailable"
+                                  description="A rendering issue occurred in card mode."
+                                />
                               }
-                              config={{
-                                variant: 'ticket',
-                                primaryField: 'number',
-                                secondaryField: datasetDescriptionColumn,
-                                badgeField: 'state',
-                                getIndicators: (row) => {
-                                  const rules = row?.__westos?.matchedRules || [];
-                                  const hasTag = rules.some((rule) => {
-                                    const id = String(rule?.id || '').toLowerCase();
-                                    return id === 'responder_group' || id.startsWith('kb_tag_');
-                                  });
-                                  return hasTag ? [{ label: 'Tagged', tone: 'info', icon: <Tag size={12} /> }] : [];
-                                },
-                              }}
+                            >
+                              <DataCardList
+                                readOnly={isPublicView}
+                                rows={cardRows}
+                                visibleColumns={datasetVisibleColumns}
+                                onRowSelect={handlePreviewRowSelect}
+                                rowKey={(row, index) =>
+                                  row?.id
+                                  || row?.ticket_number
+                                  || row?.number
+                                  || row?.sys_id
+                                  || getTicketId(row, datasetColumns)
+                                  || `row-${index}`
+                                }
+                                config={{
+                                  variant: 'ticket',
+                                  primaryField: 'number',
+                                  secondaryField: datasetDescriptionColumn,
+                                  badgeField: 'state',
+                                  getIndicators: (row) => {
+                                    const rules = row?.__westos?.matchedRules || [];
+                                    const hasTag = rules.some((rule) => {
+                                      const id = String(rule?.id || '').toLowerCase();
+                                      return id === 'responder_group' || id.startsWith('kb_tag_');
+                                    });
+                                    return hasTag ? [{ label: 'Tagged', tone: 'info', icon: <Tag size={12} /> }] : [];
+                                  },
+                                }}
+                              />
+                            </ErrorBoundary>
+                          ) : datasetView === 'table' ? (
+                            <DataTable
+                              readOnly={isPublicView}
+                              onRowSelect={handlePreviewRowSelect}
+                              onSort={(column) =>
+                                setDatasetSortConfig((current) => {
+                                  if (current.column !== column) return { column, direction: 'asc' };
+                                  if (current.direction === 'asc') return { column, direction: 'desc' };
+                                  return { column: '', direction: 'asc' };
+                                })
+                              }
+                              rows={paginatedDatasetRows}
+                              selectedRow={selectedRow}
+                              sortConfig={datasetSortConfig}
+                              visibleColumns={datasetVisibleColumns}
                             />
-                          </ErrorBoundary>
-                        ) : datasetView === 'table' ? (
-                          <DataTable
-                            readOnly={isPublicView}
-                            onRowSelect={handlePreviewRowSelect}
-                            onSort={(column) =>
-                              setDatasetSortConfig((current) => {
-                                if (current.column !== column) return { column, direction: 'asc' };
-                                if (current.direction === 'asc') return { column, direction: 'desc' };
-                                return { column: '', direction: 'asc' };
-                              })
-                            }
-                            rows={paginatedDatasetRows}
-                            selectedRow={selectedRow}
-                            sortConfig={datasetSortConfig}
-                            visibleColumns={datasetVisibleColumns}
-                          />
+                          ) : (
+                            <div className="dataset-metrics-grid">
+                              <div className="metric-tile"><span>Rows in view</span><strong>{visibleTickets.length}</strong></div>
+                              <div className="metric-tile"><span>Flagged rows</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
+                              <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || datasetVisibleColumns.length)}</strong></div>
+                              <div className="metric-tile"><span>Current page</span><strong>{datasetPage + 1}</strong></div>
+                            </div>
+                          )
                         ) : (
-                          <div className="dataset-metrics-grid">
-                            <div className="metric-tile"><span>Rows in view</span><strong>{visibleTickets.length}</strong></div>
-                            <div className="metric-tile"><span>Flagged rows</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
-                            <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || datasetVisibleColumns.length)}</strong></div>
-                            <div className="metric-tile"><span>Current page</span><strong>{datasetPage + 1}</strong></div>
-                          </div>
+                          <EmptyState
+                            icon={<FileSpreadsheet size={20} />}
+                            title="No rows match the current view"
+                            description={
+                              assigneeFilter
+                                ? `No rows are assigned to ${assigneeFilter}.`
+                                : showOnlyFlaggedTickets
+                                  ? 'No flagged rows match current filters.'
+                                  : 'No dataset rows match current filters.'
+                            }
+                          />
                         )
                       ) : (
                         <EmptyState
                           icon={<FileSpreadsheet size={20} />}
-                          title="No rows match the current view"
-                          description={
-                            assigneeFilter
-                              ? `No rows are assigned to ${assigneeFilter}.`
-                              : showOnlyFlaggedTickets
-                                ? 'No flagged rows match current filters.'
-                                : 'No dataset rows match current filters.'
-                          }
+                          title="No dataset loaded"
+                          description="Upload a CSV or choose one from recent runs/uploads."
                         />
-                      )
-                    ) : (
-                      <EmptyState
-                        icon={<FileSpreadsheet size={20} />}
-                        title="No dataset loaded"
-                        description="Upload a CSV or choose one from recent runs/uploads."
-                      />
-                    )}
+                      )}
 
-                    {datasetView !== 'metrics' ? (
-                      <div className="data-table__pagination">
-                        <span>Page {datasetPage + 1}</span>
-                        <div className="data-table__pagination-actions">
-                          <button
-                            className="compact-toggle"
-                            disabled={datasetPage === 0}
-                            onClick={() => setDatasetPage((current) => Math.max(0, current - 1))}
-                            type="button"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            className="compact-toggle"
-                            disabled={(datasetPage + 1) * TABLE_PAGE_SIZE >= (datasetView === 'cards' ? visibleTickets.length : filteredDatasetRows.length)}
-                            onClick={() => setDatasetPage((current) => current + 1)}
-                            type="button"
-                          >
-                            Next
-                          </button>
+                      {datasetView !== 'metrics' ? (
+                        <div className="data-table__pagination">
+                          <span>Page {datasetPage + 1}</span>
+                          <div className="data-table__pagination-actions">
+                            <button
+                              className="compact-toggle"
+                              disabled={datasetPage === 0}
+                              onClick={() => setDatasetPage((current) => Math.max(0, current - 1))}
+                              type="button"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              className="compact-toggle"
+                              disabled={(datasetPage + 1) * TABLE_PAGE_SIZE >= (datasetView === 'cards' ? visibleTickets.length : filteredDatasetRows.length)}
+                              onClick={() => setDatasetPage((current) => current + 1)}
+                              type="button"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </Card>
+                  </section>
+                </DatasetPage>
+              </ModuleCard>
+            ) : null}
+
+            {activeWorkspaceTab === 'identity' ? (
+              <>
+                <ModuleCard title="Identity & Access" collapsible>
+                  <IdentityAccessModule
+                    authenticated={authenticated}
+                    canExecuteFlows={canExecuteFlows}
+                    siteCode={String(user?.site_code || '').trim()}
+                  />
+                </ModuleCard>
+                <ModuleCard title="Identity Tools" collapsible defaultCollapsed>
+                  <div className="table-actions">
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/get-user-groups')}>
+                      Get User Groups
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/group-search')}>
+                      Group Search Tool
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/user-group-association')}>
+                      User-Group Association
+                    </button>
+                  </div>
+                </ModuleCard>
+              </>
+            ) : null}
+
+            {activeWorkspaceTab === 'ai' ? (
+              <ModuleCard title="AI Tools" collapsible>
+                <section className="analysis-grid">
+                  <Card className="work-insights-pane">
+                    <CardHeader
+                      eyebrow="AI Insights"
+                      title="Structured analysis"
+                      description="AI results are grouped into concise sections instead of a raw response block."
+                    />
+
+                    {aiAnalysis ? (
+                      <div className="card__scroll">
+                        <div className="analysis-grid">
+                          <Card>
+                            <CardHeader eyebrow="Section 1" title="Summary" />
+                            <p>{aiSections.summary || 'No summary returned.'}</p>
+                          </Card>
+                          <Card>
+                            <CardHeader eyebrow="Section 2" title="Key Insights" />
+                            {aiSections.keyInsights.length ? (
+                              <ul className="card__list">{aiSections.keyInsights.map((item) => <li key={item}>{item}</li>)}</ul>
+                            ) : (
+                              <p>No key insights returned.</p>
+                            )}
+                          </Card>
+                          <Card>
+                            <CardHeader eyebrow="Section 3" title="Anomalies" />
+                            {aiSections.anomalies.length ? (
+                              <ul className="card__list">{aiSections.anomalies.map((item) => <li key={item}>{item}</li>)}</ul>
+                            ) : (
+                              <p>No anomalies identified.</p>
+                            )}
+                          </Card>
+                          <Card>
+                            <CardHeader eyebrow="Section 4" title="Recommendations" />
+                            {aiSections.recommendations.length ? (
+                              <ul className="card__list">{aiSections.recommendations.map((item) => <li key={item}>{item}</li>)}</ul>
+                            ) : (
+                              <p>No recommendations returned.</p>
+                            )}
+                          </Card>
                         </div>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="dataset-metrics-grid">
+                        <div className="metric-tile"><span>Total tickets</span><strong>{Number(autoMetrics?.total || latestDataset?.rows?.length || 0)}</strong></div>
+                        <div className="metric-tile"><span>Open tickets</span><strong>{Number(autoMetrics?.open || 0)}</strong></div>
+                        <div className="metric-tile"><span>Flagged tickets</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
+                        <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || latestDataset?.columns?.length || 0)}</strong></div>
+                      </div>
+                    )}
                   </Card>
                 </section>
-              </DatasetPage>
-            </ModuleCard>
+              </ModuleCard>
+            ) : null}
 
-            <ModuleCard title="Identity & Access" collapsible defaultCollapsed>
-              <IdentityAccessModule
-                authenticated={authenticated}
-                canExecuteFlows={canExecuteFlows}
-                siteCode={String(user?.site_code || '').trim()}
-              />
-            </ModuleCard>
-
-            <ModuleCard title="AI Tools" collapsible>
-              <section className="analysis-grid work-todo-insights-grid">
-                <TodayTodoCard
-                  assignee={String(user?.username || DEFAULT_CARD_ASSIGNEE)}
-                  items={autoTodo}
-                  message={autoTodo.length ? '' : 'No tasks for today 🎉'}
-                  fetchOnMount={false}
-                />
-
-                <Card className="work-insights-pane">
-                  <CardHeader
-                    eyebrow="AI Insights"
-                    title="Structured analysis"
-                    description="AI results are grouped into concise sections instead of a raw response block."
-                  />
-
-                  {aiAnalysis ? (
-                    <div className="card__scroll">
-                      <div className="analysis-grid">
-                        <Card>
-                          <CardHeader eyebrow="Section 1" title="Summary" />
-                          <p>{aiSections.summary || 'No summary returned.'}</p>
-                        </Card>
-                        <Card>
-                          <CardHeader eyebrow="Section 2" title="Key Insights" />
-                          {aiSections.keyInsights.length ? (
-                            <ul className="card__list">{aiSections.keyInsights.map((item) => <li key={item}>{item}</li>)}</ul>
-                          ) : (
-                            <p>No key insights returned.</p>
-                          )}
-                        </Card>
-                        <Card>
-                          <CardHeader eyebrow="Section 3" title="Anomalies" />
-                          {aiSections.anomalies.length ? (
-                            <ul className="card__list">{aiSections.anomalies.map((item) => <li key={item}>{item}</li>)}</ul>
-                          ) : (
-                            <p>No anomalies identified.</p>
-                          )}
-                        </Card>
-                        <Card>
-                          <CardHeader eyebrow="Section 4" title="Recommendations" />
-                          {aiSections.recommendations.length ? (
-                            <ul className="card__list">{aiSections.recommendations.map((item) => <li key={item}>{item}</li>)}</ul>
-                          ) : (
-                            <p>No recommendations returned.</p>
-                          )}
-                        </Card>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="dataset-metrics-grid">
-                      <div className="metric-tile"><span>Total tickets</span><strong>{Number(autoMetrics?.total || latestDataset?.rows?.length || 0)}</strong></div>
-                      <div className="metric-tile"><span>Open tickets</span><strong>{Number(autoMetrics?.open || 0)}</strong></div>
-                      <div className="metric-tile"><span>Flagged tickets</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
-                      <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || latestDataset?.columns?.length || 0)}</strong></div>
-                    </div>
-                  )}
-                </Card>
-              </section>
-            </ModuleCard>
-
-            <ModuleCard title="Data Tools" collapsible defaultCollapsed>
-              <div className="work-data-tools">
-                <p className="status-text">Open existing Work tools and dataset views without changing ticket data flow.</p>
-                <div className="table-actions">
-                  <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/table')}>
-                    Open Active Tickets Table
-                  </button>
-                  <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/get-user-groups')}>
-                    Get User Groups
-                  </button>
-                  <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/group-search')}>
-                    Group Search Tool
-                  </button>
-                  <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/user-group-association')}>
-                    User-Group Association
-                  </button>
+            {activeWorkspaceTab === 'data' ? (
+              <ModuleCard title="Data Tools" collapsible>
+                <div className="work-data-tools">
+                  <p className="status-text">Open existing Work tools and dataset views without changing ticket data flow.</p>
+                  <div className="table-actions">
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/table')}>
+                      Open Active Tickets Table
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => setIsEditDatasetOpen(true)}>
+                      Edit Dataset
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/uploads')}>
+                      Upload Tools
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </ModuleCard>
+              </ModuleCard>
+            ) : null}
+
+            {activeWorkspaceTab === 'tools' ? (
+              <>
+                <ModuleCard title="Utilities" collapsible>
+                  <div className="table-actions">
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/get-user-groups')}>
+                      Get User Groups
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/group-search')}>
+                      Group Search Tool
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/user-group-association')}>
+                      User-Group Association
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/ai-metrics')}>
+                      AI Metrics
+                    </button>
+                  </div>
+                </ModuleCard>
+                <ModuleCard title="System Status" collapsible defaultCollapsed>
+                  <div className="dataset-metrics-grid">
+                    <div className="metric-tile"><span>Authenticated</span><strong>{authenticated ? 'Yes' : 'No'}</strong></div>
+                    <div className="metric-tile"><span>Role</span><strong>{String(role || 'public')}</strong></div>
+                    <div className="metric-tile"><span>Active file</span><strong>{formatDataFileName(latestFileName) || 'Unknown'}</strong></div>
+                    <div className="metric-tile"><span>Rows loaded</span><strong>{latestDataset?.rows?.length || 0}</strong></div>
+                  </div>
+                </ModuleCard>
+              </>
+            ) : null}
           </div>
 
           {isEditDatasetOpen ? (
@@ -1689,7 +1807,7 @@ export function WorkPage({ readOnly = false }) {
                       {csvUploads?.length ? (
                         <div className="stack-list">
                           {csvUploads.map((file) => (
-                            <button key={file.filename} className="stack-row stack-row--interactive" onClick={() => void handleUploadedFileSelection(file)} type="button">
+                            <div key={file.filename} className="stack-row">
                               <span className="stack-row__label">
                                 <Upload size={16} />
                                 <span>
@@ -1697,7 +1815,24 @@ export function WorkPage({ readOnly = false }) {
                                   <small>{file.modifiedAt || file.url || 'Uploaded source'}</small>
                                 </span>
                               </span>
-                            </button>
+                              <div className="stack-row__actions">
+                                <button className="compact-toggle" onClick={() => void handleUploadedFileSelection(file)} type="button">
+                                  Load Here
+                                </button>
+                                <button
+                                  className="compact-toggle"
+                                  onClick={() => navigate(`/app/work/table?url=${encodeURIComponent(file.url)}&fileName=${encodeURIComponent(file.filename)}&modifiedAt=${encodeURIComponent(file.modifiedAt || '')}`, {
+                                    state: {
+                                      from: `${location.pathname}${location.search || ''}`,
+                                      label: 'Active Tickets',
+                                    },
+                                  })}
+                                  type="button"
+                                >
+                                  Open in Table
+                                </button>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       ) : isLoadingUploads ? (

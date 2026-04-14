@@ -4,16 +4,19 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="added terminal routing">
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="added Hardware page">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/caddy/Caddyfile" beforeDir="false" afterPath="$PROJECT_DIR$/caddy/Caddyfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/group_cache.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/group_cache.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/work.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/work.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/group_lookup.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/group_lookup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/console/LogNotificationBanner.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/console/LogNotificationBanner.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/UserGroupAssociationPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/UserGroupAssociationPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/settings/SettingsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/settings/SettingsPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/uploads/UploadsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/uploads/UploadsPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
@@ -157,15 +160,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="42949000" />
-    </task>
-    <task id="LOCAL-00011" summary="corrected json formatting of meta data for ai analysis response">
-      <option name="closed" value="true" />
-      <created>1775980532519</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1775980532519</updated>
+      <workItem from="1776019342314" duration="46628000" />
     </task>
     <task id="LOCAL-00012" summary="corrected json formatting of meta data for ai analysis response">
       <option name="closed" value="true" />
@@ -551,7 +546,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776118788124</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="added Hardware page">
+      <option name="closed" value="true" />
+      <created>1776122164672</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1776122164672</updated>
+    </task>
+    <option name="localTasksCounter" value="61" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -569,7 +572,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixed layout issues on tables page" />
     <MESSAGE value="added a ai prompt tracker list" />
     <MESSAGE value="fixe mobile ui issues where pages come up blank on scroll or nav" />
     <MESSAGE value="fixed mobile issues and created nav Menu button, removed old nav dropdown" />
@@ -594,7 +596,8 @@
     <MESSAGE value="edited ActiveTickets page" />
     <MESSAGE value="edited auth for allowance of work page for users not signed in" />
     <MESSAGE value="added terminal routing" />
-    <option name="LAST_COMMIT_MESSAGE" value="added terminal routing" />
+    <MESSAGE value="added Hardware page" />
+    <option name="LAST_COMMIT_MESSAGE" value="added Hardware page" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

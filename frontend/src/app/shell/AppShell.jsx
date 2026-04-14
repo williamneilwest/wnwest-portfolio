@@ -12,6 +12,7 @@ import { getSystemStatus } from '../services/api';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { isWorkDomainHost } from '../constants/domain';
 import { storage } from '../utils/storage';
+import { applyNavPreferences, getNavPreferences } from '../utils/navPreferences';
 import { modules } from './modules';
 import { AssistantPopover } from '../../features/ai/components/AssistantPopover';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -24,7 +25,7 @@ const NAV_LAST_USED_MAP_KEY = 'westos.nav.lastUsedMap';
 const NAV_GROUPS = [
   { label: 'Workspace', hrefs: ['/app/life', '/app/work', '/app/data', '/app/profile'] },
   { label: 'Intelligence', hrefs: ['/app/ai', '/app/kb'] },
-  { label: 'System', hrefs: ['/app/system', '/app/console', '/app/settings'] },
+  { label: 'System', hrefs: ['/app/system', '/app/flows', '/app/console', '/app/settings'] },
 ];
 
 function safeDecodeURIComponent(value) {
@@ -116,6 +117,9 @@ function getContextTitle(pathname) {
   if (pathname.startsWith('/app/system')) {
     return 'System Viewer';
   }
+  if (pathname.startsWith('/app/flows')) {
+    return 'Flow Tracking';
+  }
 
   if (pathname.startsWith('/app/work')) {
     return 'Work';
@@ -165,6 +169,9 @@ function getBackTarget(pathname) {
   }
 
   if (pathname === '/app/ai' || pathname === '/app/kb' || pathname === '/app/system' || pathname === '/app/console' || pathname === '/app/settings') {
+    return '/app';
+  }
+  if (pathname === '/app/flows') {
     return '/app';
   }
 
@@ -273,28 +280,27 @@ export function AppShell() {
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [navPreferences, setNavPreferences] = useState(() => getNavPreferences());
   const { authenticated, isAdmin } = useCurrentUser();
   const visibleModules = useMemo(() => {
     if (!isWorkDomain) {
       const roleFiltered = modules.filter((module) => {
-        if (module.href === '/app/system' || module.href === '/app/console') {
+        if (module.href === '/app/system' || module.href === '/app/console' || module.href === '/app/flows') {
           return isAdmin;
         }
         return true;
       });
-      return roleFiltered;
+      return isAdmin ? applyNavPreferences(roleFiltered, navPreferences) : roleFiltered;
     }
     return modules.filter((module) => module.href === '/app/work');
-  }, [isAdmin, isWorkDomain]);
+  }, [isAdmin, isWorkDomain, navPreferences]);
 
   const currentModule = visibleModules.find((m) => location.pathname.startsWith(m.href));
 
   const groupedModules = useMemo(() => {
     return NAV_GROUPS.map((group) => ({
       label: group.label,
-      items: group.hrefs
-        .map((href) => visibleModules.find((module) => module.href === href))
-        .filter(Boolean),
+      items: visibleModules.filter((module) => group.hrefs.includes(module.href)),
     }));
   }, [visibleModules]);
 
@@ -405,8 +411,13 @@ export function AppShell() {
 
   useEffect(() => {
     const onAuthRequired = () => setIsLoginModalOpen(true);
+    const onNavPrefsChanged = () => setNavPreferences(getNavPreferences());
     window.addEventListener('westos:auth-required', onAuthRequired);
-    return () => window.removeEventListener('westos:auth-required', onAuthRequired);
+    window.addEventListener('westos:nav-preferences-changed', onNavPrefsChanged);
+    return () => {
+      window.removeEventListener('westos:auth-required', onAuthRequired);
+      window.removeEventListener('westos:nav-preferences-changed', onNavPrefsChanged);
+    };
   }, []);
 
   useEffect(() => {

@@ -16,6 +16,8 @@ from .data_tools import data_tools_bp
 from .auth import auth_bp
 from .agents import agents_bp
 from .profile import profile_bp
+from .flows import flows_bp
+from .admin import admin_bp
 
 
 def register_routes(app):
@@ -37,3 +39,5 @@ def register_routes(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(agents_bp)
     app.register_blueprint(profile_bp)
+    app.register_blueprint(flows_bp)
+    app.register_blueprint(admin_bp)

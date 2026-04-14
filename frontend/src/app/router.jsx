@@ -13,14 +13,16 @@ import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
 import { WorkHubPage } from '../features/work/WorkHubPage';
-import { ConsoleEndpointsPage } from '../features/console/ConsoleEndpointsPage';
-import { ConsolePage } from '../features/console/ConsolePage';
+import { WorkDomainPage } from '../features/work/WorkDomainPage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
+import { FlowRunsPage } from '../features/system/FlowRunsPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AdminUsersPage } from '../features/auth/AdminUsersPage';
 import { ProfilePage } from '../features/auth/ProfilePage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { TerminalPage } from '../features/admin/TerminalPage';
+import { AdminFlowsPage } from '../features/admin/AdminFlowsPage';
+import { FlowBuilderPage } from '../features/admin/FlowBuilderPage';
 import { AppShell } from './shell/AppShell';
 import { isWorkDomainHost } from './constants/domain';
 import { RequireAuth } from './router/RequireAuth';
@@ -97,13 +99,15 @@ export const router = createBrowserRouter(
       },
       {
         path: 'console',
-        ...(isWorkSubdomain
-          ? { element: workRedirect }
-          : { element: <RequireAdmin><ConsolePage /></RequireAdmin> })
+        element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/system" />
       },
       {
         path: 'system',
         element: isWorkSubdomain ? workRedirect : <RequireAdmin><SystemViewerPage /></RequireAdmin>
+      },
+      {
+        path: 'flows',
+        element: isWorkSubdomain ? workRedirect : <RequireAuth><FlowRunsPage /></RequireAuth>
       },
       {
         path: 'terminal',
@@ -111,7 +115,7 @@ export const router = createBrowserRouter(
       },
       {
         path: 'console/endpoints',
-        element: isWorkSubdomain ? workRedirect : <RequireAdmin><ConsoleEndpointsPage /></RequireAdmin>
+        element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/system" />
       },
       {
         path: 'settings',
@@ -150,6 +154,14 @@ export const router = createBrowserRouter(
       {
         path: 'admin/users',
         element: isWorkSubdomain ? workRedirect : <RequireAdmin><AdminUsersPage /></RequireAdmin>
+      },
+      {
+        path: 'admin/flows',
+        element: isWorkSubdomain ? workRedirect : <RequireAdmin><AdminFlowsPage /></RequireAdmin>
+      },
+      {
+        path: 'admin/flow-builder',
+        element: isWorkSubdomain ? workRedirect : <RequireAdmin><FlowBuilderPage /></RequireAdmin>
       },
       {
         path: 'profile',
@@ -204,6 +216,26 @@ export const router = createBrowserRouter(
         Component: UserGroupAssociationPage
       },
       {
+        path: 'work/users',
+        element: <WorkDomainPage domain="users" />
+      },
+      {
+        path: 'work/devices',
+        element: <WorkDomainPage domain="devices" />
+      },
+      {
+        path: 'work/printers',
+        element: <WorkDomainPage domain="printers" />
+      },
+      {
+        path: 'work/software',
+        element: <WorkDomainPage domain="software" />
+      },
+      {
+        path: 'work/hardware',
+        element: <WorkDomainPage domain="hardware" />
+      },
+      {
         path: 'work/insights',
         element: <Navigate replace to="/app/work/ai-metrics" />
       }
@@ -244,6 +276,26 @@ export const router = createBrowserRouter(
   {
     path: '/work/insights',
     element: <Navigate replace to="/app/work/ai-metrics" />
+  },
+  {
+    path: '/work/users',
+    element: <Navigate replace to="/app/work/users" />
+  },
+  {
+    path: '/work/devices',
+    element: <Navigate replace to="/app/work/devices" />
+  },
+  {
+    path: '/work/printers',
+    element: <Navigate replace to="/app/work/printers" />
+  },
+  {
+    path: '/work/software',
+    element: <Navigate replace to="/app/work/software" />
+  },
+  {
+    path: '/work/hardware',
+    element: <Navigate replace to="/app/work/hardware" />
   },
   {
     path: '/readme',
@@ -287,6 +339,10 @@ export const router = createBrowserRouter(
     element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/system" />
   },
   {
+    path: '/flows',
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/flows" />
+  },
+  {
     path: '/terminal',
     element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/terminal" />
   },
@@ -305,6 +361,10 @@ export const router = createBrowserRouter(
   {
     path: '/admin/users',
     element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/admin/users" />
+  },
+  {
+    path: '/admin/flows',
+    element: isWorkSubdomain ? workRedirect : <Navigate replace to="/app/admin/flows" />
   },
   {
     path: '/profile',
