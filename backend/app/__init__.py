@@ -28,6 +28,7 @@ WORK_ALLOWED_PREFIXES = (
     '/api/work',
     '/api/ai',
     '/api/tickets',
+    '/api/groups',
     '/api/reference/groups',
     '/api/reference/users',
     '/api/kb',

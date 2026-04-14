@@ -4,10 +4,12 @@ from ..models.reference import Group, SessionLocal, init_db
 from ..services.authz import RUN_FLOWS_READ, RUN_FLOWS_WRITE, get_current_user, has_permission, require_permission
 from ..services.group_metadata import merge_group_tags
 from ..services.group_lookup import (
+    call_search_groups_flow,
     get_user_groups_via_flow,
     lookup_groups,
     lookup_groups_via_flow,
     search_cached_groups,
+    upsert_groups,
 )
 
 
@@ -20,6 +22,25 @@ def _ensure_db():
     except Exception:
         # Do not fail import time if DB init has issues; operations will error later if needed
         pass
+
+
+def serialize_group(group):
+    return {
+        'id': str(group.get('group_id') or group.get('id') or '').strip(),
+        'name': str(group.get('name') or '').strip(),
+        'description': str(group.get('description') or '').strip(),
+    }
+
+
+def _as_bool(value, default=False):
+    if value is None:
+        return default
+    normalized = str(value).strip().lower()
+    if normalized in {'1', 'true', 'yes', 'y', 'on'}:
+        return True
+    if normalized in {'0', 'false', 'no', 'n', 'off'}:
+        return False
+    return default
 
 
 @group_cache_bp.post('/api/reference/groups/cache')
@@ -104,6 +125,42 @@ def search_groups():
     if not q:
         return jsonify([])
     return jsonify(search_cached_groups(q))
+
+
+@group_cache_bp.get('/api/groups/search')
+def search_groups_cache_first():
+    q = (request.args.get('q') or '').strip()
+    if not q:
+        return jsonify({'source': 'cache', 'results': []})
+
+    refresh = _as_bool(request.args.get('refresh'), default=False)
+    permission_error = require_permission(RUN_FLOWS_READ)
+    if permission_error is not None:
+        return permission_error
+
+    local_results = search_cached_groups(q)
+    if local_results and not refresh:
+        return jsonify({
+            'source': 'cache',
+            'results': [serialize_group(group) for group in local_results],
+        })
+
+    if not has_permission(RUN_FLOWS_WRITE):
+        return jsonify({
+            'source': 'cache',
+            'results': [serialize_group(group) for group in local_results],
+        })
+
+    try:
+        flow_results = call_search_groups_flow(q)
+        upserted = upsert_groups(flow_results)
+        return jsonify({
+            'source': 'flow',
+            'results': [serialize_group(group) for group in (upserted.get('items') or [])],
+            'updated': int(upserted.get('updated') or 0),
+        })
+    except Exception as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 502
 
 
 @group_cache_bp.get('/api/reference/groups/lookup')

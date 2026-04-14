@@ -4,7 +4,7 @@ import logging
 from time import perf_counter
 
 import requests
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from ..models.reference import Group, SessionLocal, init_db
 from .group_metadata import merge_group_tags, normalize_tags
@@ -69,6 +69,7 @@ def _normalize_group(item):
         'name': name,
         'description': description,
         'tags': normalize_tags(tags),
+        'raw_json': item if isinstance(item, dict) else {},
     }
 
 
@@ -146,8 +147,13 @@ def search_cached_groups(search_text, limit=20):
         lowered = query.lower()
         results = (
             session.query(Group)
-            .filter(func.lower(Group.name).like(f'%{lowered}%'))
-            .order_by(Group.name.asc())
+            .filter(
+                or_(
+                    func.lower(Group.name).like(f'%{lowered}%'),
+                    func.lower(Group.id).like(f'%{lowered}%'),
+                )
+            )
+            .order_by(Group.name.asc(), Group.id.asc())
             .limit(limit)
             .all()
         )
@@ -166,8 +172,7 @@ def search_cached_groups(search_text, limit=20):
 
 def upsert_groups(groups):
     _ensure_db()
-    created = 0
-    updated = 0
+    updated_count = 0
     unique_groups = {}
 
     for group in groups:
@@ -179,37 +184,84 @@ def upsert_groups(groups):
     try:
         for group in unique_groups.values():
             existing = session.get(Group, group['group_id'])
-            if existing:
-                if group['name'] and not (existing.name or '').strip():
-                    existing.name = group['name']
-                    updated += 1
-                if group['description'] and not (existing.description or '').strip():
-                    existing.description = group['description']
-                    updated += 1
-                merged_tags = ', '.join(merge_group_tags(existing.tags, group['tags'], existing.name or group['name'] or group['group_id']))
-                if merged_tags != (existing.tags or ''):
-                    existing.tags = merged_tags or None
-                    updated += 1
-            else:
-                session.add(
-                    Group(
-                        id=group['group_id'],
-                        name=group['name'],
-                        description=group['description'] or None,
-                        tags=', '.join(merge_group_tags('', group['tags'], group['name'] or group['group_id'])) or None,
-                    )
-                )
-                created += 1
+            if existing is None:
+                existing = Group(id=group['group_id'])
+                session.add(existing)
+
+            new_name = str(group.get('name') or group['group_id']).strip() or group['group_id']
+            new_description = str(group.get('description') or '').strip() or None
+            new_tags = ', '.join(normalize_tags(group.get('tags'))) or None
+            new_raw = group.get('raw_json') if isinstance(group.get('raw_json'), dict) else {}
+
+            changed = (
+                (existing.name or '') != new_name
+                or (existing.description or None) != new_description
+                or (existing.tags or None) != new_tags
+                or (getattr(existing, 'raw_json', None) or {}) != new_raw
+            )
+
+            if not changed:
+                continue
+
+            existing.name = new_name
+            existing.description = new_description
+            existing.tags = new_tags
+            if hasattr(existing, 'raw_json'):
+                existing.raw_json = new_raw
+            if hasattr(existing, 'updated_at'):
+                existing.updated_at = _utc_now()
+            updated_count += 1
 
         session.commit()
+        print(f"[GROUP UPSERT] Updated {updated_count} records")
         return {
-            'created': created,
-            'updated': updated,
-            'total': created + updated,
+            'created': 0,
+            'updated': updated_count,
+            'total': updated_count,
             'items': list(unique_groups.values()),
         }
     finally:
         session.close()
+
+
+def call_search_groups_flow(query):
+    flow_url = os.getenv('POWER_AUTOMATE_GROUP_SEARCH_URL', '').strip()
+    if not flow_url:
+        raise RuntimeError('POWER_AUTOMATE_GROUP_SEARCH_URL is not configured')
+
+    script_name = os.getenv('POWER_AUTOMATE_GROUP_SCRIPT_NAME', 'SearchGroups').strip() or 'SearchGroups'
+    timeout = int(os.getenv('POWER_AUTOMATE_GROUP_TIMEOUT_SECONDS', str(DEFAULT_TIMEOUT_SECONDS)))
+    payload = {
+        'scriptName': script_name,
+        'variables': {
+            'query': query,
+            'searchText': query,
+        },
+    }
+
+    response = requests.post(
+        flow_url,
+        json=payload,
+        headers={'Content-Type': 'application/json'},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+
+    if isinstance(data, dict):
+        value = data.get('value')
+        if isinstance(value, list):
+            return value
+        groups = data.get('groups')
+        if isinstance(groups, list):
+            return groups
+
+    extracted = _extract_groups(data)
+    return [item.get('raw_json') or item for item in extracted if isinstance(item, dict)]
 
 
 def resolve_groups_by_ids(group_ids):
@@ -297,23 +349,9 @@ def lookup_groups_via_flow(search_text, user_id=None):
     }
 
     def _execute():
-        response = requests.post(
-            flow_url,
-            json=payload,
-            headers={'Content-Type': 'application/json'},
-            timeout=timeout,
-        )
-        response.raise_for_status()
-
-        raw_text = response.text or ''
-        parsed_body = None
-        try:
-            parsed_body = response.json()
-        except ValueError:
-            parsed_body = raw_text
-
-        ingest_flow_response(parsed_body)
-        groups = _extract_groups(parsed_body)
+        flow_groups = call_search_groups_flow(query)
+        ingest_flow_response({'groups': flow_groups})
+        groups = _extract_groups(flow_groups)
         upserted = upsert_groups(groups)
 
         return {

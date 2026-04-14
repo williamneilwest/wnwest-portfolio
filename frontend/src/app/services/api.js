@@ -293,6 +293,14 @@ export function searchUsersLive(query) {
   return request(backendBaseUrl, `/api/search-users-live?${params.toString()}`);
 }
 
+export async function getUserContext(username) {
+  const normalized = String(username || '').trim();
+  if (!normalized) {
+    return null;
+  }
+  return request(backendBaseUrl, `/api/users/context/${encodeURIComponent(normalized)}`);
+}
+
 export async function getUsersSourceTable(query, { limit = 200 } = {}) {
   const params = new URLSearchParams();
   const normalizedQuery = String(query || '').trim();
@@ -432,6 +440,23 @@ export function lookupReferenceGroups(searchText) {
     .then((payload) => {
       const items = Array.isArray(payload?.items) ? payload.items.map(normalizeGroupRecord) : [];
       return { ...(payload || {}), items };
+    });
+}
+
+export function searchGroupsCacheFirst(searchText, { refresh = false } = {}) {
+  const params = new URLSearchParams();
+  params.set('q', String(searchText || '').trim());
+  if (refresh) {
+    params.set('refresh', 'true');
+  }
+  return request(backendBaseUrl, `/api/groups/search?${params.toString()}`)
+    .then((payload) => {
+      const results = Array.isArray(payload?.results) ? payload.results.map((group) => ({
+        id: String(group?.id || group?.group_id || '').trim(),
+        name: String(group?.name || '').trim(),
+        description: String(group?.description || '').trim(),
+      })) : [];
+      return { ...(payload || {}), results };
     });
 }
 

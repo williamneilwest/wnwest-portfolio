@@ -4,18 +4,13 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="impllemented caching for flows and App designer page">
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="corrected group association flow">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/models/reference.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/reference.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/reference.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/reference.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/work.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/work.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/routes/group_cache.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/group_cache.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app/services/group_lookup.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/group_lookup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/GroupSearchToolPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/GroupSearchToolPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -157,15 +152,7 @@
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
       <workItem from="1776019342314" duration="58828000" />
-      <workItem from="1776187033482" duration="3148000" />
-    </task>
-    <task id="LOCAL-00018" summary="refined logging error display logic">
-      <option name="closed" value="true" />
-      <created>1776023086427</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1776023086428</updated>
+      <workItem from="1776187033482" duration="4038000" />
     </task>
     <task id="LOCAL-00019" summary="ensured all services are added to console page">
       <option name="closed" value="true" />
@@ -551,7 +538,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776178140672</updated>
     </task>
-    <option name="localTasksCounter" value="67" />
+    <task id="LOCAL-00067" summary="corrected group association flow">
+      <option name="closed" value="true" />
+      <created>1776190402853</created>
+      <option name="number" value="00067" />
+      <option name="presentableId" value="LOCAL-00067" />
+      <option name="project" value="LOCAL" />
+      <updated>1776190402854</updated>
+    </task>
+    <option name="localTasksCounter" value="68" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -569,7 +564,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixed header styling" />
     <MESSAGE value="corrected header spacing" />
     <MESSAGE value="added plex" />
     <MESSAGE value="added work. auth routing" />
@@ -594,7 +588,8 @@
     <MESSAGE value="edited user modules" />
     <MESSAGE value="Milestone 6" />
     <MESSAGE value="impllemented caching for flows and App designer page" />
-    <option name="LAST_COMMIT_MESSAGE" value="impllemented caching for flows and App designer page" />
+    <MESSAGE value="corrected group association flow" />
+    <option name="LAST_COMMIT_MESSAGE" value="corrected group association flow" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

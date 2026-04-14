@@ -2,7 +2,7 @@ import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useBackNavigation } from '../../app/hooks/useBackNavigation';
-import { lookupReferenceGroups } from '../../app/services/api';
+import { searchGroupsCacheFirst } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
@@ -14,31 +14,35 @@ export function GroupSearchToolPage() {
   const backLabel = location.state?.label || 'Work Hub';
   const [searchText, setSearchText] = useState('');
   const [lookupResults, setLookupResults] = useState([]);
-  const [lookupState, setLookupState] = useState({ loading: false, error: '', source: '', cacheHit: false, total: 0 });
+  const [lookupState, setLookupState] = useState({ loading: false, error: '', source: '', updated: 0 });
 
-  async function handleLookup(event) {
+  async function handleLookup(event, { refresh = false } = {}) {
     event.preventDefault();
 
     const query = searchText.trim();
     if (!query) {
       setLookupResults([]);
-      setLookupState({ loading: false, error: '', source: '', cacheHit: false, total: 0 });
+      setLookupState({ loading: false, error: '', source: '', updated: 0 });
       return;
     }
 
-    setLookupState({ loading: true, error: '', source: '', cacheHit: false, total: 0 });
+    setLookupState({ loading: true, error: '', source: '', updated: 0 });
 
     try {
-      const result = await lookupReferenceGroups(query);
-      const items = Array.isArray(result.items) ? result.items : [];
-      cacheGroupLookupResults(items);
+      const result = await searchGroupsCacheFirst(query, { refresh });
+      const items = Array.isArray(result.results) ? result.results : [];
+      const cacheReadyItems = items.map((group) => ({
+        group_id: group.id,
+        name: group.name,
+        description: group.description,
+      }));
+      cacheGroupLookupResults(cacheReadyItems);
       setLookupResults(items);
       setLookupState({
         loading: false,
         error: '',
         source: result.source || '',
-        cacheHit: Boolean(result.cacheHit),
-        total: Number(result.upserted?.total || 0)
+        updated: Number(result.updated || 0),
       });
     } catch (err) {
       setLookupResults([]);
@@ -46,8 +50,7 @@ export function GroupSearchToolPage() {
         loading: false,
         error: String(err.message || err),
         source: '',
-        cacheHit: false,
-        total: 0
+        updated: 0
       });
     }
   }
@@ -89,10 +92,21 @@ export function GroupSearchToolPage() {
 
         {lookupState.error ? <p className="status-text status-text--error">{lookupState.error}</p> : null}
         {!lookupState.error && (lookupState.source || lookupResults.length) ? (
-          <p className="status-text">
-            Source: {lookupState.cacheHit ? 'cache' : lookupState.source || 'unknown'}
-            {lookupState.source === 'flow' ? `, saved ${lookupState.total} new or updated rows` : ''}
-          </p>
+          <div className="table-actions">
+            <span className={lookupState.source === 'cache' ? 'association-status association-status--assigned' : 'association-status association-status--missing'}>
+              {lookupState.source === 'cache' ? 'Cached' : 'Live'}
+            </span>
+            {lookupState.source === 'flow' ? <small>{`Saved ${lookupState.updated} new/updated rows`}</small> : null}
+            {lookupState.source === 'cache' && searchText.trim() ? (
+              <button
+                type="button"
+                className="compact-toggle"
+                onClick={(event) => void handleLookup(event, { refresh: true })}
+              >
+                Refresh from Source
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {lookupResults.length ? (
@@ -106,10 +120,10 @@ export function GroupSearchToolPage() {
               </thead>
               <tbody>
                 {lookupResults.map((group) => (
-                  <tr key={`lookup-${group.group_id}`}>
+                  <tr key={`lookup-${group.id}`}>
                     <td>
-                      <span className="data-table__cell-content" title={group.group_id}>
-                        {group.group_id}
+                      <span className="data-table__cell-content" title={group.id}>
+                        {group.id}
                       </span>
                     </td>
                     <td>
