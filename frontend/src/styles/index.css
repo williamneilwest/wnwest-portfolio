@@ -2796,12 +2796,53 @@ textarea {
   align-items: center;
 }
 
+.module--embedded {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.entity-tools-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.entity-tools-layout__left,
+.entity-tools-layout__right {
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.entity-tools-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+}
+
+.entity-tools-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.45rem;
+}
+
+.entity-tools-active-panel {
+  min-width: 0;
+}
+
 @media (max-width: 1180px) {
   .user-context-layout {
     grid-template-columns: 1fr;
   }
 
   .profile-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .entity-tools-layout {
     grid-template-columns: 1fr;
   }
 }

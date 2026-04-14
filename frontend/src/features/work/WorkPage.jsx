@@ -1045,6 +1045,7 @@ export function WorkPage({ readOnly = false }) {
   const workspaceTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'identity', label: 'Identity' },
+    { id: 'source', label: 'Source' },
     { id: 'data', label: 'Data' },
     { id: 'ai', label: 'AI' },
     { id: 'tools', label: 'Tools' },
@@ -1300,22 +1301,20 @@ export function WorkPage({ readOnly = false }) {
             type="file"
           />
 
-          {!isActiveTicketsRoute ? (
-            <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
-              {workspaceTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeWorkspaceTab === tab.id}
-                  className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                  onClick={() => setActiveWorkspaceTab(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
+          <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
+            {workspaceTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeWorkspaceTab === tab.id}
+                className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                onClick={() => setActiveWorkspaceTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
           <div className="work-modules-stack">
             {activeWorkspaceTab === 'overview' ? (
@@ -1616,13 +1615,13 @@ export function WorkPage({ readOnly = false }) {
                 </ModuleCard>
                 <ModuleCard title="Identity Tools" collapsible defaultCollapsed>
                   <div className="table-actions">
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/get-user-groups')}>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
                       Get User Groups
                     </button>
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/group-search')}>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/groups')}>
                       Group Search Tool
                     </button>
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/user-group-association')}>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
                       User-Group Association
                     </button>
                   </div>
@@ -1705,17 +1704,41 @@ export function WorkPage({ readOnly = false }) {
               </ModuleCard>
             ) : null}
 
+            {activeWorkspaceTab === 'source' ? (
+              <ModuleCard title="Source / Reference Tables" collapsible>
+                <div className="work-data-tools">
+                  <p className="status-text">Open backend reference source tables for users and groups.</p>
+                  <div className="table-actions">
+                    <button
+                      className="compact-toggle"
+                      type="button"
+                      onClick={() => navigate('/app/reference')}
+                    >
+                      Users Source Table
+                    </button>
+                    <button
+                      className="compact-toggle"
+                      type="button"
+                      onClick={() => navigate('/app/reference')}
+                    >
+                      Groups Source Table
+                    </button>
+                  </div>
+                </div>
+              </ModuleCard>
+            ) : null}
+
             {activeWorkspaceTab === 'tools' ? (
               <>
                 <ModuleCard title="Utilities" collapsible>
                   <div className="table-actions">
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/get-user-groups')}>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
                       Get User Groups
                     </button>
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/group-search')}>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/groups')}>
                       Group Search Tool
                     </button>
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/user-group-association')}>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
                       User-Group Association
                     </button>
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/ai-metrics')}>

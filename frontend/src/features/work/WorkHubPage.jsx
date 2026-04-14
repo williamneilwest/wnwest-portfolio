@@ -24,16 +24,6 @@ import { getCachedWorkDataset, setCachedWorkDataset } from './workDatasetCache';
 
 const LAST_ACTIVITY_KEY = 'westos.work.lastHubActivity';
 
-const domainNav = [
-  { label: 'Tickets', href: '/app/work/active-tickets', icon: Ticket },
-  { label: 'Users', href: '/app/work/get-user-groups', icon: User },
-  { label: 'Devices', href: '/app/work/group-search', icon: Monitor },
-  { label: 'Printers', href: '/app/work/user-group-association', icon: Printer },
-  { label: 'Software', href: '/app/work/ai-metrics', icon: HardDrive },
-  { label: 'Knowledge Base', href: '/app/kb', icon: BookOpen },
-  { label: 'Tools', href: '/app/work', icon: Wrench },
-];
-
 const domainCards = [
   {
     title: 'Active Tickets',
@@ -74,12 +64,12 @@ const domainCards = [
 ];
 
 const quickActionChips = [
-  { label: 'Register Printer', href: '/app/work/user-group-association', icon: Printer },
-  { label: 'Lookup User', href: '/app/work/get-user-groups', icon: Users },
-  { label: 'Lookup Device', href: '/app/work/group-search', icon: Search },
+  { label: 'Register Printer', href: '/app/work/printers', icon: Printer },
+  { label: 'Lookup User', href: '/app/work/users', icon: Users },
+  { label: 'Lookup Device', href: '/app/work/groups', icon: Search },
   { label: 'Open KB', href: '/app/kb', icon: BookOpen },
   { label: 'Upload CSV', href: '/app/uploads', icon: FileSpreadsheet },
-  { label: 'Run Script', href: '/app/work/user-group-association', icon: Wrench },
+  { label: 'Run Script', href: '/app/work/users', icon: Wrench },
 ];
 
 const externalLinks = [
@@ -222,21 +212,6 @@ export function WorkHubPage() {
         tag="/app/work"
         title="Work Hub"
       />
-
-      <nav className="work-domain-nav" aria-label="Domain navigation">
-        {domainNav.map((item) => (
-          <Link
-            key={item.label}
-            className="work-domain-nav__item"
-            to={item.href}
-            onClick={() => handleModuleOpen({ title: item.label, href: item.href })}
-            state={{ from: '/app/work', label: 'Work Hub' }}
-          >
-            <item.icon size={14} />
-            <span>{item.label}</span>
-          </Link>
-        ))}
-      </nav>
 
       <CollapsibleSection
         title="Core Domains"

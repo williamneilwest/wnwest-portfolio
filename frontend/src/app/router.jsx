@@ -7,11 +7,8 @@ import { TablePage } from '../features/tables/TablePage';
 import { DocumentPage } from '../features/uploads/DocumentPage';
 import { ProcessedKBPage } from '../features/kb/ProcessedKBPage';
 import { WorkPage } from '../features/work/WorkPage';
-import { GetUserGroupsPage } from '../features/work/GetUserGroupsPage';
-import { GroupSearchToolPage } from '../features/work/GroupSearchToolPage';
 import { TicketDetail } from '../features/work/pages/TicketDetail';
 import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
-import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
 import { WorkHubPage } from '../features/work/WorkHubPage';
 import { WorkDomainPage } from '../features/work/WorkDomainPage';
 import { SoftwareRegistryPage } from '../features/software/SoftwareRegistryPage';
@@ -217,15 +214,15 @@ export const router = createBrowserRouter(
       },
       {
         path: 'work/group-search',
-        Component: GroupSearchToolPage
+        element: <Navigate replace to="/app/work/groups" />
       },
       {
         path: 'work/get-user-groups',
-        Component: GetUserGroupsPage
+        element: <Navigate replace to="/app/work/users" />
       },
       {
         path: 'work/user-group-association',
-        Component: UserGroupAssociationPage
+        element: <Navigate replace to="/app/work/users" />
       },
       {
         path: 'software',
@@ -242,6 +239,10 @@ export const router = createBrowserRouter(
       {
         path: 'work/printers',
         element: <WorkDomainPage domain="printers" />
+      },
+      {
+        path: 'work/groups',
+        element: <WorkDomainPage domain="groups" />
       },
       {
         path: 'work/software',
@@ -283,15 +284,15 @@ export const router = createBrowserRouter(
   },
   {
     path: '/work/group-search',
-    element: <Navigate replace to="/app/work/group-search" />
+    element: <Navigate replace to="/app/work/groups" />
   },
   {
     path: '/work/get-user-groups',
-    element: <Navigate replace to="/app/work/get-user-groups" />
+    element: <Navigate replace to="/app/work/users" />
   },
   {
     path: '/work/user-group-association',
-    element: <Navigate replace to="/app/work/user-group-association" />
+    element: <Navigate replace to="/app/work/users" />
   },
   {
     path: '/work/insights',
@@ -308,6 +309,10 @@ export const router = createBrowserRouter(
   {
     path: '/work/printers',
     element: <Navigate replace to="/app/work/printers" />
+  },
+  {
+    path: '/work/groups',
+    element: <Navigate replace to="/app/work/groups" />
   },
   {
     path: '/work/software',

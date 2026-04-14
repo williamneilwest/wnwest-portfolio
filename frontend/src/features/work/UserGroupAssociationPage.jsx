@@ -134,7 +134,12 @@ function groupMatchScore(group, query) {
   return 0;
 }
 
-export function UserGroupAssociationPage() {
+export function UserGroupAssociationPage({
+  embedded = false,
+  selectedUser = null,
+  userContext = null,
+  onUserCacheUpdated = null,
+}) {
   const location = useLocation();
   const goBack = useBackNavigation('/app/work');
   const backLabel = location.state?.label || 'Work Hub';
@@ -183,6 +188,13 @@ export function UserGroupAssociationPage() {
   }, []);
 
   useEffect(() => {
+    if (!embedded) {
+      return;
+    }
+    setSelectedUserId(String(selectedUser?.opid || '').trim());
+  }, [embedded, selectedUser]);
+
+  useEffect(() => {
     let isMounted = true;
 
     async function loadReferenceData() {
@@ -201,7 +213,9 @@ export function UserGroupAssociationPage() {
         setUsers(cachedUsers);
         setCacheUsersLoaded(cachedUsers.length);
         setGroups(mergeGroups([], cachedGroups));
-        setSelectedUserId((current) => current || cachedUsers[0]?.opid || '');
+        if (!embedded) {
+          setSelectedUserId((current) => current || cachedUsers[0]?.opid || '');
+        }
         debugLog('Loaded cached users', {
           loadedCount: cachedUsers.length,
           fallbackCount,
@@ -237,33 +251,39 @@ export function UserGroupAssociationPage() {
     };
   }, []);
 
+  const effectiveSelectedUserId = embedded
+    ? String(selectedUser?.opid || '').trim()
+    : selectedUserId;
+
   useEffect(() => {
-    if (!selectedUserId) {
+    if (!effectiveSelectedUserId) {
       setSelectedGroupIds([]);
       return;
     }
 
     const cacheMap = readUserGroupsCacheMap();
-    const cachedGroupIds = getCachedGroupsForUser(selectedUserId, cacheMap).map((group) => group.id);
+    const cachedGroupIds = getCachedGroupsForUser(effectiveSelectedUserId, cacheMap).map((group) => group.id);
     const selectedSet = new Set(cachedGroupIds);
     setSelectedGroupIds([]);
-    setGroups((current) => mergeGroups(current, getCachedGroupsForUser(selectedUserId, cacheMap)));
+    setGroups((current) => mergeGroups(current, getCachedGroupsForUser(effectiveSelectedUserId, cacheMap)));
     debugLog('Selected user hydrated from cache', {
-      opid: selectedUserId,
+      opid: effectiveSelectedUserId,
       groupsCount: selectedSet.size,
       preselectedCount: 0,
     });
-  }, [selectedUserId]);
+  }, [effectiveSelectedUserId]);
 
   const topSearchTerms = useMemo(
     () => rankEntries(searchHistory, 5).map(([term]) => term),
     [searchHistory]
   );
 
-  const selectedUser = useMemo(
-    () => users.find((user) => user.opid === selectedUserId) || null,
-    [selectedUserId, users]
-  );
+  const effectiveSelectedUser = useMemo(() => {
+    if (embedded) {
+      return selectedUser || null;
+    }
+    return users.find((user) => user.opid === selectedUserId) || null;
+  }, [embedded, selectedUser, selectedUserId, users]);
 
   const selectedGroups = useMemo(() => {
     const selectedIds = new Set(selectedGroupIds);
@@ -271,7 +291,7 @@ export function UserGroupAssociationPage() {
   }, [groups, selectedGroupIds]);
 
   const membershipValidation = useMemo(() => {
-    const userGroups = Array.isArray(selectedUser?.groups) ? selectedUser.groups : [];
+    const userGroups = Array.isArray(effectiveSelectedUser?.groups) ? effectiveSelectedUser.groups : [];
     const userGroupIds = new Set(
       userGroups
         .map((group) => String(group?.id || '').trim())
@@ -284,7 +304,7 @@ export function UserGroupAssociationPage() {
       unresolved: Boolean(group.unresolved),
       existsInUser: userGroupIds.has(group.id),
     }));
-  }, [selectedGroups, selectedUser]);
+  }, [selectedGroups, effectiveSelectedUser]);
 
   const filteredUsers = useMemo(() => {
     const query = normalizeSearch(userQuery);
@@ -298,7 +318,7 @@ export function UserGroupAssociationPage() {
 
   const filteredGroups = useMemo(() => {
     const query = normalizeSearch(groupQuery);
-    if (!selectedUser || !query) {
+    if (!effectiveSelectedUser || !query) {
       return [];
     }
     const selectedIds = new Set(selectedGroupIds);
@@ -329,20 +349,20 @@ export function UserGroupAssociationPage() {
       });
 
     return matches.slice(0, 24);
-  }, [clickedGroups, groupQuery, groups, selectedGroupIds, selectedUser]);
+  }, [clickedGroups, effectiveSelectedUser, groupQuery, groups, selectedGroupIds]);
 
   const generatedScript = useMemo(
     () => buildAssociationScript(
-      selectedUser
+      effectiveSelectedUser
         ? {
-            id: selectedUser.opid,
-            name: selectedUser.display_name || selectedUser.opid,
-            email: selectedUser.email || '',
+            id: effectiveSelectedUser.opid,
+            name: effectiveSelectedUser.display_name || effectiveSelectedUser.opid,
+            email: effectiveSelectedUser.email || '',
           }
         : null,
       membershipValidation
     ),
-    [membershipValidation, selectedUser]
+    [membershipValidation, effectiveSelectedUser]
   );
 
   function rememberSearchTerm(term) {
@@ -383,7 +403,7 @@ export function UserGroupAssociationPage() {
   }
 
   async function handleFlowLookup() {
-    if (!selectedUser) {
+    if (!effectiveSelectedUser) {
       setFlowMessage('Select a user before searching for additional groups.');
       return;
     }
@@ -420,9 +440,9 @@ export function UserGroupAssociationPage() {
   }
 
   async function handleUserFlowLookup() {
-    const targetOpid = String(selectedUserId || userQuery).trim();
+    const targetOpid = String(embedded ? effectiveSelectedUserId : (selectedUserId || userQuery)).trim();
     if (!targetOpid) {
-      setFlowMessage('Enter or select a user OPID before calling Get User Groups.');
+      setFlowMessage('Select a user OPID before calling Get User Groups.');
       return;
     }
 
@@ -440,9 +460,14 @@ export function UserGroupAssociationPage() {
       const nextUsers = getCachedUsersFromMap(nextCacheMap);
       setUsers(nextUsers);
       setCacheUsersLoaded(nextUsers.length);
-      setSelectedUserId(normalized.opid || targetOpid);
+      if (!embedded) {
+        setSelectedUserId(normalized.opid || targetOpid);
+      }
       setGroups((current) => mergeGroups(current, normalized.groups || []));
       setFlowMessage(`Get User Groups returned ${normalized.groups.length} group${normalized.groups.length === 1 ? '' : 's'} for ${targetOpid}.`);
+      if (typeof onUserCacheUpdated === 'function') {
+        onUserCacheUpdated(normalized.opid || targetOpid);
+      }
       debugLog('Get User Groups sub-flow run', {
         opid: targetOpid,
         groupsCount: normalized.groups.length,
@@ -456,17 +481,19 @@ export function UserGroupAssociationPage() {
 
   if (loading) {
     return (
-      <section className="module">
-        <SectionHeader
-          tag="/app/work/user-group-association"
-          title="User-Group Association"
-          description="Reference-driven workspace for building group association scripts."
-          actions={
-            <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
-              {`Back to ${backLabel}`}
-            </button>
-          }
-        />
+      <section className={embedded ? 'module module--embedded' : 'module'}>
+        {!embedded ? (
+          <SectionHeader
+            tag="/app/work/user-group-association"
+            title="User-Group Association"
+            description="Reference-driven workspace for building group association scripts."
+            actions={
+              <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+                {`Back to ${backLabel}`}
+              </button>
+            }
+          />
+        ) : null}
         <EmptyState
           icon={<UsersRound size={20} />}
           title="Loading reference data"
@@ -477,87 +504,93 @@ export function UserGroupAssociationPage() {
   }
 
   return (
-    <section className="module">
-      <SectionHeader
-        tag="/app/work/user-group-association"
-        title="User-Group Association"
-        description="Select a cached user, target the right reference groups, and generate a reusable association script without leaving the Work module."
-        actions={
-          <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
-            {`Back to ${backLabel}`}
-          </button>
-        }
-      />
+    <section className={embedded ? 'module module--embedded' : 'module'}>
+      {!embedded ? (
+        <SectionHeader
+          tag="/app/work/user-group-association"
+          title="User-Group Association"
+          description="Select a cached user, target the right reference groups, and generate a reusable association script without leaving the Work module."
+          actions={
+            <button className="ui-button ui-button--secondary" onClick={goBack} type="button">
+              {`Back to ${backLabel}`}
+            </button>
+          }
+        />
+      ) : null}
 
       {error ? <p className="status-text status-text--error">{error}</p> : null}
       {copyMessage ? <p className="status-text">{copyMessage}</p> : null}
       {flowMessage ? <p className="status-text">{flowMessage}</p> : null}
-      {!error ? <p className="status-text">{`Loaded ${cacheUsersLoaded} cached user${cacheUsersLoaded === 1 ? '' : 's'} from Get User Groups cache.`}</p> : null}
+      {!embedded && !error ? <p className="status-text">{`Loaded ${cacheUsersLoaded} cached user${cacheUsersLoaded === 1 ? '' : 's'} from Get User Groups cache.`}</p> : null}
 
       <div className="work-layout association-layout">
         <div className="card-grid association-column">
-          <Card className="landing__card association-card">
-            <CardHeader
-              eyebrow="Step 1"
-              title="Select User"
-              description="Search cached users from Get User Groups and choose the identity the association run should target."
-            />
+          {!embedded ? (
+            <Card className="landing__card association-card">
+              <CardHeader
+                eyebrow="Step 1"
+                title="Select User"
+                description="Search cached users from Get User Groups and choose the identity the association run should target."
+              />
 
-            <div className="settings-form">
-              <label className="settings-field">
-                <span>User search</span>
-                <input
-                  type="text"
-                  value={userQuery}
-                  onChange={(event) => setUserQuery(event.target.value)}
-                  placeholder="Search by OPID, name, or email"
-                />
-              </label>
-              <div className="association-toolbar">
-                <button
-                  type="button"
-                  className="ui-button ui-button--primary"
-                  onClick={handleUserFlowLookup}
-                  disabled={userFlowLoading}
-                >
-                  <UsersRound size={16} />
-                  {userFlowLoading ? 'Running Get User Groups...' : 'Run Get User Groups'}
-                </button>
+              <div className="settings-form">
+                <label className="settings-field">
+                  <span>User search</span>
+                  <input
+                    type="text"
+                    value={userQuery}
+                    onChange={(event) => setUserQuery(event.target.value)}
+                    placeholder="Search by OPID, name, or email"
+                  />
+                </label>
+                <div className="association-toolbar">
+                  <button
+                    type="button"
+                    className="ui-button ui-button--primary"
+                    onClick={handleUserFlowLookup}
+                    disabled={userFlowLoading}
+                  >
+                    <UsersRound size={16} />
+                    {userFlowLoading ? 'Running Get User Groups...' : 'Run Get User Groups'}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="association-list" role="list" aria-label="Reference users">
-              {filteredUsers.length ? (
-                filteredUsers.map((user) => {
-                  const isSelected = user.opid === selectedUserId;
-                  return (
-                    <button
-                      type="button"
-                      key={user.opid}
-                      className={isSelected ? 'association-list__item association-list__item--selected' : 'association-list__item'}
-                      onClick={() => setSelectedUserId(user.opid)}
-                    >
-                      <span className="association-list__title">{user.display_name || user.opid}</span>
-                      <span className="association-list__meta">{user.opid}</span>
-                      {user.email ? <span className="association-list__meta">{user.email}</span> : null}
-                    </button>
-                  );
-                })
-              ) : (
-                <EmptyState
-                  icon={<Search size={18} />}
-                  title="No matching users"
-                  description="Adjust the search or run Get User Groups to add users to cache."
-                />
-              )}
-            </div>
-          </Card>
+              <div className="association-list" role="list" aria-label="Reference users">
+                {filteredUsers.length ? (
+                  filteredUsers.map((user) => {
+                    const isSelected = user.opid === selectedUserId;
+                    return (
+                      <button
+                        type="button"
+                        key={user.opid}
+                        className={isSelected ? 'association-list__item association-list__item--selected' : 'association-list__item'}
+                        onClick={() => setSelectedUserId(user.opid)}
+                      >
+                        <span className="association-list__title">{user.display_name || user.opid}</span>
+                        <span className="association-list__meta">{user.opid}</span>
+                        {user.email ? <span className="association-list__meta">{user.email}</span> : null}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <EmptyState
+                    icon={<Search size={18} />}
+                    title="No matching users"
+                    description="Adjust the search or run Get User Groups to add users to cache."
+                  />
+                )}
+              </div>
+            </Card>
+          ) : null}
 
           <Card className="landing__card association-card">
             <CardHeader
-              eyebrow="Step 2"
+              eyebrow={embedded ? 'Groups' : 'Step 2'}
               title="Select Groups"
-              description="Cached groups for the selected user load immediately. Use Power Automate only when you need additional results."
+              description={embedded
+                ? `Working on ${effectiveSelectedUserId || 'the selected user'} from the Users context panel.`
+                : 'Cached groups for the selected user load immediately. Use Power Automate only when you need additional results.'}
             />
 
             <div className="settings-form">
@@ -568,16 +601,27 @@ export function UserGroupAssociationPage() {
                   value={groupQuery}
                   onChange={(event) => setGroupQuery(event.target.value)}
                   placeholder="Search by group id or name"
-                  disabled={!selectedUser}
+                  disabled={!effectiveSelectedUser}
                 />
               </label>
 
               <div className="association-toolbar">
+                {embedded ? (
+                  <button
+                    type="button"
+                    className="ui-button ui-button--secondary"
+                    onClick={handleUserFlowLookup}
+                    disabled={userFlowLoading || !effectiveSelectedUser}
+                  >
+                    <UsersRound size={16} />
+                    {userFlowLoading ? 'Running Get User Groups...' : 'Refresh User Cache'}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="ui-button ui-button--primary"
                   onClick={handleFlowLookup}
-                  disabled={flowLoading || !selectedUser}
+                  disabled={flowLoading || !effectiveSelectedUser}
                 >
                   <Sparkles size={16} />
                   {flowLoading ? 'Searching Power Automate...' : 'Search Power Automate'}
@@ -621,11 +665,11 @@ export function UserGroupAssociationPage() {
                   );
                 })
               ) : (
-                !selectedUser ? (
+                !effectiveSelectedUser ? (
                   <EmptyState
                     icon={<Search size={18} />}
                     title="No user selected"
-                    description="Select a cached user first to validate group membership."
+                    description={embedded ? 'Select a user from the Users page context panel.' : 'Select a cached user first to validate group membership.'}
                   />
                 ) : !groupQuery.trim() ? (
                   <EmptyState
@@ -661,11 +705,11 @@ export function UserGroupAssociationPage() {
             <div className="association-summary">
               <div className="association-summary__row">
                 <span>User</span>
-                <strong>{selectedUser ? selectedUser.display_name || selectedUser.opid : 'Select a user'}</strong>
+                <strong>{effectiveSelectedUser ? effectiveSelectedUser.display_name || effectiveSelectedUser.opid : 'Select a user'}</strong>
               </div>
               <div className="association-summary__row">
                 <span>Email</span>
-                <strong>{selectedUser?.email || 'No email in cache'}</strong>
+                <strong>{effectiveSelectedUser?.email || userContext?.email || 'No email in cache'}</strong>
               </div>
               <div className="association-summary__row">
                 <span>Selected Groups</span>
@@ -694,7 +738,7 @@ export function UserGroupAssociationPage() {
                 </div>
               ) : (
                 <p className="ui-card__description">
-                  {selectedUser ? 'No groups selected. Choose one or more groups to validate.' : 'Select a user to begin validation.'}
+                  {effectiveSelectedUser ? 'No groups selected. Choose one or more groups to validate.' : 'Select a user to begin validation.'}
                 </p>
               )}
             </div>
@@ -710,7 +754,7 @@ export function UserGroupAssociationPage() {
                   type="button"
                   className="ui-button ui-button--secondary"
                   onClick={handleCopyScript}
-                  disabled={!selectedUser}
+                  disabled={!effectiveSelectedUser}
                 >
                   <Clipboard size={16} />
                   Copy
@@ -724,8 +768,8 @@ export function UserGroupAssociationPage() {
                 readOnly
                 value={
                   generatedScript
-                  || (!selectedUser
-                    ? '# Select a user first.'
+                  || (!effectiveSelectedUser
+                    ? (embedded ? '# Select a user from the Users context panel first.' : '# Select a user first.')
                     : '# Select one or more groups to validate and generate script output.')
                 }
               />
