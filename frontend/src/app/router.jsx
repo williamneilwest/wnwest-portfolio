@@ -17,6 +17,7 @@ import { WorkDomainPage } from '../features/work/WorkDomainPage';
 import { SoftwareRegistryPage } from '../features/software/SoftwareRegistryPage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
 import { FlowRunsPage } from '../features/system/FlowRunsPage';
+import { FlowTemplatesPage } from '../features/system/FlowTemplatesPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AdminUsersPage } from '../features/auth/AdminUsersPage';
 import { ProfilePage } from '../features/auth/ProfilePage';
@@ -111,6 +112,10 @@ export const router = createBrowserRouter(
         element: isWorkSubdomain ? workRedirect : <RequireAuth><FlowRunsPage /></RequireAuth>
       },
       {
+        path: 'flows/templates',
+        element: isWorkSubdomain ? workRedirect : <RequireAuth><FlowTemplatesPage /></RequireAuth>
+      },
+      {
         path: 'terminal',
         element: isWorkSubdomain ? workRedirect : <RequireAdmin><TerminalPage /></RequireAdmin>
       },
@@ -129,6 +134,10 @@ export const router = createBrowserRouter(
         ...(isWorkSubdomain
           ? { element: workRedirect }
           : { lazy: getRoute('../features/data/routes.jsx') })
+      },
+      {
+        path: 'data/active-tickets',
+        Component: TablePage
       },
       {
         path: 'reference',
@@ -170,9 +179,7 @@ export const router = createBrowserRouter(
       },
       {
         path: 'uploads',
-        ...(isWorkSubdomain
-          ? { element: workRedirect }
-          : { lazy: getRoute('../features/uploads/routes.jsx') })
+        lazy: getRoute('../features/uploads/routes.jsx')
       },
       {
         path: 'kb',
@@ -191,6 +198,10 @@ export const router = createBrowserRouter(
       {
         path: 'work/active-tickets',
         Component: WorkPage
+      },
+      {
+        path: 'work/tickets',
+        element: <Navigate replace to="/app/work/active-tickets" />
       },
       {
         path: 'work/table',
@@ -252,6 +263,10 @@ export const router = createBrowserRouter(
   },
   {
     path: '/work/active-tickets',
+    element: <Navigate replace to="/app/work/active-tickets" />
+  },
+  {
+    path: '/work/tickets',
     element: <Navigate replace to="/app/work/active-tickets" />
   },
   {

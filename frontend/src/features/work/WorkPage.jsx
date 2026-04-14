@@ -15,6 +15,7 @@ import {
   getLatestTickets,
   getRecentCsvAnalyses,
   getRecentCsvAnalysisFile,
+  summarizeTicket,
   getUploadFile,
   getUploads,
 } from '../../app/services/api';
@@ -46,6 +47,8 @@ import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './work
 import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from './utils/ticketRules';
 import { IdentityAccessModule } from './components/IdentityAccessModule';
+import { TicketSidePanel } from './components/TicketSidePanel';
+import { TicketSwipeDeck } from '../tickets/components/TicketSwipeDeck';
 
 const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
 const TABLE_PAGE_SIZE = 50;
@@ -425,6 +428,10 @@ export function WorkPage({ readOnly = false }) {
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [ticketPanelAiLoading, setTicketPanelAiLoading] = useState(false);
+  const [ticketPanelAiResult, setTicketPanelAiResult] = useState('');
+  const [ticketPanelAiError, setTicketPanelAiError] = useState('');
   const [isLoadingSavedRun, setIsLoadingSavedRun] = useState(false);
   const [kbTagWords, setKbTagWords] = useState([]);
   const [autoMetrics, setAutoMetrics] = useState({
@@ -433,6 +440,7 @@ export function WorkPage({ readOnly = false }) {
     visible_columns: 0,
     open: 0,
   });
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
   const csvUploads = useMemo(
     () =>
       uploadedFiles.filter((file) => {
@@ -450,6 +458,7 @@ export function WorkPage({ readOnly = false }) {
 
     setError('');
     setSelectedRow(null);
+    setSelectedTicket(null);
     setSelectedFile(null);
 
     if (showLoading) {
@@ -589,6 +598,7 @@ export function WorkPage({ readOnly = false }) {
       setIsLoadingSavedRun(true);
       setSelectedFile(null);
       setSelectedRow(null);
+      setSelectedTicket(null);
 
       try {
         const assignee = String(user?.username || '').trim();
@@ -662,6 +672,15 @@ export function WorkPage({ readOnly = false }) {
   }, [isEditDatasetOpen]);
 
   useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 768);
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     if (!recentAnalyses.length || isLoadingSavedRun || latestFileName || csvUploads.length) {
       return;
     }
@@ -699,6 +718,7 @@ export function WorkPage({ readOnly = false }) {
       setColumnFilters({});
       setSortConfig({ column: '', direction: 'asc' });
       setSelectedRow(null);
+      setSelectedTicket(null);
       setDatasetGlobalSearch('');
       setDatasetPage(0);
       setDatasetVisibleColumns([]);
@@ -713,6 +733,7 @@ export function WorkPage({ readOnly = false }) {
     setColumnFilters({});
     setSortConfig({ column: '', direction: 'asc' });
     setSelectedRow(null);
+    setSelectedTicket(null);
     setDatasetGlobalSearch('');
     setDatasetPage(0);
     setDatasetVisibleColumns(getStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, analysis.columns || []));
@@ -1021,20 +1042,8 @@ export function WorkPage({ readOnly = false }) {
       })),
     [paginatedVisibleTickets]
   );
-  const overviewPreviewRows = useMemo(() => {
-    return visibleTickets.slice(0, 8).map(({ ticket }) => {
-      const ticketName = getTicketId(ticket, datasetColumns);
-      const description = datasetDescriptionColumn ? getCellText(ticket, datasetDescriptionColumn).trim() : '';
-      return {
-        id: ticketName || 'Unknown ticket',
-        description: description || 'No short description available.',
-        assignee: getTicketAssignee(ticket, datasetColumns).trim() || 'Unassigned',
-      };
-    });
-  }, [datasetColumns, datasetDescriptionColumn, visibleTickets]);
   const workspaceTabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'tickets', label: 'Tickets' },
     { id: 'identity', label: 'Identity' },
     { id: 'data', label: 'Data' },
     { id: 'ai', label: 'AI' },
@@ -1064,6 +1073,7 @@ export function WorkPage({ readOnly = false }) {
       setLatestMessage('');
       setCachedWorkDataset(nextDataset);
       setSelectedRow(null);
+      setSelectedTicket(null);
       setRecentAnalyses((current) => {
         const next = [
           {
@@ -1127,6 +1137,7 @@ export function WorkPage({ readOnly = false }) {
       setLatestMessage(parsedDataset.rows.length ? '' : 'The selected upload contains no data rows.');
       setCachedWorkDataset(nextDataset);
       setSelectedRow(null);
+      setSelectedTicket(null);
     } catch (requestError) {
       setError(requestError.message || 'Uploaded file could not be loaded.');
     }
@@ -1193,6 +1204,46 @@ export function WorkPage({ readOnly = false }) {
     });
   }
 
+  function handleTicketCardSelect(row) {
+    setTicketPanelAiError('');
+    setTicketPanelAiResult('');
+    setSelectedTicket(row || null);
+  }
+
+  function handleOpenSelectedTicketFull() {
+    const ticketId = getTicketId(selectedTicket, datasetColumns);
+    if (!ticketId || ticketId === 'Untitled ticket') {
+      return;
+    }
+
+    navigate(`/tickets/${encodeURIComponent(ticketId)}`, {
+      state: {
+        from: `${location.pathname}${location.search || ''}`,
+        label: 'Active Tickets',
+      },
+    });
+  }
+
+  async function handleRunSelectedTicketAi() {
+    const ticketId = getTicketId(selectedTicket, datasetColumns);
+    if (!ticketId || ticketId === 'Untitled ticket' || !canMutate) {
+      return;
+    }
+
+    setTicketPanelAiLoading(true);
+    setTicketPanelAiError('');
+    setTicketPanelAiResult('');
+    try {
+      const payload = await summarizeTicket(ticketId, { ticket: selectedTicket || {} });
+      const summaryText = String(payload?.data?.summary || payload?.summary || payload?.message || '').trim();
+      setTicketPanelAiResult(summaryText || 'Summary completed.');
+    } catch (requestError) {
+      setTicketPanelAiError(requestError.message || 'Ticket AI summary failed.');
+    } finally {
+      setTicketPanelAiLoading(false);
+    }
+  }
+
   async function handleAiAnalysis() {
     if (!analysis) {
       return;
@@ -1249,20 +1300,22 @@ export function WorkPage({ readOnly = false }) {
             type="file"
           />
 
-          <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
-            {workspaceTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeWorkspaceTab === tab.id}
-                className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                onClick={() => setActiveWorkspaceTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {!isActiveTicketsRoute ? (
+            <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
+              {workspaceTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeWorkspaceTab === tab.id}
+                  className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                  onClick={() => setActiveWorkspaceTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div className="work-modules-stack">
             {activeWorkspaceTab === 'overview' ? (
@@ -1276,24 +1329,15 @@ export function WorkPage({ readOnly = false }) {
                   </div>
                 </ModuleCard>
 
-                <ModuleCard title="Active Tickets Preview" collapsible defaultCollapsed>
-                  {overviewPreviewRows.length ? (
-                    <div className="stack-list">
-                      {overviewPreviewRows.map((ticket) => (
-                        <article className="stack-row" key={`${ticket.id}-${ticket.assignee}`}>
-                          <span className="stack-row__label">
-                            <span>
-                              <strong>{ticket.id}</strong>
-                              <small>{ticket.description}</small>
-                            </span>
-                          </span>
-                          <strong>{ticket.assignee}</strong>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState icon={<FileSpreadsheet size={20} />} title="No tickets to preview" description="Load a dataset to view a ticket preview." />
-                  )}
+                <ModuleCard title="Active Tickets" collapsible defaultCollapsed>
+                  <div className="table-actions">
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/active-tickets')}>
+                      Open Active Tickets
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/data/active-tickets')}>
+                      View Table
+                    </button>
+                  </div>
                 </ModuleCard>
 
                 <ModuleCard title="Today’s To-Do" collapsible defaultCollapsed>
@@ -1311,8 +1355,8 @@ export function WorkPage({ readOnly = false }) {
               </>
             ) : null}
 
-            {activeWorkspaceTab === 'tickets' ? (
-              <ModuleCard title="Active Tickets" collapsible>
+            {isActiveTicketsRoute || activeWorkspaceTab === 'tickets' ? (
+              <div className="work-active-tickets-fixed">
                 <DatasetPage
                   datasetState={datasetState}
                   onVisibleColumnsChange={handleDatasetVisibleColumnsChange}
@@ -1443,7 +1487,12 @@ export function WorkPage({ readOnly = false }) {
 
                       {latestDataset?.rows?.length ? (
                         visibleTickets.length ? (
-                          datasetView === 'cards' ? (
+                          isMobile ? (
+                            <TicketSwipeDeck
+                              tickets={visibleTickets.map(({ ticket }) => ticket)}
+                              onOpenTicket={handleTicketCardSelect}
+                            />
+                          ) : datasetView === 'cards' ? (
                             <ErrorBoundary
                               fallback={
                                 <EmptyState
@@ -1457,7 +1506,7 @@ export function WorkPage({ readOnly = false }) {
                                 readOnly={isPublicView}
                                 rows={cardRows}
                                 visibleColumns={datasetVisibleColumns}
-                                onRowSelect={handlePreviewRowSelect}
+                                onRowSelect={handleTicketCardSelect}
                                 rowKey={(row, index) =>
                                   row?.id
                                   || row?.ticket_number
@@ -1471,8 +1520,6 @@ export function WorkPage({ readOnly = false }) {
                                   primaryField: 'number',
                                   secondaryField: datasetDescriptionColumn,
                                   badgeField: 'state',
-                                  showAiAction: Boolean(authenticated),
-                                  onNotesAction: (row) => setSelectedRow(row),
                                   getIndicators: (row) => {
                                     const rules = row?.__westos?.matchedRules || [];
                                     const hasTag = rules.some((rule) => {
@@ -1529,7 +1576,7 @@ export function WorkPage({ readOnly = false }) {
                         />
                       )}
 
-                      {datasetView !== 'metrics' ? (
+                      {!isMobile && datasetView !== 'metrics' ? (
                         <div className="data-table__pagination">
                           <span>Page {datasetPage + 1}</span>
                           <div className="data-table__pagination-actions">
@@ -1555,7 +1602,7 @@ export function WorkPage({ readOnly = false }) {
                     </Card>
                   </section>
                 </DatasetPage>
-              </ModuleCard>
+              </div>
             ) : null}
 
             {activeWorkspaceTab === 'identity' ? (
@@ -1644,8 +1691,8 @@ export function WorkPage({ readOnly = false }) {
                 <div className="work-data-tools">
                   <p className="status-text">Open existing Work tools and dataset views without changing ticket data flow.</p>
                   <div className="table-actions">
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/table')}>
-                      Open Active Tickets Table
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/data/active-tickets')}>
+                      View Table
                     </button>
                     <button className="compact-toggle" type="button" onClick={() => setIsEditDatasetOpen(true)}>
                       Edit Dataset
@@ -1847,6 +1894,24 @@ export function WorkPage({ readOnly = false }) {
                 </div>
               </aside>
             </div>
+          ) : null}
+
+          {selectedTicket ? (
+            <TicketSidePanel
+              ticket={selectedTicket}
+              ticketId={getTicketId(selectedTicket, datasetColumns)}
+              onClose={() => {
+                setSelectedTicket(null);
+                setTicketPanelAiError('');
+                setTicketPanelAiResult('');
+              }}
+              onOpenFull={handleOpenSelectedTicketFull}
+              onRunAi={handleRunSelectedTicketAi}
+              canRunAi={canMutate}
+              aiLoading={ticketPanelAiLoading}
+              aiResult={ticketPanelAiResult}
+              aiError={ticketPanelAiError}
+            />
           ) : null}
 
           {rowDetail ? (

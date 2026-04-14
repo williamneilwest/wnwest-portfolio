@@ -36,10 +36,10 @@ const domainNav = [
 
 const domainCards = [
   {
-    title: 'Active Tickets Table',
-    description: 'Full table view for ticket triage and row-level detail.',
+    title: 'Active Tickets',
+    description: 'Card-based triage view with fast ticket inspection and panel details.',
     icon: FileSpreadsheet,
-    href: '/app/work/table',
+    href: '/app/work/active-tickets',
   },
   {
     title: 'Users',

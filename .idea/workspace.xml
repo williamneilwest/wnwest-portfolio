@@ -6,13 +6,13 @@
   <component name="ChangeListManager">
     <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="merged system status and system viewer pages">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/console/LogsPanel.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/console/LogsPanel.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/tables/TablePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/tables/TablePage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/GetUserGroupsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/GetUserGroupsPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -154,15 +154,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="48520000" />
-    </task>
-    <task id="LOCAL-00013" summary="Revamp Knowledge Base UI, add category filtering and file analysis&#10;- Implement sidebar navigation with active category highlight&#10;- Introduce search functionality for documents and tags&#10;- Enhance file listing with improved tag visibility&#10;- Add file analysis capability with user feedback messages&#10;- Update styles for consistency and responsiveness">
-      <option name="closed" value="true" />
-      <created>1775981045643</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1775981045643</updated>
+      <workItem from="1776019342314" duration="51523000" />
     </task>
     <task id="LOCAL-00014" summary="Revamp Knowledge Base features with enhanced UI and analysis support:&#10;- Implement frontend category filtering and file analysis in UI&#10;- Improve tag normalization for ticket rules and KB documents&#10;- Add derived tag support for backend&#10;- Optimize model resolution and usage in AI gateway">
       <option name="closed" value="true" />
@@ -548,7 +540,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776125618162</updated>
     </task>
-    <option name="localTasksCounter" value="62" />
+    <task id="LOCAL-00062" summary="merged system status and system viewer pages">
+      <option name="closed" value="true" />
+      <created>1776127648879</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1776127648879</updated>
+    </task>
+    <option name="localTasksCounter" value="63" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

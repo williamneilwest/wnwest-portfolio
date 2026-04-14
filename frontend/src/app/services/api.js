@@ -393,6 +393,46 @@ export function getFlowRunById(runId) {
   return request(backendBaseUrl, `/api/flows/runs/${encodeURIComponent(String(runId || ''))}`);
 }
 
+export function getFlowTemplates() {
+  return request(backendBaseUrl, '/api/flows/templates');
+}
+
+export function createFlowTemplate(template) {
+  return request(backendBaseUrl, '/api/flows/templates', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(template || {})
+  });
+}
+
+export function updateFlowTemplate(templateId, template) {
+  return request(backendBaseUrl, `/api/flows/templates/${encodeURIComponent(String(templateId || ''))}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(template || {})
+  });
+}
+
+export function deleteFlowTemplate(templateId) {
+  return request(backendBaseUrl, `/api/flows/templates/${encodeURIComponent(String(templateId || ''))}`, {
+    method: 'DELETE'
+  });
+}
+
+export function runFlowTemplate(templateId, variables = {}) {
+  return request(backendBaseUrl, `/api/flows/templates/${encodeURIComponent(String(templateId || ''))}/run`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ variables: variables || {} })
+  });
+}
+
 export function getAiInteractionLogs(limit = 200) {
   const params = new URLSearchParams();
   params.set('limit', String(limit));
@@ -535,6 +575,10 @@ export function runAdminFlowTemplate(templateId, variables = {}) {
 }
 
 export function runFlow(template, variables = {}) {
+  if (template?.id) {
+    return runFlowTemplate(template.id, variables);
+  }
+
   return request(backendBaseUrl, '/api/admin/flow-templates/run', {
     method: 'POST',
     headers: {
