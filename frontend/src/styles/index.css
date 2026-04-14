@@ -3150,11 +3150,11 @@ textarea {
 
 .dataset-card {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.5rem;
   width: 100%;
   min-width: 0;
   text-align: left;
-  padding: 0.8rem;
+  padding: 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.9rem;
   background: rgba(255, 255, 255, 0.025);
@@ -3191,6 +3191,30 @@ textarea {
   font-size: 1.02rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.dataset-card__ticket-link {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataset-card__age {
+  color: var(--text-soft);
+  font-size: 0.7rem;
+  white-space: nowrap;
 }
 
 .dataset-card__badge {
@@ -3232,6 +3256,30 @@ textarea {
 .dataset-card__badge--low {
   border-color: rgba(16, 185, 129, 0.24);
   background: rgba(16, 185, 129, 0.1);
+  color: #bbf7d0;
+}
+
+.dataset-card__badge--critical {
+  border-color: rgba(239, 68, 68, 0.38);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+}
+
+.dataset-card__badge--high {
+  border-color: rgba(249, 115, 22, 0.34);
+  background: rgba(249, 115, 22, 0.16);
+  color: #fed7aa;
+}
+
+.dataset-card__badge--medium {
+  border-color: rgba(234, 179, 8, 0.34);
+  background: rgba(234, 179, 8, 0.16);
+  color: #fde68a;
+}
+
+.dataset-card__badge--low {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.14);
   color: #bbf7d0;
 }
 
@@ -3279,7 +3327,7 @@ textarea {
 
 .dataset-card__meta--ticket {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .dataset-card__action {
@@ -3288,6 +3336,42 @@ textarea {
   gap: 0.35rem;
   color: #d1fae5;
   font-size: 0.78rem;
+}
+
+.dataset-card__footer {
+  display: grid;
+  gap: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.35rem;
+}
+
+.dataset-card__footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  color: var(--text-soft);
+  font-size: 0.68rem;
+}
+
+.dataset-card__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dataset-card__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.72rem;
 }
 
 .dataset-card__indicators {
@@ -3311,6 +3395,14 @@ textarea {
 @media (max-width: 760px) {
   .dataset-card__meta--ticket {
     grid-template-columns: 1fr;
+  }
+
+  .dataset-card__header {
+    flex-wrap: wrap;
+  }
+
+  .dataset-card__age {
+    width: 100%;
   }
 }
 
@@ -4942,6 +5034,33 @@ textarea {
   line-height: 1.45;
 }
 
+.table-page-neutral .ui-card,
+.table-page-neutral .analysis-grid__wide {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.table-page-neutral .ticket-view-toggle .compact-toggle--active {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--text);
+}
+
+.table-page-neutral .ticket-source-banner__pill,
+.table-page-neutral .ticket-card__status,
+.table-page-neutral .ticket-card__ai-chip {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+}
+
+.table-page-neutral .ticket-card-link:hover .ticket-card,
+.table-page-neutral .ticket-card-link:focus-visible .ticket-card,
+.table-page-neutral .module--dataset-surface .ticket-card-link:hover .ticket-card,
+.table-page-neutral .module--dataset-surface .ticket-card-link:focus-visible .ticket-card {
+  border-color: rgba(148, 163, 184, 0.34);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.26);
+}
+
 .ticket-detail__topbar {
   margin-bottom: 1rem;
 }
@@ -5245,6 +5364,30 @@ textarea {
 .console-status-strip__actions {
   display: flex;
   gap: 0.55rem;
+}
+
+.system-status-strip--compact {
+  padding: 0.55rem 0.7rem;
+  gap: 0.65rem;
+}
+
+.system-status-strip--compact .console-status-strip__main {
+  gap: 0.2rem;
+}
+
+.system-status-strip--compact .console-status-strip__main p {
+  font-size: 0.86rem;
+  line-height: 1.25;
+  color: var(--text-muted);
+}
+
+.system-status-strip--compact .console-status-strip__state strong {
+  font-size: 0.9rem;
+}
+
+.system-status-strip--compact .console-status-strip__actions .ui-button {
+  min-height: 2rem;
+  padding: 0.38rem 0.6rem;
 }
 
 .console-runtime-meta {
@@ -6752,6 +6895,10 @@ textarea {
     align-items: flex-start;
   }
 
+  .system-status-strip--compact {
+    padding: 0.5rem 0.6rem;
+  }
+
   .console-status-strip__actions {
     width: 100%;
   }
@@ -7398,6 +7545,94 @@ textarea {
   gap: 0.65rem;
 }
 
+.system-summary-line {
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.system-summary-line--degraded {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.system-summary-line--down {
+  border-color: rgba(248, 113, 113, 0.36);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.system-summary-line__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+}
+
+.system-stats-pills {
+  margin-top: -0.15rem;
+}
+
+.system-logs-card {
+  padding: 0.65rem;
+  border-radius: 10px;
+}
+
+.system-group-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.system-service-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.system-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.system-service-row__main {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.system-service-row__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.system-service-row__title strong {
+  font-size: 0.86rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.system-service-row__main small {
+  color: var(--text-soft);
+  font-size: 0.74rem;
+}
+
+.system-service-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .system-stats__pill {
   min-height: 3.1rem;
   display: grid;
@@ -7713,6 +7948,16 @@ textarea {
 
   .system-health__actions {
     width: 100%;
+  }
+
+  .system-service-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .system-service-row__actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 

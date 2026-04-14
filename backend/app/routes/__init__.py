@@ -18,6 +18,7 @@ from .agents import agents_bp
 from .profile import profile_bp
 from .flows import flows_bp
 from .admin import admin_bp
+from .software import software_bp
 
 
 def register_routes(app):
@@ -41,3 +42,4 @@ def register_routes(app):
     app.register_blueprint(profile_bp)
     app.register_blueprint(flows_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(software_bp)

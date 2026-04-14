@@ -14,6 +14,7 @@ import { WorkInsightsPage } from '../features/work/WorkInsightsPage';
 import { UserGroupAssociationPage } from '../features/work/UserGroupAssociationPage';
 import { WorkHubPage } from '../features/work/WorkHubPage';
 import { WorkDomainPage } from '../features/work/WorkDomainPage';
+import { SoftwareRegistryPage } from '../features/software/SoftwareRegistryPage';
 import { SystemViewerPage } from '../features/system/SystemViewerPage';
 import { FlowRunsPage } from '../features/system/FlowRunsPage';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -214,6 +215,10 @@ export const router = createBrowserRouter(
       {
         path: 'work/user-group-association',
         Component: UserGroupAssociationPage
+      },
+      {
+        path: 'software',
+        Component: SoftwareRegistryPage
       },
       {
         path: 'work/users',

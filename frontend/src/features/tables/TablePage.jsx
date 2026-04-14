@@ -475,7 +475,7 @@ export function TablePage() {
   }
 
   return (
-    <section className="module module--dataset-surface">
+    <section className="module module--dataset-surface table-page-neutral">
       {error ? <p className="status-text status-text--error">{error}</p> : null}
       <input
         ref={fileInputRef}
@@ -505,6 +505,7 @@ export function TablePage() {
         uploadedFiles={uploadedFiles.filter((file) => file.filename.toLowerCase().endsWith('.csv'))}
         isLoadingUploads={isLoadingUploads}
         onUploadSelect={(file) => void handleUploadedFileSelection(file)}
+        changeDatasetCollapsible={false}
         leftControls={(
           <input
             aria-label="Search dataset rows"

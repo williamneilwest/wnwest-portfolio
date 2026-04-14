@@ -546,3 +546,17 @@ export function runFlow(template, variables = {}) {
     })
   });
 }
+
+export function getSoftwareRegistry() {
+  return request(backendBaseUrl, '/api/software');
+}
+
+export function uploadSoftwareRegistry(file, { mode = 'replace' } = {}) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('mode', String(mode || 'replace'));
+  return request(backendBaseUrl, '/api/software/upload', {
+    method: 'POST',
+    body: formData,
+  });
+}

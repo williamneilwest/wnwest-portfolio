@@ -22,6 +22,7 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [lineFilter, setLineFilter] = useState('');
   const [controlsOpen, setControlsOpen] = useState(() => {
     if (typeof document === 'undefined') {
       return true;
@@ -31,6 +32,18 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
   const logBoxRef = useRef(null);
 
   const canFetchLogs = useMemo(() => Boolean(selectedContainer), [selectedContainer]);
+  const filteredLogs = useMemo(() => {
+    const baseLogs = String(logs || '');
+    const filterText = String(lineFilter || '').trim().toLowerCase();
+    if (!filterText) {
+      return baseLogs;
+    }
+
+    return baseLogs
+      .split('\n')
+      .filter((line) => line.toLowerCase().includes(filterText))
+      .join('\n');
+  }, [lineFilter, logs]);
 
   async function loadContainers() {
     setError('');
@@ -123,12 +136,12 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
   }, [logs]);
 
   async function copyLogs() {
-    if (!logs) {
+    if (!filteredLogs) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(logs);
+      await navigator.clipboard.writeText(filteredLogs);
     } catch {
       // No-op; copy support depends on browser context.
     }
@@ -188,6 +201,16 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
           </select>
         </label>
 
+        <label className="settings-field">
+          <span>Quick filter</span>
+          <input
+            type="text"
+            value={lineFilter}
+            onChange={(event) => setLineFilter(event.target.value)}
+            placeholder="Filter log lines..."
+          />
+        </label>
+
         <label className="logs-toggle">
           <input
             type="checkbox"
@@ -206,7 +229,7 @@ export function LogsPanel({ requestedContainer = '', autoOpen = false }) {
       {loading ? <p className="status-text">Loading logs...</p> : null}
 
       <pre className="logs-viewer" ref={logBoxRef}>
-        {logs || (selectedContainer ? 'No log output returned.' : 'Select a container to view logs.')}
+        {filteredLogs || (selectedContainer ? 'No log output returned.' : 'Select a container to view logs.')}
       </pre>
     </Card>
   );

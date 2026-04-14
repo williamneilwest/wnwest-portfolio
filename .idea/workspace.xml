@@ -4,21 +4,15 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="added Hardware page">
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="merged system status and system viewer pages">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/group_cache.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/group_cache.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/work.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/work.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/group_lookup.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/group_lookup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/modules.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/settings/SettingsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/settings/SettingsPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/uploads/UploadsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/uploads/UploadsPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/console/LogsPanel.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/console/LogsPanel.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/features/tables/TablePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/tables/TablePage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkHubPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/WorkPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/index.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -160,15 +154,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="46628000" />
-    </task>
-    <task id="LOCAL-00012" summary="corrected json formatting of meta data for ai analysis response">
-      <option name="closed" value="true" />
-      <created>1775980807820</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1775980807820</updated>
+      <workItem from="1776019342314" duration="48520000" />
     </task>
     <task id="LOCAL-00013" summary="Revamp Knowledge Base UI, add category filtering and file analysis&#10;- Implement sidebar navigation with active category highlight&#10;- Introduce search functionality for documents and tags&#10;- Enhance file listing with improved tag visibility&#10;- Add file analysis capability with user feedback messages&#10;- Update styles for consistency and responsiveness">
       <option name="closed" value="true" />
@@ -554,7 +540,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776122164672</updated>
     </task>
-    <option name="localTasksCounter" value="61" />
+    <task id="LOCAL-00061" summary="merged system status and system viewer pages">
+      <option name="closed" value="true" />
+      <created>1776125618162</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1776125618162</updated>
+    </task>
+    <option name="localTasksCounter" value="62" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -572,7 +566,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added a ai prompt tracker list" />
     <MESSAGE value="fixe mobile ui issues where pages come up blank on scroll or nav" />
     <MESSAGE value="fixed mobile issues and created nav Menu button, removed old nav dropdown" />
     <MESSAGE value="changed csv tool to be more generic data tools" />
@@ -597,7 +590,8 @@
     <MESSAGE value="edited auth for allowance of work page for users not signed in" />
     <MESSAGE value="added terminal routing" />
     <MESSAGE value="added Hardware page" />
-    <option name="LAST_COMMIT_MESSAGE" value="added Hardware page" />
+    <MESSAGE value="merged system status and system viewer pages" />
+    <option name="LAST_COMMIT_MESSAGE" value="merged system status and system viewer pages" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />

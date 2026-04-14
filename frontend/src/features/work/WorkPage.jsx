@@ -1471,6 +1471,8 @@ export function WorkPage({ readOnly = false }) {
                                   primaryField: 'number',
                                   secondaryField: datasetDescriptionColumn,
                                   badgeField: 'state',
+                                  showAiAction: Boolean(authenticated),
+                                  onNotesAction: (row) => setSelectedRow(row),
                                   getIndicators: (row) => {
                                     const rules = row?.__westos?.matchedRules || [];
                                     const hasTag = rules.some((rule) => {

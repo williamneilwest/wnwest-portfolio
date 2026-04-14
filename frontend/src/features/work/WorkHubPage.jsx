@@ -1,9 +1,8 @@
 import {
-  BarChart3,
   Clock3,
   FileSpreadsheet,
   HardDrive,
-  LayoutGrid,
+  BookOpen,
   Link2,
   Mail,
   Monitor,
@@ -11,12 +10,11 @@ import {
   Search,
   Shield,
   Ticket,
-  Upload,
   User,
   Users,
   Wrench,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLatestTickets, getUploads } from '../../app/services/api';
 import { SectionHeader } from '../../app/ui/SectionHeader';
@@ -32,10 +30,17 @@ const domainNav = [
   { label: 'Devices', href: '/app/work/group-search', icon: Monitor },
   { label: 'Printers', href: '/app/work/user-group-association', icon: Printer },
   { label: 'Software', href: '/app/work/ai-metrics', icon: HardDrive },
+  { label: 'Knowledge Base', href: '/app/kb', icon: BookOpen },
   { label: 'Tools', href: '/app/work', icon: Wrench },
 ];
 
 const domainCards = [
+  {
+    title: 'Active Tickets Table',
+    description: 'Full table view for ticket triage and row-level detail.',
+    icon: FileSpreadsheet,
+    href: '/app/work/table',
+  },
   {
     title: 'Users',
     description: 'User identity, groups, and account actions.',
@@ -68,32 +73,12 @@ const domainCards = [
   },
 ];
 
-const ticketCards = [
-  {
-    title: 'Active Tickets',
-    description: 'Primary triage and ticket execution workspace.',
-    href: '/app/work/active-tickets',
-    icon: FileSpreadsheet,
-  },
-  {
-    title: 'Ticket Insights',
-    description: 'Structured AI summaries and operational insights.',
-    href: '/app/work/ai-metrics',
-    icon: BarChart3,
-  },
-  {
-    title: 'Upload / Import',
-    description: 'Bring in CSV or inbound email artifacts.',
-    href: '/app/uploads',
-    icon: Upload,
-  },
-];
-
 const quickActionChips = [
   { label: 'Register Printer', href: '/app/work/user-group-association', icon: Printer },
   { label: 'Lookup User', href: '/app/work/get-user-groups', icon: Users },
   { label: 'Lookup Device', href: '/app/work/group-search', icon: Search },
-  { label: 'Upload CSV', href: '/app/uploads', icon: Upload },
+  { label: 'Open KB', href: '/app/kb', icon: BookOpen },
+  { label: 'Upload CSV', href: '/app/uploads', icon: FileSpreadsheet },
   { label: 'Run Script', href: '/app/work/user-group-association', icon: Wrench },
 ];
 
@@ -262,44 +247,6 @@ export function WorkHubPage() {
             <DomainCard key={domain.title} domain={domain} onOpen={handleModuleOpen} />
           ))}
         </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        title="Tickets"
-        subtitle="Primary workflow surface for triage, insights, and imports."
-      >
-        <div className="work-ticket-row">
-          {ticketCards.map((item) => (
-            <Link
-              key={item.title}
-              className="ui-card work-ticket-card"
-              to={item.href}
-              onClick={() => handleModuleOpen({ title: item.title, href: item.href })}
-              state={{ from: '/app/work', label: 'Work Hub' }}
-            >
-              <div className="work-ticket-card__head">
-                <item.icon size={16} />
-                <h3>{item.title}</h3>
-              </div>
-              <p>{item.description}</p>
-            </Link>
-          ))}
-        </div>
-
-        {cachedDataset?.rows?.length ? (
-          <article className="work-context-panel" aria-live="polite">
-            <div className="work-context-panel__head">
-              <LayoutGrid size={14} />
-              <strong>Suggested Actions For This Dataset</strong>
-            </div>
-            <div className="work-context-panel__actions">
-              <Link to="/app/work/active-tickets">View Tickets</Link>
-              <Link to="/app/work/ai-metrics">Run AI Analysis</Link>
-              <Link to="/app/kb">Match KB Articles</Link>
-            </div>
-            <small>{`Loaded: ${formatDataFileName(cachedDataset.fileName) || 'Dataset'}`}</small>
-          </article>
-        ) : null}
       </CollapsibleSection>
 
       <CollapsibleSection
