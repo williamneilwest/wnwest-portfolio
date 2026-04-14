@@ -674,6 +674,39 @@ export function runFlow(template, variables = {}) {
   });
 }
 
+export function runDevCodexPrompt(prompt) {
+  return request(backendBaseUrl, '/api/dev/codex/run', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ prompt: String(prompt || '') })
+  });
+}
+
+export function applyDevCodexChanges({ stageId, approvedFiles = [] } = {}) {
+  return request(backendBaseUrl, '/api/dev/codex/apply', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      stage_id: String(stageId || ''),
+      approved_files: Array.isArray(approvedFiles) ? approvedFiles : [],
+    })
+  });
+}
+
+export function rejectDevCodexChanges(stageId) {
+  return request(backendBaseUrl, '/api/dev/codex/reject', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ stage_id: String(stageId || '') })
+  });
+}
+
 export function getSoftwareRegistry() {
   return request(backendBaseUrl, '/api/software');
 }

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timezone
-from sqlalchemy import String, Column, DateTime, Integer, create_engine, inspect, text, Text
+from sqlalchemy import String, Column, DateTime, Integer, ForeignKey, create_engine, inspect, text, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .platform import resolve_database_url
@@ -32,6 +32,19 @@ class User(Base):
     id = Column(String, primary_key=True)
     name = Column(String)
     email = Column(String)
+    source = Column(String)
+    last_synced = Column(DateTime)
+
+
+class UserGroup(Base):
+    __tablename__ = 'ref_user_groups'
+
+    user_id = Column(String, ForeignKey('ref_users.id'), primary_key=True, nullable=False)
+    group_id = Column(String, ForeignKey('ref_groups.id'), primary_key=True, nullable=False)
+    source = Column(String)
+    last_synced = Column(DateTime)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Endpoint(Base):
@@ -78,7 +91,9 @@ def init_db():
     """Create tables if they do not exist yet."""
     Base.metadata.create_all(engine)
     _ensure_reference_group_columns()
+    _ensure_reference_user_columns()
     _ensure_ai_analysis_columns()
+    _ensure_user_group_columns()
 
 
 def _ensure_reference_group_columns():
@@ -114,6 +129,61 @@ def _ensure_ai_analysis_columns():
         statements.append('ALTER TABLE ai_analysis ADD COLUMN input_tokens INTEGER NOT NULL DEFAULT 0')
     if 'output_tokens' not in columns:
         statements.append('ALTER TABLE ai_analysis ADD COLUMN output_tokens INTEGER NOT NULL DEFAULT 0')
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def _ensure_reference_user_columns():
+    inspector = inspect(engine)
+    try:
+        columns = {column['name'] for column in inspector.get_columns('ref_users')}
+    except Exception:
+        return
+
+    statements = []
+    if 'source' not in columns:
+        statements.append('ALTER TABLE ref_users ADD COLUMN source VARCHAR')
+    if 'last_synced' not in columns:
+        statements.append('ALTER TABLE ref_users ADD COLUMN last_synced DATETIME')
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def _ensure_user_group_columns():
+    inspector = inspect(engine)
+    try:
+        tables = set(inspector.get_table_names())
+    except Exception:
+        return
+
+    if 'ref_user_groups' not in tables:
+        # Table is created through Base.metadata.create_all in init_db.
+        return
+
+    try:
+        columns = {column['name'] for column in inspector.get_columns('ref_user_groups')}
+    except Exception:
+        return
+
+    statements = []
+    if 'source' not in columns:
+        statements.append('ALTER TABLE ref_user_groups ADD COLUMN source VARCHAR')
+    if 'last_synced' not in columns:
+        statements.append('ALTER TABLE ref_user_groups ADD COLUMN last_synced DATETIME')
+    if 'created_at' not in columns:
+        statements.append('ALTER TABLE ref_user_groups ADD COLUMN created_at DATETIME')
+    if 'updated_at' not in columns:
+        statements.append('ALTER TABLE ref_user_groups ADD COLUMN updated_at DATETIME')
 
     if not statements:
         return

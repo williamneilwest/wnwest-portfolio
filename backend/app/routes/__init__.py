@@ -20,6 +20,7 @@ from .flows import flows_bp
 from .admin import admin_bp
 from .software import software_bp
 from .data_sources import data_sources_bp
+from .dev import dev_bp
 
 
 def register_routes(app):
@@ -45,3 +46,4 @@ def register_routes(app):
     app.register_blueprint(admin_bp)
     app.register_blueprint(software_bp)
     app.register_blueprint(data_sources_bp)
+    app.register_blueprint(dev_bp)

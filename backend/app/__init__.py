@@ -204,6 +204,8 @@ def create_app():
         SESSION_COOKIE_SAMESITE='Lax',
         SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', 'true').strip().lower() == 'true',
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+        APP_DESIGNER_ENABLED=os.getenv('APP_DESIGNER_ENABLED', 'true').strip().lower() in {'1', 'true', 'yes', 'on'},
+        CACHE_TTL_MINUTES=int(os.getenv('CACHE_TTL_MINUTES', '15')),
     )
 
     from .models.platform import init_platform_db

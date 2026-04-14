@@ -1,5 +1,7 @@
 import json
 import os
+import logging
+from time import perf_counter
 
 import requests
 from sqlalchemy import func
@@ -7,11 +9,17 @@ from sqlalchemy import func
 from ..models.reference import Group, SessionLocal, init_db
 from .group_metadata import merge_group_tags, normalize_tags
 from .flow_runs import track_flow_run
+from .entity_cache_service import (
+    get_cached_user_membership,
+    replace_user_groups,
+    upsert_user,
+)
 
 
 DEFAULT_SCRIPT_NAME = 'Search Groups'
 DEFAULT_USER_GROUPS_SCRIPT_NAME = 'Get User Groups'
 DEFAULT_TIMEOUT_SECONDS = 20
+LOGGER = logging.getLogger(__name__)
 
 
 def _ensure_db():
@@ -315,7 +323,6 @@ def lookup_groups_via_flow(search_text, user_id=None):
                 'updated': upserted['updated'],
                 'total': upserted['total'],
             },
-            'raw': raw_text,
         }
 
     return track_flow_run(
@@ -331,8 +338,15 @@ def lookup_groups(search_text, user_id=None):
     if not query:
         return {'source': 'cache', 'items': [], 'cacheHit': False, 'upserted': {'created': 0, 'updated': 0, 'total': 0}}
 
+    started = perf_counter()
     cached = search_cached_groups(query)
     if cached:
+        LOGGER.info(
+            'cache_hit flow=Search Groups query=%s groups=%s duration_ms=%s',
+            query,
+            len(cached),
+            int((perf_counter() - started) * 1000),
+        )
         return {
             'source': 'cache',
             'items': cached,
@@ -340,13 +354,58 @@ def lookup_groups(search_text, user_id=None):
             'upserted': {'created': 0, 'updated': 0, 'total': 0},
         }
 
-    return lookup_groups_via_flow(query, user_id=user_id)
+    result = lookup_groups_via_flow(query, user_id=user_id)
+    LOGGER.info(
+        'flow_called flow=Search Groups query=%s groups=%s duration_ms=%s',
+        query,
+        len(result.get('items') or []),
+        int((perf_counter() - started) * 1000),
+    )
+    return result
 
 
 def get_user_groups_via_flow(user_opid, user_id=None):
+    _ensure_db()
     normalized_user_opid = str(user_opid or '').strip()
     if not normalized_user_opid:
         raise RuntimeError('user_opid is required')
+
+    ttl_minutes = int(os.getenv('CACHE_TTL_MINUTES', '15'))
+    started = perf_counter()
+    cache_session = SessionLocal()
+    try:
+        cached = get_cached_user_membership(cache_session, normalized_user_opid, ttl_minutes=ttl_minutes)
+        if cached is not None:
+            items = cached.get('groups') if isinstance(cached, dict) else []
+            cached_user = cached.get('user') if isinstance(cached, dict) else None
+            identified_count = len([item for item in items if bool(item.get('identified'))])
+            LOGGER.info(
+                'cache_hit flow=Get User Groups user=%s groups=%s ttl_minutes=%s duration_ms=%s',
+                normalized_user_opid,
+                len(items),
+                ttl_minutes,
+                int((perf_counter() - started) * 1000),
+            )
+            return {
+                'source': 'cache',
+                'user': {
+                    'user_id': normalized_user_opid,
+                    'name': str(getattr(cached_user, 'name', '') or '').strip(),
+                    'email': str(getattr(cached_user, 'email', '') or '').strip(),
+                },
+                'userOpid': normalized_user_opid,
+                'groups': [
+                    {'group_id': str(group.get('group_id') or '').strip()}
+                    for group in items
+                    if str(group.get('group_id') or '').strip()
+                ],
+                'items': items,
+                'identifiedCount': identified_count,
+                'totalCount': len(items),
+                'created': 0,
+            }
+    finally:
+        cache_session.close()
 
     flow_url = os.getenv('POWER_AUTOMATE_GROUP_SEARCH_URL', '').strip()
     script_name = os.getenv('POWER_AUTOMATE_USER_GROUPS_SCRIPT_NAME', DEFAULT_USER_GROUPS_SCRIPT_NAME).strip() or DEFAULT_USER_GROUPS_SCRIPT_NAME
@@ -378,16 +437,45 @@ def get_user_groups_via_flow(user_opid, user_id=None):
             parsed_body = raw_text
 
         resolved = resolve_groups_by_ids(_extract_group_ids(parsed_body))
+        session = SessionLocal()
+        try:
+            upsert_user(
+                session,
+                {
+                    'id': normalized_user_opid,
+                    'name': normalized_user_opid,
+                    'email': '',
+                    'source': 'flow',
+                },
+            )
+            replace_user_groups(session, normalized_user_opid, resolved['items'], source='flow')
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+        LOGGER.info(
+            'flow_called flow=Get User Groups user=%s groups=%s duration_ms=%s',
+            normalized_user_opid,
+            len(resolved['items']),
+            int((perf_counter() - started) * 1000),
+        )
 
         return {
             'source': 'flow',
+            'user': {
+                'user_id': normalized_user_opid,
+                'name': normalized_user_opid,
+                'email': '',
+            },
             'userOpid': normalized_user_opid,
             'groups': [{'group_id': str(group.get('group_id') or '').strip()} for group in resolved['items'] if str(group.get('group_id') or '').strip()],
             'items': resolved['items'],
             'identifiedCount': resolved['identifiedCount'],
             'totalCount': resolved['totalCount'],
             'created': resolved['created'],
-            'raw': raw_text,
         }
 
     return track_flow_run(

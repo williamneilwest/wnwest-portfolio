@@ -22,6 +22,7 @@ import { LandingPage } from '../features/landing/LandingPage';
 import { TerminalPage } from '../features/admin/TerminalPage';
 import { AdminFlowsPage } from '../features/admin/AdminFlowsPage';
 import { FlowBuilderPage } from '../features/admin/FlowBuilderPage';
+import { AppDesignerPage } from '../features/dev/AppDesignerPage';
 import { DataSourcesPage } from '../features/data/DataSourcesPage';
 import { AppShell } from './shell/AppShell';
 import { isWorkDomainHost } from './constants/domain';
@@ -176,6 +177,10 @@ export const router = createBrowserRouter(
       {
         path: 'admin/flow-builder',
         element: isWorkSubdomain ? workRedirect : <RequireAdmin><FlowBuilderPage /></RequireAdmin>
+      },
+      {
+        path: 'dev/designer',
+        element: isWorkSubdomain ? workRedirect : <RequireAdmin><AppDesignerPage /></RequireAdmin>
       },
       {
         path: 'profile',

@@ -25,6 +25,7 @@ const NAV_LAST_USED_MAP_KEY = 'westos.nav.lastUsedMap';
 const NAV_GROUPS = [
   { label: 'Workspace', hrefs: ['/app/life', '/app/work', '/app/data', '/app/profile'] },
   { label: 'Intelligence', hrefs: ['/app/ai', '/app/kb'] },
+  { label: 'Dev', hrefs: ['/app/dev/designer'] },
   { label: 'System', hrefs: ['/app/system', '/app/flows', '/app/console', '/app/settings'] },
 ];
 
@@ -117,6 +118,9 @@ function getContextTitle(pathname) {
   if (pathname.startsWith('/app/system')) {
     return 'System Viewer';
   }
+  if (pathname.startsWith('/app/dev/designer')) {
+    return 'Dev / App Designer';
+  }
   if (pathname.startsWith('/app/flows')) {
     return 'Flow Tracking';
   }
@@ -169,6 +173,9 @@ function getBackTarget(pathname) {
   }
 
   if (pathname === '/app/ai' || pathname === '/app/kb' || pathname === '/app/system' || pathname === '/app/console' || pathname === '/app/settings') {
+    return '/app';
+  }
+  if (pathname.startsWith('/app/dev')) {
     return '/app';
   }
   if (pathname === '/app/flows') {
@@ -285,7 +292,7 @@ export function AppShell() {
   const visibleModules = useMemo(() => {
     if (!isWorkDomain) {
       const roleFiltered = modules.filter((module) => {
-        if (module.href === '/app/system' || module.href === '/app/console' || module.href === '/app/flows') {
+        if (module.href === '/app/system' || module.href === '/app/console' || module.href === '/app/flows' || module.href === '/app/dev/designer') {
           return isAdmin;
         }
         return true;
@@ -301,7 +308,7 @@ export function AppShell() {
     return NAV_GROUPS.map((group) => ({
       label: group.label,
       items: visibleModules.filter((module) => group.hrefs.includes(module.href)),
-    }));
+    })).filter((group) => group.items.length);
   }, [visibleModules]);
 
   const quickActionGroups = useMemo(
@@ -326,7 +333,10 @@ export function AppShell() {
         },
         ...(isAdmin ? [{
           label: 'System actions',
-          actions: [{ href: '/app/console', label: 'View Logs' }],
+          actions: [
+            { href: '/app/console', label: 'View Logs' },
+            { href: '/app/dev/designer', label: 'App Designer' },
+          ],
         }] : []),
       ];
     },

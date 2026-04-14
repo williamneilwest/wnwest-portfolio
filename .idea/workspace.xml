@@ -4,25 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="edited user modules">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/group_cache.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/group_cache.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/routes/reference.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/routes/reference.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/active_tickets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/active_tickets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/services/group_lookup.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/group_lookup.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/constants/storageKeys.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/constants/storageKeys.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/router.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/router.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/shell/AppShell.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/uploads/UploadsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/uploads/UploadsPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/GetUserGroupsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/GetUserGroupsPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/GroupSearchToolPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/GroupSearchToolPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/UserGroupAssociationPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/UserGroupAssociationPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/features/work/pages/TicketDetail.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="99365218-23de-46b4-b0b7-80829c01ff35" name="Changes" comment="Milestone 6" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -162,15 +144,7 @@
       <workItem from="1775971485092" duration="641000" />
       <workItem from="1775972221075" duration="6242000" />
       <workItem from="1775978570958" duration="10231000" />
-      <workItem from="1776019342314" duration="58094000" />
-    </task>
-    <task id="LOCAL-00016" summary="fixed back button">
-      <option name="closed" value="true" />
-      <created>1775985897379</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1775985897379</updated>
+      <workItem from="1776019342314" duration="58114000" />
     </task>
     <task id="LOCAL-00017" summary="Enable log monitoring in backend and enhance LifePage UI for improved interactivity and status reporting">
       <option name="closed" value="true" />
@@ -556,7 +530,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776132325565</updated>
     </task>
-    <option name="localTasksCounter" value="65" />
+    <task id="LOCAL-00065" summary="Milestone 6">
+      <option name="closed" value="true" />
+      <created>1776177432459</created>
+      <option name="number" value="00065" />
+      <option name="presentableId" value="LOCAL-00065" />
+      <option name="project" value="LOCAL" />
+      <updated>1776177432459</updated>
+    </task>
+    <option name="localTasksCounter" value="66" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -574,7 +556,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="changed csv tool to be more generic data tools" />
     <MESSAGE value="ui overhaul" />
     <MESSAGE value="fixed header styling" />
     <MESSAGE value="corrected header spacing" />
@@ -599,7 +580,8 @@
     <MESSAGE value="merged system status and system viewer pages" />
     <MESSAGE value="coprrected page display issues for profile list" />
     <MESSAGE value="edited user modules" />
-    <option name="LAST_COMMIT_MESSAGE" value="edited user modules" />
+    <MESSAGE value="Milestone 6" />
+    <option name="LAST_COMMIT_MESSAGE" value="Milestone 6" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/westos$user_info.coverage" NAME="user_info Coverage Results" MODIFIED="1775908861159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/backend/app/services" />
