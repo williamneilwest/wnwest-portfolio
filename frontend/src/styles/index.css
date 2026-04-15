@@ -1035,6 +1035,17 @@ textarea {
   color: var(--text);
 }
 
+.linkified-token {
+  color: #6ee7b7;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(110, 231, 183, 0.42);
+}
+
+.linkified-token:hover {
+  color: #a7f3d0;
+  text-decoration: underline;
+}
+
 .shell__hero-status {
   display: inline-flex;
   align-items: center;

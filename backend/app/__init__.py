@@ -164,9 +164,8 @@ def _resolve_frontend_build_dir():
     app_root = Path(__file__).resolve().parents[2]
     candidates.extend(
         [
-            app_root / 'frontend' / 'dist',
             app_root.parent / 'frontend' / 'dist',
-            Path('/app/frontend/dist'),
+            Path('/frontend/dist'),
         ]
     )
 

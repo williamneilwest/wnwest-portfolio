@@ -277,6 +277,10 @@ export const router = createBrowserRouter(
         element: <WorkDomainPage domain="hardware" />
       },
       {
+        path: 'device-location',
+        element: <WorkDomainPage domain="hardware" />
+      },
+      {
         path: 'work/insights',
         element: <Navigate replace to="/app/work/ai-metrics" />
       }
@@ -349,6 +353,10 @@ export const router = createBrowserRouter(
   {
     path: '/work/hardware',
     element: <Navigate replace to="/app/work/hardware" />
+  },
+  {
+    path: '/device-location',
+    element: <Navigate replace to="/app/device-location" />
   },
   {
     path: '/readme',

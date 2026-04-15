@@ -6,6 +6,7 @@ import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, get
 import { getFeatureAgentId } from '../../../app/services/aiClient';
 import { Card, CardHeader } from '../../../app/ui/Card';
 import { EmptyState } from '../../../app/ui/EmptyState';
+import { linkifyText } from '../../../utils/linkifyText';
 import { getCachedWorkDataset, setCachedWorkDataset } from '../workDatasetCache';
 import { useCurrentUser } from '../../../app/hooks/useCurrentUser';
 import {
@@ -582,7 +583,7 @@ export function TicketDetail() {
             <div className="ticket-summary-popup__content">
               <div className="ticket-summary-popup__section">
                 <span>Summary</span>
-                  <p>{analysisResult}</p>
+                  <p>{linkifyText(analysisResult)}</p>
               </div>
             </div>
           ) : null}
@@ -617,7 +618,7 @@ export function TicketDetail() {
             <div className="ticket-detail-hero">
               <div className="ticket-detail-hero__item">
                 <UserRound size={14} />
-                <span>{getTicketAssignee(ticket, columns)}</span>
+                <span>{linkifyText(getTicketAssignee(ticket, columns))}</span>
               </div>
               <div className="ticket-detail-hero__item">
                 <Clock3 size={14} />
@@ -628,11 +629,13 @@ export function TicketDetail() {
               </div>
             </div>
 
+            <p>{linkifyText(getTicketTitle(ticket, columns))}</p>
+
             <div className="ticket-detail-grid">
               {metadataEntries.map((item) => (
                 <div className="ticket-detail-grid__item" key={item.label}>
                   <span>{item.label}</span>
-                  <strong>{item.value}</strong>
+                  <strong>{linkifyText(item.value)}</strong>
                 </div>
               ))}
             </div>
@@ -652,7 +655,7 @@ export function TicketDetail() {
                     {' · '}
                     <span>{note.timestamp ? note.timestamp.toLocaleString() : 'Unknown time'}</span>
                   </p>
-                  <p>{note.value}</p>
+                  <p>{linkifyText(note.value)}</p>
                 </article>
               ))}
             </div>

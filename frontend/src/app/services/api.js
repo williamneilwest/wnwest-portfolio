@@ -329,15 +329,39 @@ export function searchUsers(query) {
   return request(backendBaseUrl, `/api/search-users?${params.toString()}`);
 }
 
-export function searchDeviceLocations({ query = '', data = [] } = {}) {
+export function searchDeviceLocations({ query = '', data, sourceKey = '' } = {}) {
+  const payload = {
+    query: String(query || '').trim(),
+  };
+  const normalizedSourceKey = String(sourceKey || '').trim();
+  if (normalizedSourceKey) {
+    payload.source_key = normalizedSourceKey;
+  }
+  if (Array.isArray(data)) {
+    payload.data = data;
+  }
+
   return request(backendBaseUrl, '/api/device-locations/search', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getDeviceLocationSource() {
+  return request(backendBaseUrl, '/api/device-locations/source');
+}
+
+export function updateDeviceLocationSource(sourceKey) {
+  return request(backendBaseUrl, '/api/device-locations/source', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify({
-      query: String(query || '').trim(),
-      data: Array.isArray(data) ? data : [],
+      source_key: String(sourceKey || '').trim(),
     }),
   });
 }

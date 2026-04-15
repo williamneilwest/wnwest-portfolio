@@ -49,6 +49,7 @@ import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRul
 import { IdentityAccessModule } from './components/IdentityAccessModule';
 import { TicketSidePanel } from './components/TicketSidePanel';
 import { TicketSwipeDeck } from '../tickets/components/TicketSwipeDeck';
+import { linkifyText } from '../../utils/linkifyText';
 
 const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
 const TABLE_PAGE_SIZE = 50;
@@ -429,6 +430,7 @@ export function WorkPage({ readOnly = false }) {
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [selectedTicketIndex, setSelectedTicketIndex] = useState(-1);
   const [ticketPanelAiLoading, setTicketPanelAiLoading] = useState(false);
   const [ticketPanelAiResult, setTicketPanelAiResult] = useState('');
   const [ticketPanelAiError, setTicketPanelAiError] = useState('');
@@ -1042,6 +1044,47 @@ export function WorkPage({ readOnly = false }) {
       })),
     [paginatedVisibleTickets]
   );
+  const linkifiedColumns = useMemo(
+    () => new Set(['short_description', 'description', 'comments_and_work_notes']),
+    []
+  );
+
+  function formatActiveTicketsTableCell({ value, column }) {
+    const normalizedColumn = String(column || '').trim().toLowerCase();
+    if (!linkifiedColumns.has(normalizedColumn)) {
+      return value;
+    }
+    return linkifyText(value);
+  }
+  const swipeTickets = useMemo(
+    () => visibleTickets.map(({ ticket }) => ticket).filter(Boolean),
+    [visibleTickets]
+  );
+
+  useEffect(() => {
+    if (!selectedTicket) {
+      if (selectedTicketIndex !== -1) {
+        setSelectedTicketIndex(-1);
+      }
+      return;
+    }
+
+    const selectedId = getTicketId(selectedTicket, datasetColumns);
+    const nextIndex = swipeTickets.findIndex((item) => getTicketId(item, datasetColumns) === selectedId);
+    if (nextIndex < 0) {
+      setSelectedTicket(null);
+      setSelectedTicketIndex(-1);
+      setTicketPanelAiError('');
+      setTicketPanelAiResult('');
+      return;
+    }
+    if (selectedTicketIndex !== nextIndex) {
+      setSelectedTicketIndex(nextIndex);
+    }
+    if (swipeTickets[nextIndex] !== selectedTicket) {
+      setSelectedTicket(swipeTickets[nextIndex]);
+    }
+  }, [datasetColumns, selectedTicket, selectedTicketIndex, swipeTickets]);
   const workspaceTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'identity', label: 'Identity' },
@@ -1208,7 +1251,29 @@ export function WorkPage({ readOnly = false }) {
   function handleTicketCardSelect(row) {
     setTicketPanelAiError('');
     setTicketPanelAiResult('');
-    setSelectedTicket(row || null);
+    const ticket = row || null;
+    setSelectedTicket(ticket);
+    if (!ticket) {
+      setSelectedTicketIndex(-1);
+      return;
+    }
+    const selectedId = getTicketId(ticket, datasetColumns);
+    const nextIndex = swipeTickets.findIndex((item) => getTicketId(item, datasetColumns) === selectedId);
+    setSelectedTicketIndex(nextIndex >= 0 ? nextIndex : 0);
+  }
+
+  function handleSelectTicketByIndex(nextIndex) {
+    if (nextIndex < 0 || nextIndex >= swipeTickets.length) {
+      return;
+    }
+    const nextTicket = swipeTickets[nextIndex];
+    if (!nextTicket) {
+      return;
+    }
+    setTicketPanelAiError('');
+    setTicketPanelAiResult('');
+    setSelectedTicket(nextTicket);
+    setSelectedTicketIndex(nextIndex);
   }
 
   function handleOpenSelectedTicketFull() {
@@ -1488,7 +1553,7 @@ export function WorkPage({ readOnly = false }) {
                         visibleTickets.length ? (
                           isMobile ? (
                             <TicketSwipeDeck
-                              tickets={visibleTickets.map(({ ticket }) => ticket)}
+                              tickets={swipeTickets}
                               onOpenTicket={handleTicketCardSelect}
                             />
                           ) : datasetView === 'cards' ? (
@@ -1545,6 +1610,7 @@ export function WorkPage({ readOnly = false }) {
                               selectedRow={selectedRow}
                               sortConfig={datasetSortConfig}
                               visibleColumns={datasetVisibleColumns}
+                              cellFormatter={formatActiveTicketsTableCell}
                             />
                           ) : (
                             <div className="dataset-metrics-grid">
@@ -1925,9 +1991,15 @@ export function WorkPage({ readOnly = false }) {
               ticketId={getTicketId(selectedTicket, datasetColumns)}
               onClose={() => {
                 setSelectedTicket(null);
+                setSelectedTicketIndex(-1);
                 setTicketPanelAiError('');
                 setTicketPanelAiResult('');
               }}
+              hasPrev={selectedTicketIndex > 0}
+              hasNext={selectedTicketIndex >= 0 && selectedTicketIndex < swipeTickets.length - 1}
+              onPrev={() => handleSelectTicketByIndex(selectedTicketIndex - 1)}
+              onNext={() => handleSelectTicketByIndex(selectedTicketIndex + 1)}
+              positionLabel={selectedTicketIndex >= 0 ? `${selectedTicketIndex + 1} / ${swipeTickets.length}` : ''}
               onOpenFull={handleOpenSelectedTicketFull}
               onRunAi={handleRunSelectedTicketAi}
               canRunAi={canMutate}

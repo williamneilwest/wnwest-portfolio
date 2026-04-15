@@ -51,7 +51,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data
-      - ./frontend/dist:/app/frontend/dist:ro
+      - ./frontend/dist:/frontend/dist:ro
       - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
     secrets:

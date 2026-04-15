@@ -48,6 +48,11 @@ work.westos.dev {
 	}
 
 	handle {
+		header {
+			Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+			Pragma "no-cache"
+			Expires "0"
+		}
 		reverse_proxy frontend:5173
 	}
 }
@@ -88,6 +93,11 @@ westos.dev {
 	}
 
 	handle {
+		header {
+			Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+			Pragma "no-cache"
+			Expires "0"
+		}
 		reverse_proxy frontend:5173
 	}
 }

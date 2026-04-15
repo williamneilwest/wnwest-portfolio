@@ -514,6 +514,21 @@ export function AppShell() {
   return (
     <div className="shell">
       <aside className="shell__sidebar">
+        <div className="shell__quick-actions" role="navigation" aria-label="Quick actions">
+          {quickActionGroups.map((group) => (
+            <div key={`quick-group-${group.label}`} className="shell__quick-action-group">
+              <span className="shell__nav-group-label">{group.label}</span>
+              <div className="shell__quick-action-items">
+                {group.actions.map((action) => (
+                  <NavLink key={`quick-${action.href}`} to={action.href} className="shell__quick-chip">
+                    {action.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div
           className={
             expanded ? 'shell__brand-wrap shell__brand-wrap--expanded' : 'shell__brand-wrap shell__brand-wrap--collapsed'
@@ -551,21 +566,6 @@ export function AppShell() {
                 Open Console
               </NavLink>
             ) : null}
-
-            <div className="shell__quick-actions" role="navigation" aria-label="Quick actions">
-              {quickActionGroups.map((group) => (
-                <div key={`quick-group-${group.label}`} className="shell__quick-action-group">
-                  <span className="shell__nav-group-label">{group.label}</span>
-                  <div className="shell__quick-action-items">
-                    {group.actions.map((action) => (
-                      <NavLink key={`quick-${action.href}`} to={action.href} className="shell__quick-chip">
-                        {action.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
 
             <nav className="shell__brand-mobile-nav" aria-label="Primary mobile">
               {groupedModules.map((group) => (

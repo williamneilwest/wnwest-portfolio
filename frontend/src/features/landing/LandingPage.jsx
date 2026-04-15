@@ -5,7 +5,7 @@ import { AuthHeaderControl } from '../auth/AuthHeaderControl';
 import { LoginModal } from '../auth/LoginModal';
 
 const primaryAction = {
-  href: '/app',
+  href: 'https://work.westos.dev',
   label: 'Enter System'
 };
 
@@ -17,16 +17,16 @@ const secondaryActions = [
 
 const systemModules = [
   {
-    href: '/app/life',
-    title: 'LifeOS',
-    description: 'Personal systems, routines, and private operating loops.',
-    icon: HeartPulse
-  },
-  {
     href: '/app/work',
     title: 'Work Console',
     description: 'Operational workflows, datasets, and ticket-driven tools.',
     icon: BriefcaseBusiness
+  },
+  {
+    href: '/app/life',
+    title: 'LifeOS',
+    description: 'Personal systems, routines, and private operating loops.',
+    icon: HeartPulse
   },
   {
     href: '/app/data',
@@ -88,10 +88,10 @@ export function LandingPage() {
         </div>
 
         <div className="landing__actions">
-          <Link className="ui-button ui-button--primary" to={primaryAction.href}>
+          <a className="ui-button ui-button--primary" href={primaryAction.href}>
             {primaryAction.label}
             <ArrowRight size={15} />
-          </Link>
+          </a>
           {secondaryActions.map((action) => (
             <Link className="ui-button ui-button--secondary" key={action.href} to={action.href}>
               {action.label}

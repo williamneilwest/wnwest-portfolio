@@ -221,6 +221,31 @@ export function WorkHubPage() {
         title="Work Hub"
       />
 
+      <section className="work-hub-section">
+        <header className="work-hub-section__header">
+          <div>
+            <strong>Quick Actions</strong>
+            <small>Run common actions immediately without navigating deeper.</small>
+          </div>
+        </header>
+        <div className="work-hub-section__body">
+          <div className="work-chip-row" role="group" aria-label="Quick action chips">
+            {quickActionChips.map((item) => (
+              <Link
+                key={item.label}
+                className="work-action-chip"
+                to={item.href}
+                onClick={() => handleModuleOpen({ title: item.label, href: item.href })}
+                state={{ from: '/app/work', label: 'Work Hub' }}
+              >
+                <item.icon size={13} />
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <CollapsibleSection
         title="Core Domains"
         subtitle="Primary operational domains grouped by responsibility."
@@ -228,26 +253,6 @@ export function WorkHubPage() {
         <div className="work-domain-grid">
           {domainCards.map((domain) => (
             <DomainCard key={domain.title} domain={domain} onOpen={handleModuleOpen} />
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        title="Quick Actions"
-        subtitle="Run common actions immediately without navigating deeper."
-      >
-        <div className="work-chip-row" role="group" aria-label="Quick action chips">
-          {quickActionChips.map((item) => (
-            <Link
-              key={item.label}
-              className="work-action-chip"
-              to={item.href}
-              onClick={() => handleModuleOpen({ title: item.label, href: item.href })}
-              state={{ from: '/app/work', label: 'Work Hub' }}
-            >
-              <item.icon size={13} />
-              <span>{item.label}</span>
-            </Link>
           ))}
         </div>
       </CollapsibleSection>

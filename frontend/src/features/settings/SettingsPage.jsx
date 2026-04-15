@@ -158,11 +158,21 @@ export function SettingsPage() {
           icon={Database}
           title="Data Retention"
         />
-        <PlaceholderSettingCard
-          description="Future controls for role gating, internal-only routes, and webhook hardening."
-          icon={Shield}
-          title="Access Controls"
-        />
+        <Card className="landing__card">
+          <CardHeader
+            eyebrow="Access"
+            title="Access Controls"
+            description="Role gating and access utilities. Profile settings are available here."
+          />
+          <div className="landing__actions">
+            <button type="button" className="compact-toggle" onClick={() => navigate('/app/profile')}>
+              Open Profile
+            </button>
+            <span className="icon-badge">
+              <Shield size={18} />
+            </span>
+          </div>
+        </Card>
         <PlaceholderSettingCard
           description="Future controls for default routes, module visibility, and environment-specific UI behavior."
           icon={SlidersHorizontal}
@@ -177,9 +187,6 @@ export function SettingsPage() {
           description="Access pages moved out of sidebar tabs."
         />
         <div className="stack-row__actions">
-          <button type="button" className="compact-toggle" onClick={() => navigate('/app/profile')}>
-            Profile
-          </button>
           {isAdmin ? (
             <>
               <button type="button" className="compact-toggle" onClick={() => navigate('/app/system')}>
