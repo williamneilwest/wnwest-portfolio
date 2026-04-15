@@ -291,6 +291,9 @@ export function AppShell() {
   const { authenticated, isAdmin } = useCurrentUser();
   const visibleModules = useMemo(() => {
     if (!isWorkDomain) {
+      if (!isAdmin) {
+        return modules.filter((module) => module.href === '/app/work' || module.href === '/app/kb');
+      }
       const roleFiltered = modules.filter((module) => {
         if (module.href === '/app/system' || module.href === '/app/console' || module.href === '/app/flows' || module.href === '/app/dev/designer') {
           return isAdmin;
@@ -318,6 +321,18 @@ export function AppShell() {
           {
             label: 'Work actions',
             actions: [{ href: '/app/work/active-tickets', label: 'Active Tickets' }],
+          },
+        ];
+      }
+
+      if (!isAdmin) {
+        return [
+          {
+            label: 'Work actions',
+            actions: [
+              { href: '/app/work/active-tickets', label: 'Active Tickets' },
+              { href: '/app/kb', label: 'Knowledge Base' },
+            ],
           },
         ];
       }
@@ -356,6 +371,28 @@ export function AppShell() {
       navigate('/app/work', { replace: true });
     }
   }, [isWorkDomain, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (isWorkDomain || !authenticated || isAdmin) {
+      return;
+    }
+
+    const allowedPaths = [
+      '/app/work',
+      '/work',
+      '/tickets',
+      '/app/device-location',
+      '/device-location',
+      '/app/kb',
+      '/kb',
+      '/app/document',
+      '/document',
+    ];
+    const isAllowed = allowedPaths.some((pathPrefix) => location.pathname.startsWith(pathPrefix));
+    if (!isAllowed) {
+      navigate('/app/work', { replace: true });
+    }
+  }, [authenticated, isAdmin, isWorkDomain, location.pathname, navigate]);
 
   function onTopbarBack() {
     if (typeof window !== 'undefined' && window.history?.state?.idx > 0) {
@@ -638,7 +675,7 @@ export function AppShell() {
                   {location.pathname.startsWith('/app/kb/processed') ? 'Knowledge Base' : 'Processed KB'}
                 </NavLink>
               ) : null}
-              {isWorkDomain || !authenticated ? null : <AssistantPopover />}
+              {isWorkDomain || !authenticated || !isAdmin ? null : <AssistantPopover />}
             </div>
           </div>
         </header>

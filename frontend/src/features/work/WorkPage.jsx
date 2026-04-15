@@ -48,7 +48,6 @@ import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppre
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from './utils/ticketRules';
 import { IdentityAccessModule } from './components/IdentityAccessModule';
 import { TicketSidePanel } from './components/TicketSidePanel';
-import { TicketSwipeDeck } from '../tickets/components/TicketSwipeDeck';
 import { linkifyText } from '../../utils/linkifyText';
 
 const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
@@ -1044,6 +1043,14 @@ export function WorkPage({ readOnly = false }) {
       })),
     [paginatedVisibleTickets]
   );
+  const mobileCardRows = useMemo(
+    () =>
+      visibleTickets.map(({ ticket, matchedRules }) => ({
+        ...(ticket || {}),
+        __westos: { matchedRules: matchedRules || [] },
+      })),
+    [visibleTickets]
+  );
   const linkifiedColumns = useMemo(
     () => new Set(['short_description', 'description', 'comments_and_work_notes']),
     []
@@ -1366,20 +1373,22 @@ export function WorkPage({ readOnly = false }) {
             type="file"
           />
 
-          <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
-            {workspaceTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeWorkspaceTab === tab.id}
-                className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                onClick={() => setActiveWorkspaceTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {!isActiveTicketsRoute ? (
+            <div className="work-workspace-tabs" role="tablist" aria-label="Work workspace tabs">
+              {workspaceTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeWorkspaceTab === tab.id}
+                  className={activeWorkspaceTab === tab.id ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                  onClick={() => setActiveWorkspaceTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div className="work-modules-stack">
             {activeWorkspaceTab === 'overview' ? (
@@ -1456,84 +1465,168 @@ export function WorkPage({ readOnly = false }) {
                     />
                   )}
                   rightControls={(
-                    <>
-                      {datasetAssigneeColumn ? (
-                        <select
-                          className="ticket-queue__filter"
-                          onChange={(event) => setAssigneeFilter(event.target.value)}
-                          value={assigneeFilter}
-                        >
-                          <option value="">Assignee</option>
-                          {assigneeOptions.map((assignee) => (
-                            <option key={assignee} value={assignee}>{assignee}</option>
-                          ))}
-                        </select>
-                      ) : null}
-                      {datasetSiteColumn ? (
-                        <select
-                          className="ticket-queue__filter"
-                          onChange={(event) => setSiteFilter(event.target.value)}
-                          value={siteFilter}
-                        >
-                          <option value="">Site</option>
-                          {siteOptions.map((site) => (
-                            <option key={site} value={site}>{site}</option>
-                          ))}
-                        </select>
-                      ) : null}
-                      <button
-                        aria-pressed={showOnlyFlaggedTickets}
-                        className={showOnlyFlaggedTickets ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                        onClick={() => setShowOnlyFlaggedTickets((current) => !current)}
-                        type="button"
-                      >
-                        Flagged
-                      </button>
-                      <button
-                        className="compact-toggle"
-                        disabled={!analysis || loadingAI || isLoadingSavedRun || !canMutate}
-                        title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
-                        onClick={handleAiAnalysis}
-                        type="button"
-                      >
-                        <MessageSquareText size={14} />
-                        {loadingAI ? 'AI...' : 'Run AI'}
-                      </button>
-                      <div className="ticket-view-toggle" role="tablist" aria-label="Dataset view">
+                    isMobile ? (
+                      <details className="active-tickets-mobile-options">
+                        <summary className="compact-toggle">Options</summary>
+                        <div className="active-tickets-mobile-options__panel">
+                          {datasetAssigneeColumn ? (
+                            <select
+                              className="ticket-queue__filter"
+                              onChange={(event) => setAssigneeFilter(event.target.value)}
+                              value={assigneeFilter}
+                            >
+                              <option value="">Assignee</option>
+                              {assigneeOptions.map((assignee) => (
+                                <option key={assignee} value={assignee}>{assignee}</option>
+                              ))}
+                            </select>
+                          ) : null}
+                          {datasetSiteColumn ? (
+                            <select
+                              className="ticket-queue__filter"
+                              onChange={(event) => setSiteFilter(event.target.value)}
+                              value={siteFilter}
+                            >
+                              <option value="">Site</option>
+                              {siteOptions.map((site) => (
+                                <option key={site} value={site}>{site}</option>
+                              ))}
+                            </select>
+                          ) : null}
+                          <button
+                            aria-pressed={showOnlyFlaggedTickets}
+                            className={showOnlyFlaggedTickets ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                            onClick={() => setShowOnlyFlaggedTickets((current) => !current)}
+                            type="button"
+                          >
+                            Flagged
+                          </button>
+                          <button
+                            className="compact-toggle"
+                            disabled={!analysis || loadingAI || isLoadingSavedRun || !canMutate}
+                            title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
+                            onClick={handleAiAnalysis}
+                            type="button"
+                          >
+                            <MessageSquareText size={14} />
+                            {loadingAI ? 'AI...' : 'Run AI'}
+                          </button>
+                          <div className="ticket-view-toggle" role="tablist" aria-label="Dataset view">
+                            <button
+                              aria-pressed={datasetView === 'cards'}
+                              className={datasetView === 'cards' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                              onClick={() => setDatasetView('cards')}
+                              type="button"
+                            >
+                              Cards
+                            </button>
+                            <button
+                              aria-pressed={datasetView === 'table'}
+                              className={datasetView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                              onClick={() => setDatasetView('table')}
+                              type="button"
+                            >
+                              Table
+                            </button>
+                            <button
+                              aria-pressed={datasetView === 'metrics'}
+                              className={datasetView === 'metrics' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                              onClick={() => setDatasetView('metrics')}
+                              type="button"
+                            >
+                              Metrics
+                            </button>
+                          </div>
+                          <button
+                            className={isEditDatasetOpen ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                            onClick={() => setIsEditDatasetOpen(true)}
+                            type="button"
+                          >
+                            <SlidersHorizontal size={14} />
+                            Edit Dataset
+                          </button>
+                        </div>
+                      </details>
+                    ) : (
+                      <>
+                        {datasetAssigneeColumn ? (
+                          <select
+                            className="ticket-queue__filter"
+                            onChange={(event) => setAssigneeFilter(event.target.value)}
+                            value={assigneeFilter}
+                          >
+                            <option value="">Assignee</option>
+                            {assigneeOptions.map((assignee) => (
+                              <option key={assignee} value={assignee}>{assignee}</option>
+                            ))}
+                          </select>
+                        ) : null}
+                        {datasetSiteColumn ? (
+                          <select
+                            className="ticket-queue__filter"
+                            onChange={(event) => setSiteFilter(event.target.value)}
+                            value={siteFilter}
+                          >
+                            <option value="">Site</option>
+                            {siteOptions.map((site) => (
+                              <option key={site} value={site}>{site}</option>
+                            ))}
+                          </select>
+                        ) : null}
                         <button
-                          aria-pressed={datasetView === 'cards'}
-                          className={datasetView === 'cards' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                          onClick={() => setDatasetView('cards')}
+                          aria-pressed={showOnlyFlaggedTickets}
+                          className={showOnlyFlaggedTickets ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                          onClick={() => setShowOnlyFlaggedTickets((current) => !current)}
                           type="button"
                         >
-                          Cards
+                          Flagged
                         </button>
                         <button
-                          aria-pressed={datasetView === 'table'}
-                          className={datasetView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                          onClick={() => setDatasetView('table')}
+                          className="compact-toggle"
+                          disabled={!analysis || loadingAI || isLoadingSavedRun || !canMutate}
+                          title={!canMutate ? (readOnly ? 'Read-only view' : 'Sign in to use this feature') : ''}
+                          onClick={handleAiAnalysis}
                           type="button"
                         >
-                          Table
+                          <MessageSquareText size={14} />
+                          {loadingAI ? 'AI...' : 'Run AI'}
                         </button>
+                        <div className="ticket-view-toggle" role="tablist" aria-label="Dataset view">
+                          <button
+                            aria-pressed={datasetView === 'cards'}
+                            className={datasetView === 'cards' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                            onClick={() => setDatasetView('cards')}
+                            type="button"
+                          >
+                            Cards
+                          </button>
+                          <button
+                            aria-pressed={datasetView === 'table'}
+                            className={datasetView === 'table' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                            onClick={() => setDatasetView('table')}
+                            type="button"
+                          >
+                            Table
+                          </button>
+                          <button
+                            aria-pressed={datasetView === 'metrics'}
+                            className={datasetView === 'metrics' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                            onClick={() => setDatasetView('metrics')}
+                            type="button"
+                          >
+                            Metrics
+                          </button>
+                        </div>
                         <button
-                          aria-pressed={datasetView === 'metrics'}
-                          className={datasetView === 'metrics' ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                          onClick={() => setDatasetView('metrics')}
+                          className={isEditDatasetOpen ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                          onClick={() => setIsEditDatasetOpen(true)}
                           type="button"
                         >
-                          Metrics
+                          <SlidersHorizontal size={14} />
+                          Edit Dataset
                         </button>
-                      </div>
-                      <button
-                        className={isEditDatasetOpen ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-                        onClick={() => setIsEditDatasetOpen(true)}
-                        type="button"
-                      >
-                        <SlidersHorizontal size={14} />
-                        Edit Dataset
-                      </button>
-                    </>
+                      </>
+                    )
                   )}
                   uploadDisabled={!canMutate}
                   uploadDisabledReason={readOnly ? 'Read-only view' : 'Sign in to use this feature'}
@@ -1552,10 +1645,44 @@ export function WorkPage({ readOnly = false }) {
                       {latestDataset?.rows?.length ? (
                         visibleTickets.length ? (
                           isMobile ? (
-                            <TicketSwipeDeck
-                              tickets={swipeTickets}
-                              onOpenTicket={handleTicketCardSelect}
-                            />
+                            <ErrorBoundary
+                              fallback={
+                                <EmptyState
+                                  icon={<FileSpreadsheet size={20} />}
+                                  title="Card view unavailable"
+                                  description="A rendering issue occurred in mobile card mode."
+                                />
+                              }
+                            >
+                              <DataCardList
+                                readOnly={isPublicView}
+                                rows={mobileCardRows}
+                                visibleColumns={datasetVisibleColumns}
+                                onRowSelect={handleTicketCardSelect}
+                                rowKey={(row, index) =>
+                                  row?.id
+                                  || row?.ticket_number
+                                  || row?.number
+                                  || row?.sys_id
+                                  || getTicketId(row, datasetColumns)
+                                  || `row-${index}`
+                                }
+                                config={{
+                                  variant: 'ticket',
+                                  primaryField: 'number',
+                                  secondaryField: datasetDescriptionColumn,
+                                  badgeField: 'state',
+                                  getIndicators: (row) => {
+                                    const rules = row?.__westos?.matchedRules || [];
+                                    const hasTag = rules.some((rule) => {
+                                      const id = String(rule?.id || '').toLowerCase();
+                                      return id === 'responder_group' || id.startsWith('kb_tag_');
+                                    });
+                                    return hasTag ? [{ label: 'Tagged', tone: 'info', icon: <Tag size={12} /> }] : [];
+                                  },
+                                }}
+                              />
+                            </ErrorBoundary>
                           ) : datasetView === 'cards' ? (
                             <ErrorBoundary
                               fallback={
@@ -1987,6 +2114,7 @@ export function WorkPage({ readOnly = false }) {
 
           {selectedTicket ? (
             <TicketSidePanel
+              mobileMode={isMobile}
               ticket={selectedTicket}
               ticketId={getTicketId(selectedTicket, datasetColumns)}
               onClose={() => {

@@ -2446,6 +2446,28 @@ textarea {
   animation: ticket-side-panel-in 160ms ease-out;
 }
 
+.ticket-side-panel--modal {
+  width: min(94vw, 460px);
+  height: min(88dvh, 760px);
+  margin: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+  background: var(--bg-panel);
+  animation: ticket-modal-in 140ms ease-out;
+}
+
+@keyframes ticket-modal-in {
+  from {
+    transform: translateY(8px) scale(0.98);
+    opacity: 0.75;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 @keyframes ticket-side-panel-in {
   from {
     transform: translateX(18px);
@@ -2565,6 +2587,30 @@ textarea {
   gap: 0.3rem;
   color: var(--text-soft);
   font-size: 0.72rem;
+}
+
+.active-tickets-mobile-options {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.active-tickets-mobile-options summary {
+  list-style: none;
+  width: fit-content;
+}
+
+.active-tickets-mobile-options summary::-webkit-details-marker {
+  display: none;
+}
+
+.active-tickets-mobile-options__panel {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .work-recent-item strong {
@@ -7418,6 +7464,65 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .shell,
+  .shell__content,
+  .shell__viewport,
+  .module,
+  .ui-card,
+  .analysis-grid,
+  .analysis-grid__wide,
+  .dataset-layout,
+  .dataset-layout__summary-card,
+  .dataset-layout__change-card,
+  .ticket-detail-layout,
+  .ticket-detail-main,
+  .ticket-detail-card,
+  .ticket-notes-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .module > *,
+  .ui-card > * {
+    min-width: 0;
+  }
+
+  .table-actions,
+  .settings-field,
+  .dataset-control-bar,
+  .dataset-summary,
+  .ticket-source-banner {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .settings-field input,
+  .settings-field select,
+  .settings-field textarea,
+  .table-actions input,
+  .table-actions select,
+  .table-actions textarea,
+  .table-actions .ui-button,
+  .table-actions .compact-toggle {
+    max-width: 100%;
+  }
+
+  .dataset-card,
+  .ticket-card,
+  .work-domain-card {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
   .shell__content,
   .shell__sidebar {
     padding: 1rem;
@@ -7884,6 +7989,22 @@ textarea {
 
   .insights-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ticket-side-panel-backdrop {
+    justify-content: center;
+    align-items: center;
+    padding: 0.6rem;
+  }
+
+  .ticket-side-panel--modal {
+    width: min(96vw, 460px);
+    height: min(88dvh, 760px);
+  }
+
+  .ticket-side-panel--modal .ticket-side-panel__footer {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }
 

@@ -406,6 +406,17 @@ export async function getUsersSourceTable(query, { limit = 200 } = {}) {
   return unwrapData(payload);
 }
 
+export async function searchUsersPeopleSoftBackup(query, { limit = 50 } = {}) {
+  const params = new URLSearchParams();
+  const normalizedQuery = String(query || '').trim();
+  if (normalizedQuery) {
+    params.set('q', normalizedQuery);
+  }
+  params.set('limit', String(limit || 50));
+  const payload = await request(backendBaseUrl, `/api/users-source/backup-search?${params.toString()}`);
+  return payload && typeof payload === 'object' ? payload : { items: [] };
+}
+
 export function getDataTools(fileType) {
   return request(backendBaseUrl, `/api/data/tools/${encodeURIComponent(fileType)}`);
 }
