@@ -23,7 +23,7 @@ import { LoginModal } from '../../features/auth/LoginModal';
 const NAV_LAST_USED_KEY = 'westos.nav.lastUsed';
 const NAV_LAST_USED_MAP_KEY = 'westos.nav.lastUsedMap';
 const NAV_GROUPS = [
-  { label: 'Workspace', hrefs: ['/app/life', '/app/work', '/app/data', '/app/profile'] },
+  { label: 'Workspace', hrefs: ['/app/life', '/app/work', '/app/scripts', '/app/data', '/app/profile'] },
   { label: 'Intelligence', hrefs: ['/app/ai', '/app/kb'] },
   { label: 'Dev', hrefs: ['/app/dev/designer'] },
   { label: 'System', hrefs: ['/app/system', '/app/flows', '/app/console', '/app/settings'] },
@@ -75,6 +75,11 @@ function getContextTitle(pathname) {
   if (pathname.startsWith('/app/work/active-tickets')) {
     return 'Work / Active Tickets';
   }
+
+  if (pathname.startsWith('/app/work/closed-tickets') || pathname.startsWith('/ClosedTickets')) {
+    return 'Work / Closed Tickets';
+  }
+
   if (pathname.startsWith('/app/profile')) {
     return 'Profile';
   }
@@ -88,15 +93,23 @@ function getContextTitle(pathname) {
   }
 
   if (pathname.startsWith('/app/work/get-user-groups')) {
-    return 'Work / Get User Groups';
+    return 'Work / Users';
   }
 
   if (pathname.startsWith('/app/work/user-group-association')) {
-    return 'Work / User-Group Association';
+    return 'Work / Users';
+  }
+
+  if (pathname.startsWith('/app/work/users')) {
+    return 'Work / Users';
   }
 
   if (pathname.startsWith('/app/work/table')) {
     return 'Work / Table';
+  }
+
+  if (pathname.startsWith('/app/scripts')) {
+    return 'Scripts';
   }
 
   if (pathname.startsWith('/app/document')) {
@@ -165,7 +178,7 @@ function getBackTarget(pathname) {
     return '/';
   }
 
-  if (pathname === '/app/life' || pathname === '/app/work' || pathname === '/app/data') {
+  if (pathname === '/app/life' || pathname === '/app/work' || pathname === '/app/scripts' || pathname === '/app/data') {
     return '/app';
   }
   if (pathname === '/app/profile') {
@@ -191,6 +204,10 @@ function getBackTarget(pathname) {
   }
 
   if (pathname.startsWith('/app/work/table')) {
+    return '/app/work';
+  }
+
+  if (pathname.startsWith('/app/work/closed-tickets') || pathname.startsWith('/ClosedTickets')) {
     return '/app/work';
   }
 
@@ -291,8 +308,11 @@ export function AppShell() {
   const { authenticated, isAdmin } = useCurrentUser();
   const visibleModules = useMemo(() => {
     if (!isWorkDomain) {
+      if (!authenticated) {
+        return modules.filter((module) => module.href === '/app/work');
+      }
       if (!isAdmin) {
-        return modules.filter((module) => module.href === '/app/work' || module.href === '/app/kb');
+        return modules.filter((module) => module.href === '/app/work' || module.href === '/app/scripts' || module.href === '/app/kb');
       }
       const roleFiltered = modules.filter((module) => {
         if (module.href === '/app/system' || module.href === '/app/console' || module.href === '/app/flows' || module.href === '/app/dev/designer') {
@@ -303,7 +323,7 @@ export function AppShell() {
       return isAdmin ? applyNavPreferences(roleFiltered, navPreferences) : roleFiltered;
     }
     return modules.filter((module) => module.href === '/app/work');
-  }, [isAdmin, isWorkDomain, navPreferences]);
+  }, [authenticated, isAdmin, isWorkDomain, navPreferences]);
 
   const currentModule = visibleModules.find((m) => location.pathname.startsWith(m.href));
 
@@ -320,7 +340,22 @@ export function AppShell() {
         return [
           {
             label: 'Work actions',
-            actions: [{ href: '/app/work/active-tickets', label: 'Active Tickets' }],
+            actions: [
+              { href: '/app/work/active-tickets', label: 'Active Tickets' },
+              { href: '/app/work/closed-tickets', label: 'Closed Tickets' },
+            ],
+          },
+        ];
+      }
+
+      if (!authenticated) {
+        return [
+          {
+            label: 'Work actions',
+            actions: [
+              { href: '/app/work/active-tickets', label: 'Active Tickets' },
+              { href: '/app/work/closed-tickets', label: 'Closed Tickets' },
+            ],
           },
         ];
       }
@@ -331,6 +366,7 @@ export function AppShell() {
             label: 'Work actions',
             actions: [
               { href: '/app/work/active-tickets', label: 'Active Tickets' },
+              { href: '/app/work/closed-tickets', label: 'Closed Tickets' },
               { href: '/app/kb', label: 'Knowledge Base' },
             ],
           },
@@ -342,6 +378,7 @@ export function AppShell() {
           label: 'Work actions',
           actions: [
             { href: '/app/work/active-tickets', label: 'Active Tickets' },
+            { href: '/app/work/closed-tickets', label: 'Closed Tickets' },
             { href: '/app/uploads', label: 'Upload File' },
             { href: '/app/data-sources', label: 'Data Sources' },
           ],
@@ -355,7 +392,7 @@ export function AppShell() {
         }] : []),
       ];
     },
-    [isAdmin, isWorkDomain]
+    [authenticated, isAdmin, isWorkDomain]
   );
 
   const recommendedHref = lastUsedModule?.href || '/app/work';
@@ -365,7 +402,7 @@ export function AppShell() {
       return;
     }
 
-    const workAllowedPaths = ['/app/work', '/work', '/tickets', '/document', '/app/document'];
+    const workAllowedPaths = ['/app/work', '/work', '/tickets', '/document', '/app/document', '/ClosedTickets'];
     const isAllowed = workAllowedPaths.some((pathPrefix) => location.pathname.startsWith(pathPrefix));
     if (!isAllowed) {
       navigate('/app/work', { replace: true });
@@ -379,7 +416,10 @@ export function AppShell() {
 
     const allowedPaths = [
       '/app/work',
+      '/app/work/closed-tickets',
+      '/app/scripts',
       '/work',
+      '/ClosedTickets',
       '/tickets',
       '/app/device-location',
       '/device-location',

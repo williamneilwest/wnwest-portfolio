@@ -1,11 +1,16 @@
 import {
   Activity,
+  ChevronDown,
+  ChevronUp,
   HardDrive,
+  Info,
   MapPin,
   Network,
+  Pencil,
   RefreshCcw,
   Search,
   Ticket,
+  Upload,
   UserRound,
   Users,
   Workflow,
@@ -14,10 +19,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { useCurrentUser } from '../../app/hooks/useCurrentUser';
-import { getLatestTickets, getUploadFile, getUploads, getUserGroups } from '../../app/services/api';
+import { STORAGE_KEYS } from '../../app/constants/storageKeys';
+import { getDataSources, getLatestTickets, getUploadFile, getUploads, getUserGroups, replaceDataSourceFile, searchUsersPeopleSoftBackup } from '../../app/services/api';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { SectionHeader } from '../../app/ui/SectionHeader';
+import { storage } from '../../app/utils/storage';
 import { parseCsvText } from './workDatasetCache';
 import {
   getCachedUsersFromMap,
@@ -31,6 +38,38 @@ let HARDWARE_DATASET_CACHE = null;
 let HARDWARE_DATASET_PROMISE = null;
 let TICKETS_DATASET_CACHE = null;
 let TICKETS_DATASET_PROMISE = null;
+
+const HARDWARE_MATCH_FALLBACK_COLUMNS = [
+  'u_hardware_1.assigned_to',
+  'assigned_to',
+  'assignedto',
+  'assignee',
+  'assigned',
+];
+
+const TICKETS_MATCH_FALLBACK_COLUMNS = [
+  'u_impacted_user',
+  'impacted_user',
+  'caller_id',
+  'u_task_1.u_impacted_user',
+];
+
+const USER_DIRECTORY_FIELDS = [
+  { key: 'opid', label: 'OPID' },
+  { key: 'display_name', label: 'Name' },
+  { key: 'email', label: 'Email' },
+];
+
+const DEFAULT_SEARCH_SETTINGS = {
+  cachedUsersEnabled: true,
+  cachedUserFields: USER_DIRECTORY_FIELDS.map((field) => field.key),
+  hardwareEnabled: true,
+  hardwareColumns: [],
+  ticketsEnabled: true,
+  ticketColumns: [],
+};
+
+const PEOPLESOFT_BACKUP_SOURCE_NAME = 'u_users__peoplesoft_locations';
 
 function formatTimestamp(value) {
   if (!value) {
@@ -51,6 +90,17 @@ function formatTimestamp(value) {
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function formatColumnLabel(value) {
+  const text = String(value || '').trim();
+  if (!text) {
+    return 'Unknown Column';
+  }
+  return text
+    .replace(/[._]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function readFirst(row, keys) {
@@ -164,13 +214,132 @@ async function loadTicketsDataset() {
   }
 }
 
-function matchesSelectedUser(rawValue, selectedUser) {
-  const value = normalizeText(rawValue);
-  if (!value || !selectedUser) {
+function inferDatasetColumns(rows = []) {
+  const unique = new Set();
+  const sample = Array.isArray(rows) ? rows.slice(0, 75) : [];
+  sample.forEach((row) => {
+    if (!row || typeof row !== 'object') {
+      return;
+    }
+    Object.keys(row).forEach((key) => {
+      const normalized = String(key || '').trim();
+      if (normalized) {
+        unique.add(normalized);
+      }
+    });
+  });
+  return Array.from(unique).sort((left, right) => left.localeCompare(right));
+}
+
+function sanitizeColumns(preferred = [], available = [], fallback = []) {
+  const availableSet = new Set(available);
+  const preferredMatches = (Array.isArray(preferred) ? preferred : [])
+    .map((item) => String(item || '').trim())
+    .filter((item, index, source) => item && source.indexOf(item) === index && availableSet.has(item));
+  if (preferredMatches.length) {
+    return preferredMatches;
+  }
+  const fallbackMatches = fallback.filter((item) => availableSet.has(item));
+  if (fallbackMatches.length) {
+    return fallbackMatches;
+  }
+  return [];
+}
+
+function sanitizeSearchSettings(settings = {}, hardwareColumns = [], ticketColumns = []) {
+  const next = {
+    ...DEFAULT_SEARCH_SETTINGS,
+    ...(settings && typeof settings === 'object' ? settings : {}),
+  };
+  const cachedUserFields = USER_DIRECTORY_FIELDS
+    .map((field) => field.key)
+    .filter((fieldKey) => Array.isArray(next.cachedUserFields) && next.cachedUserFields.includes(fieldKey));
+
+  return {
+    cachedUsersEnabled: next.cachedUsersEnabled !== false,
+    cachedUserFields: cachedUserFields.length ? cachedUserFields : DEFAULT_SEARCH_SETTINGS.cachedUserFields,
+    hardwareEnabled: next.hardwareEnabled !== false,
+    hardwareColumns: sanitizeColumns(next.hardwareColumns, hardwareColumns, HARDWARE_MATCH_FALLBACK_COLUMNS),
+    ticketsEnabled: next.ticketsEnabled !== false,
+    ticketColumns: sanitizeColumns(next.ticketColumns, ticketColumns, TICKETS_MATCH_FALLBACK_COLUMNS),
+  };
+}
+
+function getSelectedUserSearchTerms(selectedUser, fallbackQuery = '') {
+  const terms = [
+    selectedUser?.opid,
+    selectedUser?.display_name,
+    selectedUser?.email,
+    fallbackQuery,
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(terms));
+}
+
+function normalizeSourceUser(user) {
+  const opid = String(user?.opid || user?.user_id || user?.id || '').trim();
+  if (!opid) {
+    return null;
+  }
+
+  return {
+    opid,
+    display_name: String(user?.display_name || user?.name || '').trim() || null,
+    email: String(user?.email || user?.mail || '').trim() || null,
+    job_title: String(user?.job_title || '').trim() || null,
+    department: String(user?.department || '').trim() || null,
+    location: String(user?.location || '').trim() || null,
+    account_enabled: user?.account_enabled ?? null,
+    groups: [],
+    cached_at: new Date().toISOString(),
+    source: String(user?.source || 'u_users__peoplesoft_locations').trim() || 'u_users__peoplesoft_locations',
+  };
+}
+
+function getSingleSearchMatch(items = [], query = '') {
+  const normalizedItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (normalizedItems.length === 1) {
+    return normalizedItems[0];
+  }
+
+  const normalizedQuery = normalizeText(query);
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  const exactMatches = normalizedItems.filter((item) => {
+    const normalized = normalizeSourceUser(item);
+    if (!normalized) {
+      return false;
+    }
+    return [normalized.opid, normalized.display_name, normalized.email]
+      .map(normalizeText)
+      .filter(Boolean)
+      .some((value) => value === normalizedQuery);
+  });
+
+  return exactMatches.length === 1 ? exactMatches[0] : null;
+}
+
+function rowMatchesSearchTerms(row, columns = [], terms = []) {
+  if (!row || typeof row !== 'object' || !columns.length || !terms.length) {
     return false;
   }
-  const candidates = [selectedUser.opid, selectedUser.display_name, selectedUser.email].map(normalizeText).filter(Boolean);
-  return candidates.some((candidate) => value.includes(candidate));
+
+  const normalizedTerms = terms.map(normalizeText).filter(Boolean);
+  if (!normalizedTerms.length) {
+    return false;
+  }
+
+  return columns.some((column) => {
+    const value = normalizeText(row?.[column]);
+    if (!value) {
+      return false;
+    }
+    return normalizedTerms.some((term) => value.includes(term));
+  });
 }
 
 export function GetUserGroupsPage() {
@@ -180,17 +349,40 @@ export function GetUserGroupsPage() {
   const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
   const goBack = useBackNavigation('/app/work');
   const backLabel = location.state?.label || 'Work Hub';
+  const autoSearchQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    return String(params.get('query') || '').trim();
+  }, [location.search]);
+  const autoLookupMode = useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    return String(params.get('lookup') || '').trim().toLowerCase();
+  }, [location.search]);
 
   const [userOpid, setUserOpid] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [groupQuery, setGroupQuery] = useState('');
   const [activeTab, setActiveTab] = useState('groups');
+  const [autoSearchedQuery, setAutoSearchedQuery] = useState('');
+  const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
+  const [backupSourceName, setBackupSourceName] = useState('');
+  const [backupMatches, setBackupMatches] = useState([]);
+  const [backupLookupLoading, setBackupLookupLoading] = useState(false);
+  const [peopleSoftSource, setPeopleSoftSource] = useState(null);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceError, setSourceError] = useState('');
+  const [replacementFile, setReplacementFile] = useState(null);
+  const [replacingSourceFile, setReplacingSourceFile] = useState(false);
+  const [searchSettings, setSearchSettings] = useState(() => {
+    const stored = storage.get(STORAGE_KEYS.USER_CONTEXT_SEARCH_SETTINGS);
+    return { ...DEFAULT_SEARCH_SETTINGS, ...(stored && typeof stored === 'object' ? stored : {}) };
+  });
 
   const [cache, setCache] = useState({});
   const [selectedOpid, setSelectedOpid] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const [hardwareLoading, setHardwareLoading] = useState(false);
   const [hardwareError, setHardwareError] = useState('');
@@ -200,12 +392,71 @@ export function GetUserGroupsPage() {
   const [ticketsError, setTicketsError] = useState('');
   const [ticketsDataset, setTicketsDataset] = useState({ rows: [], fileName: '', modifiedAt: '' });
 
+  const hardwareColumns = useMemo(() => inferDatasetColumns(hardwareDataset?.rows), [hardwareDataset?.rows]);
+  const ticketColumns = useMemo(() => inferDatasetColumns(ticketsDataset?.rows), [ticketsDataset?.rows]);
+
+  useEffect(() => {
+    setSearchSettings((current) => {
+      const sanitized = sanitizeSearchSettings(current, hardwareColumns, ticketColumns);
+      if (JSON.stringify(current) === JSON.stringify(sanitized)) {
+        return current;
+      }
+      return sanitized;
+    });
+  }, [hardwareColumns, ticketColumns]);
+
+  useEffect(() => {
+    storage.set(STORAGE_KEYS.USER_CONTEXT_SEARCH_SETTINGS, searchSettings);
+  }, [searchSettings]);
+
   useEffect(() => {
     const nextCache = readUserGroupsCacheMap();
     const normalizedUsers = getCachedUsersFromMap(nextCache);
     setCache(nextCache);
     setSelectedOpid(normalizedUsers[0]?.opid || '');
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
+    let mounted = true;
+    setSourceLoading(true);
+    setSourceError('');
+    getDataSources()
+      .then((payload) => {
+        if (!mounted) {
+          return;
+        }
+        const items = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
+        const source = items.find((item) => {
+          const candidates = [
+            item?.key,
+            item?.name,
+            item?.table_name,
+            item?.display_name,
+            item?.role,
+          ].map((value) => String(value || '').trim().toLowerCase());
+          return candidates.includes(PEOPLESOFT_BACKUP_SOURCE_NAME);
+        }) || null;
+        setPeopleSoftSource(source);
+      })
+      .catch((requestError) => {
+        if (mounted) {
+          setSourceError(requestError.message || 'PeopleSoft source metadata could not be loaded.');
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setSourceLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     let mounted = true;
@@ -256,13 +507,13 @@ export function GetUserGroupsPage() {
 
   const filteredUsers = useMemo(() => {
     const query = normalizeText(userSearch);
-    if (!query) {
+    if (!query || !searchSettings.cachedUsersEnabled) {
       return cachedUsers;
     }
     return cachedUsers.filter((item) => {
-      return [item.opid, item.display_name, item.email].some((value) => normalizeText(value).includes(query));
+      return searchSettings.cachedUserFields.some((field) => normalizeText(item?.[field]).includes(query));
     });
-  }, [cachedUsers, userSearch]);
+  }, [cachedUsers, searchSettings.cachedUserFields, searchSettings.cachedUsersEnabled, userSearch]);
 
   const selectedUser = useMemo(
     () => (selectedOpid ? cachedUsers.find((item) => item.opid === selectedOpid) || null : null),
@@ -285,26 +536,31 @@ export function GetUserGroupsPage() {
     return visible.sort((left, right) => String(left?.name || left?.group_id).localeCompare(String(right?.name || right?.group_id)));
   }, [groupQuery, selectedUser]);
 
+  const activeSearchTerms = useMemo(
+    () => getSelectedUserSearchTerms(selectedUser, userSearch || userOpid || autoSearchQuery),
+    [autoSearchQuery, selectedUser, userOpid, userSearch]
+  );
+
   const userDevices = useMemo(() => {
     const rows = Array.isArray(hardwareDataset?.rows) ? hardwareDataset.rows : [];
-    if (!selectedUser) {
+    if (!searchSettings.hardwareEnabled || !activeSearchTerms.length) {
       return [];
     }
     return rows
-      .map(normalizeHardwareRow)
-      .filter((device) => matchesSelectedUser(device?.assignedTo, selectedUser));
-  }, [hardwareDataset?.rows, selectedUser]);
+      .filter((row) => rowMatchesSearchTerms(row, searchSettings.hardwareColumns, activeSearchTerms))
+      .map(normalizeHardwareRow);
+  }, [activeSearchTerms, hardwareDataset?.rows, searchSettings.hardwareColumns, searchSettings.hardwareEnabled]);
 
   const userTickets = useMemo(() => {
     const rows = Array.isArray(ticketsDataset?.rows) ? ticketsDataset.rows : [];
-    if (!selectedUser) {
+    if (!searchSettings.ticketsEnabled || !activeSearchTerms.length) {
       return [];
     }
     return rows
+      .filter((row) => rowMatchesSearchTerms(row, searchSettings.ticketColumns, activeSearchTerms))
       .map(normalizeTicketRow)
-      .filter((ticket) => matchesSelectedUser(ticket.impactedUser, selectedUser))
       .filter((ticket) => ticket.number || ticket.shortDescription);
-  }, [ticketsDataset?.rows, selectedUser]);
+  }, [activeSearchTerms, searchSettings.ticketColumns, searchSettings.ticketsEnabled, ticketsDataset?.rows]);
 
   const resolvedLocation =
     String(selectedUser?.location || '').trim()
@@ -345,11 +601,13 @@ export function GetUserGroupsPage() {
     if (!forceRefresh && cache[normalizedOpid]) {
       setSelectedOpid(normalizedOpid);
       setError('');
+      setMessage('');
       return;
     }
 
     setLoading(true);
     setError('');
+    setMessage('');
     try {
       const response = await getUserGroups(normalizedOpid);
       const normalized = normalizeFlowMembershipResponse(response, normalizedOpid);
@@ -364,6 +622,67 @@ export function GetUserGroupsPage() {
     }
   }
 
+  function addResolvedUserToCache(user) {
+    const normalized = normalizeSourceUser(user);
+    if (!normalized?.opid) {
+      return null;
+    }
+    const nextCache = upsertCachedUserRecord(normalized, cache);
+    setCache(nextCache);
+    writeUserGroupsCacheMap(nextCache);
+    setSelectedOpid(normalized.opid);
+    return normalized;
+  }
+
+  async function runPeopleSoftAutoLookup(query) {
+    const normalizedQuery = String(query || '').trim();
+    if (normalizedQuery.length < 2) {
+      return;
+    }
+
+    setBackupLookupLoading(true);
+    setError('');
+    try {
+      const payload = await searchUsersPeopleSoftBackup(normalizedQuery, { limit: 20 });
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setBackupSourceName(String(payload?.source_name || '').trim());
+      setBackupMatches(items);
+      const singleMatch = getSingleSearchMatch(items, normalizedQuery);
+      if (!singleMatch) {
+        setError(items.length ? 'Multiple PeopleSoft matches found. Select the correct user below.' : 'No PeopleSoft match found for the auto-filled user.');
+        return;
+      }
+
+      const resolved = addResolvedUserToCache(singleMatch);
+      if (resolved?.opid) {
+        setUserOpid(resolved.opid);
+        setUserSearch(resolved.display_name || resolved.email || resolved.opid);
+        setBackupMatches([]);
+        await loadUserGroups(resolved.opid, false);
+      }
+    } catch (requestError) {
+      setBackupMatches([]);
+      setError(requestError.message || 'PeopleSoft backup lookup failed.');
+    } finally {
+      setBackupLookupLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!autoSearchQuery || autoSearchedQuery === autoSearchQuery) {
+      return;
+    }
+
+    setUserOpid(autoSearchQuery);
+    setUserSearch(autoSearchQuery);
+    setAutoSearchedQuery(autoSearchQuery);
+    if (autoLookupMode === 'peoplesoft') {
+      void runPeopleSoftAutoLookup(autoSearchQuery);
+      return;
+    }
+    void loadUserGroups(autoSearchQuery, false);
+  }, [autoLookupMode, autoSearchQuery, autoSearchedQuery, cache]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     await loadUserGroups(userOpid.trim(), false);
@@ -371,6 +690,81 @@ export function GetUserGroupsPage() {
 
   async function handleRefresh() {
     await loadUserGroups((selectedOpid || userOpid).trim(), true);
+  }
+
+  async function handleReplacePeopleSoftSource() {
+    const sourceId = Number(peopleSoftSource?.id || 0);
+    if (!sourceId) {
+      setError('PeopleSoft backup data source was not found.');
+      return;
+    }
+    if (!(replacementFile instanceof File)) {
+      setError('Choose a CSV file before uploading.');
+      return;
+    }
+
+    setReplacingSourceFile(true);
+    setError('');
+    setMessage('');
+    try {
+      const payload = await replaceDataSourceFile(sourceId, replacementFile, { type: 'csv' });
+      setPeopleSoftSource(payload?.source || peopleSoftSource);
+      setReplacementFile(null);
+      setMessage('PeopleSoft backup source file uploaded and activated.');
+      setBackupSourceName(String(payload?.source?.key || payload?.source?.name || PEOPLESOFT_BACKUP_SOURCE_NAME).trim());
+    } catch (requestError) {
+      setError(requestError.message || 'PeopleSoft source upload failed.');
+    } finally {
+      setReplacingSourceFile(false);
+    }
+  }
+
+  async function handleSelectBackupMatch(match) {
+    const resolved = addResolvedUserToCache(match);
+    if (!resolved?.opid) {
+      setError('Selected backup match could not be resolved to an OPID.');
+      return;
+    }
+
+    setError('');
+    setMessage('');
+    setUserOpid(resolved.opid);
+    setUserSearch(resolved.display_name || resolved.email || resolved.opid);
+    setBackupMatches([]);
+    await loadUserGroups(resolved.opid, false);
+  }
+
+  function toggleCachedUserField(fieldKey) {
+    setSearchSettings((current) => {
+      const currentFields = Array.isArray(current.cachedUserFields) ? current.cachedUserFields : [];
+      const nextFields = currentFields.includes(fieldKey)
+        ? currentFields.filter((item) => item !== fieldKey)
+        : [...currentFields, fieldKey];
+      return {
+        ...current,
+        cachedUserFields: nextFields,
+      };
+    });
+  }
+
+  function toggleSearchSettingBoolean(key) {
+    setSearchSettings((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  }
+
+  function toggleDatasetColumn(key, column) {
+    setSearchSettings((current) => {
+      const currentColumns = Array.isArray(current[key]) ? current[key] : [];
+      const nextColumns = currentColumns.includes(column)
+        ? currentColumns.filter((item) => item !== column)
+        : [...currentColumns, column];
+      return {
+        ...current,
+        [key]: nextColumns,
+      };
+    });
   }
 
   return (
@@ -387,11 +781,213 @@ export function GetUserGroupsPage() {
       />
 
       {error ? <p className="status-text status-text--error">{error}</p> : null}
+      {message ? <p className="status-text">{message}</p> : null}
 
       <div className="user-context-layout">
         <aside className="user-context-col user-context-col--left">
           <Card>
             <CardHeader eyebrow="Search" title="Users" />
+            {autoSearchQuery ? (
+              <div className="user-context-auto-search">
+                <div className="user-context-auto-search__header">
+                  <div>
+                    <strong>Auto-filled user search</strong>
+                    <p>{autoSearchQuery}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="compact-toggle compact-toggle--icon"
+                    aria-expanded={searchSettingsOpen}
+                    onClick={() => setSearchSettingsOpen((current) => !current)}
+                    title="Edit auto-search settings"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
+                <p className="user-context-auto-search__summary">
+                  {[
+                    searchSettings.cachedUsersEnabled ? `Users: ${searchSettings.cachedUserFields.length || 0} fields` : 'Users: off',
+                    searchSettings.hardwareEnabled ? `Hardware: ${searchSettings.hardwareColumns.length || 0} columns` : 'Hardware: off',
+                    searchSettings.ticketsEnabled ? `Tickets: ${searchSettings.ticketColumns.length || 0} columns` : 'Tickets: off',
+                  ].join(' • ')}
+                </p>
+
+                {searchSettingsOpen ? (
+                  <div className="user-context-search-settings">
+                    <div className="user-context-search-settings__group">
+                      <button
+                        type="button"
+                        className={searchSettings.cachedUsersEnabled ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                        onClick={() => toggleSearchSettingBoolean('cachedUsersEnabled')}
+                      >
+                        {searchSettings.cachedUsersEnabled ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        Search cached users
+                      </button>
+                      <div className="user-context-search-settings__options">
+                        {USER_DIRECTORY_FIELDS.map((field) => (
+                          <label className="user-context-search-settings__option" key={field.key}>
+                            <input
+                              type="checkbox"
+                              checked={searchSettings.cachedUserFields.includes(field.key)}
+                              onChange={() => toggleCachedUserField(field.key)}
+                            />
+                            <span>{field.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="user-context-search-settings__group">
+                      <button
+                        type="button"
+                        className={searchSettings.hardwareEnabled ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                        onClick={() => toggleSearchSettingBoolean('hardwareEnabled')}
+                      >
+                        {searchSettings.hardwareEnabled ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        Search hardware dataset
+                      </button>
+                      <div className="user-context-search-settings__options">
+                        {hardwareColumns.length ? hardwareColumns.map((column) => (
+                          <label className="user-context-search-settings__option" key={column}>
+                            <input
+                              type="checkbox"
+                              checked={searchSettings.hardwareColumns.includes(column)}
+                              onChange={() => toggleDatasetColumn('hardwareColumns', column)}
+                            />
+                            <span>{formatColumnLabel(column)}</span>
+                            <small>{column}</small>
+                          </label>
+                        )) : <p className="status-text">Hardware columns load after the dataset finishes loading.</p>}
+                      </div>
+                    </div>
+
+                    <div className="user-context-search-settings__group">
+                      <button
+                        type="button"
+                        className={searchSettings.ticketsEnabled ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
+                        onClick={() => toggleSearchSettingBoolean('ticketsEnabled')}
+                      >
+                        {searchSettings.ticketsEnabled ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        Search active tickets
+                      </button>
+                      <div className="user-context-search-settings__options">
+                        {ticketColumns.length ? ticketColumns.map((column) => (
+                          <label className="user-context-search-settings__option" key={column}>
+                            <input
+                              type="checkbox"
+                              checked={searchSettings.ticketColumns.includes(column)}
+                              onChange={() => toggleDatasetColumn('ticketColumns', column)}
+                            />
+                            <span>{formatColumnLabel(column)}</span>
+                            <small>{column}</small>
+                          </label>
+                        )) : <p className="status-text">Ticket columns load after the dataset finishes loading.</p>}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="user-context-source-card">
+              <div className="user-context-source-card__header">
+                <strong>Search Source</strong>
+                <span className="icon-badge"><Info size={14} /></span>
+              </div>
+              <div className="association-summary user-context-card">
+                <div className="association-summary__row">
+                  <span>Auto Lookup</span>
+                  <strong>{autoLookupMode || 'direct'}</strong>
+                </div>
+                <div className="association-summary__row">
+                  <span>Backend source</span>
+                  <strong>{backupSourceName || PEOPLESOFT_BACKUP_SOURCE_NAME}</strong>
+                </div>
+                <div className="association-summary__row">
+                  <span>Query value</span>
+                  <strong>{autoSearchQuery || userSearch || userOpid || '—'}</strong>
+                </div>
+                {peopleSoftSource ? (
+                  <>
+                    <div className="association-summary__row">
+                      <span>Source key</span>
+                      <strong>{peopleSoftSource.key || peopleSoftSource.name || '—'}</strong>
+                    </div>
+                    <div className="association-summary__row">
+                      <span>Table</span>
+                      <strong>{peopleSoftSource.table_name || '—'}</strong>
+                    </div>
+                    <div className="association-summary__row">
+                      <span>Rows</span>
+                      <strong>{Number(peopleSoftSource.row_count || 0)}</strong>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+              {sourceLoading ? <p className="status-text">Loading source metadata...</p> : null}
+              {sourceError ? <p className="status-text status-text--error">{sourceError}</p> : null}
+              {backupLookupLoading ? <p className="status-text">Searching PeopleSoft backup...</p> : null}
+              {backupMatches.length ? (
+                <div className="user-context-backup-results">
+                  <p className="status-text">{`PeopleSoft matches: ${backupMatches.length}`}</p>
+                  <div className="stack-list user-context-list">
+                    {backupMatches.map((item, index) => {
+                      const normalized = normalizeSourceUser(item);
+                      if (!normalized) {
+                        return null;
+                      }
+                      return (
+                        <button
+                          key={`${normalized.opid}-${index}`}
+                          type="button"
+                          className="stack-row stack-row--interactive"
+                          onClick={() => void handleSelectBackupMatch(item)}
+                        >
+                          <span className="stack-row__label">
+                            <span>
+                              <strong>{normalized.display_name || 'Unknown User'}</strong>
+                              <small>{normalized.opid}</small>
+                              {normalized.email ? <small>{normalized.email}</small> : null}
+                              {normalized.location ? <small>{normalized.location}</small> : null}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {isAdmin ? (
+              <div className="user-context-source-upload">
+                <div className="user-context-source-card__header">
+                  <strong>Admin Source Upload</strong>
+                  <span className="icon-badge"><Upload size={14} /></span>
+                </div>
+                <label className="settings-field">
+                  <span>Replace PeopleSoft source CSV</span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(event) => setReplacementFile(event.target.files?.[0] || null)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ui-button ui-button--secondary"
+                  disabled={replacingSourceFile || !peopleSoftSource || !(replacementFile instanceof File)}
+                  onClick={() => void handleReplacePeopleSoftSource()}
+                >
+                  {replacingSourceFile ? 'Uploading...' : 'Upload Replacement CSV'}
+                </button>
+                <p className="status-text">
+                  {peopleSoftSource
+                    ? `This replaces the active file for ${peopleSoftSource.key || peopleSoftSource.name}.`
+                    : `No matching ${PEOPLESOFT_BACKUP_SOURCE_NAME} data source record was found.`}
+                </p>
+              </div>
+            ) : null}
             <form className="settings-form" onSubmit={handleSubmit}>
               <label className="settings-field">
                 <span>Lookup OPID</span>
@@ -419,9 +1015,9 @@ export function GetUserGroupsPage() {
 
             {filteredUsers.length ? (
               <div className="stack-list user-context-list">
-                {filteredUsers.map((item) => (
-                  <button
-                    key={item.opid}
+                  {filteredUsers.map((item) => (
+                    <button
+                      key={item.opid}
                     type="button"
                     className={item.opid === selectedOpid ? 'stack-row stack-row--interactive association-list__item--selected' : 'stack-row stack-row--interactive'}
                     onClick={() => setSelectedOpid(item.opid)}
@@ -437,7 +1033,7 @@ export function GetUserGroupsPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState icon={<Users size={18} />} title="No matching users" description="Run a lookup or change the filter." />
+              <EmptyState icon={<Users size={18} />} title="No matching cached users" description="Run the lookup above or search another OPID, name, or email." />
             )}
           </Card>
         </aside>
@@ -455,7 +1051,7 @@ export function GetUserGroupsPage() {
                 <div className="metric-tile"><span>Group Count</span><strong>{filteredGroups.length}</strong></div>
               </div>
             ) : (
-              <EmptyState icon={<Search size={20} />} title="No user selected" description="Select a cached user or run a lookup." />
+              <EmptyState icon={<Search size={20} />} title="No user selected" description="Use the lookup panel to load a user, or open a ticket user from ticket details." />
             )}
           </Card>
 
@@ -524,7 +1120,7 @@ export function GetUserGroupsPage() {
                         </div>
                       ))
                     ) : (
-                      <EmptyState icon={<HardDrive size={18} />} title="No devices" description="No hardware records matched assigned_to for this user." />
+                      <EmptyState icon={<HardDrive size={18} />} title="No devices" description="No hardware records matched the current search settings." />
                     )}
                   </div>
                 ) : null}
@@ -545,7 +1141,7 @@ export function GetUserGroupsPage() {
                         </div>
                       ))
                     ) : (
-                      <EmptyState icon={<Ticket size={18} />} title="No tickets" description="No active tickets matched impacted user for this user." />
+                      <EmptyState icon={<Ticket size={18} />} title="No tickets" description="No active tickets matched the current search settings." />
                     )}
                   </div>
                 ) : null}
@@ -579,7 +1175,7 @@ export function GetUserGroupsPage() {
                 <RefreshCcw size={14} />
                 Refresh Groups
               </button>
-              <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/user-group-association')}>
+              <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/users')}>
                 Compare Users
               </button>
               <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/group-search')}>
@@ -587,10 +1183,10 @@ export function GetUserGroupsPage() {
               </button>
               {isAdmin ? (
                 <>
-                  <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/user-group-association?action=add')}>
+                  <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/users?action=add')}>
                     Add to Group
                   </button>
-                  <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/user-group-association?action=remove')}>
+                  <button type="button" className="compact-toggle" onClick={() => navigate('/app/work/users?action=remove')}>
                     Remove from Group
                   </button>
                 </>
@@ -616,6 +1212,14 @@ export function GetUserGroupsPage() {
               <div className="association-summary__row">
                 <span>Location</span>
                 <strong><MapPin size={12} /> {resolvedLocation}</strong>
+              </div>
+              <div className="association-summary__row">
+                <span>Search Scope</span>
+                <strong>{[
+                  searchSettings.cachedUsersEnabled ? 'Users' : null,
+                  searchSettings.hardwareEnabled ? 'Hardware' : null,
+                  searchSettings.ticketsEnabled ? 'Tickets' : null,
+                ].filter(Boolean).join(', ') || 'None'}</strong>
               </div>
             </div>
           </Card>
