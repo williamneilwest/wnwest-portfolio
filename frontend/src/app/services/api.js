@@ -189,6 +189,11 @@ export function getLatestTickets({ assignee = '' } = {}) {
   return request(backendBaseUrl, `/api/work/tickets${suffix}`);
 }
 
+export async function getActiveTicketMetrics() {
+  const payload = await request(backendBaseUrl, '/api/metrics/active-tickets');
+  return unwrapData(payload);
+}
+
 export async function getWorkCodes({ query = '', type = '' } = {}) {
   const params = new URLSearchParams();
   const normalizedQuery = String(query || '').trim();
@@ -228,6 +233,46 @@ export async function uploadWorkCodes(file, { type = 'qr' } = {}) {
     body: formData,
   });
   return unwrapData(payload);
+}
+
+export async function getScripts({ query = '' } = {}) {
+  const params = new URLSearchParams();
+  const normalizedQuery = String(query || '').trim();
+  if (normalizedQuery) {
+    params.set('q', normalizedQuery);
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  const payload = await request(backendBaseUrl, `/api/scripts${suffix}`);
+  return unwrapData(payload);
+}
+
+export async function createScript(payload = {}) {
+  const response = await request(backendBaseUrl, '/api/scripts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  return unwrapData(response);
+}
+
+export async function updateScript(scriptId, payload = {}) {
+  const response = await request(backendBaseUrl, `/api/scripts/${encodeURIComponent(String(scriptId || ''))}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  return unwrapData(response);
+}
+
+export async function deleteScript(scriptId) {
+  const response = await request(backendBaseUrl, `/api/scripts/${encodeURIComponent(String(scriptId || ''))}`, {
+    method: 'DELETE',
+  });
+  return unwrapData(response);
 }
 
 export function getUploads() {
@@ -295,6 +340,22 @@ export function promoteUploadToSource({ filePath = '', name = '', type = 'csv', 
   });
 }
 
+export function replaceDataSourceFile(sourceId, file, { type = 'csv', schemaVersion = '' } = {}) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (type) {
+    formData.append('type', String(type).trim());
+  }
+  if (schemaVersion) {
+    formData.append('schema_version', String(schemaVersion).trim());
+  }
+
+  return request(backendBaseUrl, `/api/data-sources/${encodeURIComponent(String(sourceId || ''))}/replace-file`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 export function getDataSourceData(name, { normalized = true } = {}) {
   const params = new URLSearchParams();
   params.set('normalized', String(Boolean(normalized)));
@@ -333,6 +394,21 @@ export function searchUsers(query) {
   const params = new URLSearchParams();
   params.set('q', String(query || '').trim());
   return request(backendBaseUrl, `/api/search-users?${params.toString()}`);
+}
+
+export async function resolveUserToOpid(name) {
+  const normalizedName = String(name || '').trim();
+  if (!normalizedName || normalizedName === '—') {
+    return normalizedName;
+  }
+
+  const params = new URLSearchParams();
+  params.set('name', normalizedName);
+  const payload = await request(backendBaseUrl, `/api/users/search?${params.toString()}`);
+  const items = Array.isArray(payload) ? payload : (payload?.items || payload?.results || []);
+  const match = Array.isArray(items) ? items[0] : null;
+
+  return String(match?.opid || match?.id || match?.user_id || normalizedName).trim();
 }
 
 export function searchDeviceLocations({ query = '', data, sourceKey = '' } = {}) {
@@ -393,6 +469,39 @@ export async function getUserContext(username) {
     return null;
   }
   return request(backendBaseUrl, `/api/users/context/${encodeURIComponent(normalized)}`);
+}
+
+export async function getUserTemplate(identifier, { refresh = false } = {}) {
+  const normalized = String(identifier || '').trim();
+  if (!normalized) {
+    return null;
+  }
+  const params = new URLSearchParams();
+  if (refresh) {
+    params.set('refresh', 'true');
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  const payload = await request(backendBaseUrl, `/api/users/${encodeURIComponent(normalized)}${suffix}`);
+  return unwrapData(payload);
+}
+
+export async function getUserDevices(identifier, { name = '', email = '' } = {}) {
+  const normalized = String(identifier || '').trim();
+  if (!normalized) {
+    return null;
+  }
+  const params = new URLSearchParams();
+  const normalizedName = String(name || '').trim();
+  const normalizedEmail = String(email || '').trim();
+  if (normalizedName) {
+    params.set('name', normalizedName);
+  }
+  if (normalizedEmail) {
+    params.set('email', normalizedEmail);
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  const payload = await request(backendBaseUrl, `/api/users/${encodeURIComponent(normalized)}/devices${suffix}`);
+  return unwrapData(payload);
 }
 
 export async function getUsersSourceTable(query, { limit = 200 } = {}) {
@@ -719,6 +828,20 @@ export function updateAISettings(data) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(data)
+  });
+}
+
+export function getKeywordSettings() {
+  return request(backendBaseUrl, '/api/settings/keywords');
+}
+
+export function updateKeywordSettings(data) {
+  return request(backendBaseUrl, '/api/settings/keywords', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data || {})
   });
 }
 

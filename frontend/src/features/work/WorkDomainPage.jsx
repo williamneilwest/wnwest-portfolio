@@ -9,6 +9,7 @@ import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { isCsvFile } from '../../app/utils/documentFiles';
 import {
   getDeviceLocationSource,
+  getUserDevices,
   getUploadFile,
   getUploads,
   searchHardwareRmrByPcName,
@@ -171,6 +172,45 @@ function formatTimestamp(value) {
   });
 }
 
+function formatFieldLabel(key) {
+  const formatted = String(key || '')
+    .replace(/[._]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return formatted.replace(/^U\s+/i, '');
+}
+
+function getUserFieldPriority(key) {
+  const normalized = String(key || '').trim().toLowerCase();
+  const order = [
+    ['name'],
+    ['department'],
+    ['cost_center', 'user_cost_center'],
+    ['location'],
+    ['u_epic_assignment_group', 'epic_group_name'],
+    ['manager'],
+    ['director', 'u_director'],
+  ];
+
+  const index = order.findIndex((group) => group.includes(normalized));
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
+function getPreferredUserFieldLabel(key) {
+  const normalized = String(key || '').trim().toLowerCase();
+  if (normalized === 'cost_center' || normalized === 'user_cost_center') {
+    return 'Cost Center';
+  }
+  if (normalized === 'u_epic_assignment_group' || normalized === 'epic_group_name') {
+    return 'Epic Assignment Group';
+  }
+  if (normalized === 'u_director') {
+    return 'Director';
+  }
+  return formatFieldLabel(key);
+}
+
 function buildUserContext(selectedUser, cacheMap) {
   if (!selectedUser?.opid) {
     return null;
@@ -222,6 +262,9 @@ function UsersEntityWorkspace() {
   const [localSearchLoading, setLocalSearchLoading] = useState(false);
   const [backupSearching, setBackupSearching] = useState(false);
   const [backupSourceName, setBackupSourceName] = useState('');
+  const [userDevices, setUserDevices] = useState([]);
+  const [userDevicesLoading, setUserDevicesLoading] = useState(false);
+  const [userDevicesError, setUserDevicesError] = useState('');
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [userGroupIds, setUserGroupIds] = useState([]);
   const selectedGroupsUserRef = useRef('');
@@ -376,6 +419,47 @@ function UsersEntityWorkspace() {
       setUserGroupIds([]);
       return;
     }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    const selectedOpid = String(selectedUser?.opid || '').trim();
+    if (!selectedOpid) {
+      setUserDevices([]);
+      setUserDevicesError('');
+      setUserDevicesLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setUserDevicesLoading(true);
+    setUserDevicesError('');
+
+    getUserDevices(selectedOpid, {
+      name: selectedUser?.display_name || selectedUser?.name || '',
+      email: selectedUser?.email || '',
+    })
+      .then((payload) => {
+        if (!isMounted) {
+          return;
+        }
+        setUserDevices(Array.isArray(payload?.devices) ? payload.devices : []);
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return;
+        }
+        setUserDevices([]);
+        setUserDevicesError(error.message || 'User devices could not be loaded.');
+      })
+      .finally(() => {
+        if (isMounted) {
+          setUserDevicesLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [selectedUser]);
 
   useEffect(() => {
@@ -589,18 +673,55 @@ function UsersEntityWorkspace() {
                 }
                 const isSelected = normalized.opid === selectedUserOpid;
                 const accountEnabled = toBoolean(result?.account_enabled);
+                const hiddenFieldKeys = new Set([
+                  'user_name',
+                  'u_peoplesoft_location',
+                  'source',
+                  'job_title',
+                ]);
+                const fieldEntries = Object.entries(result || {}).filter(([key, value]) => {
+                  if (value === null || value === undefined) {
+                    return false;
+                  }
+                  if (hiddenFieldKeys.has(String(key || '').trim())) {
+                    return false;
+                  }
+                  const text = String(value).trim();
+                  if (!text) {
+                    return false;
+                  }
+                  if (key === 'title' && text === String(result?.job_title || '').trim()) {
+                    return false;
+                  }
+                  if (key === 'epic_group_name' && text === String(result?.u_epic_assignment_group || '').trim()) {
+                    return false;
+                  }
+                  if (key === 'display_name' && text === String(normalized.display_name || '').trim()) {
+                    return false;
+                  }
+                  if (key === 'opid' && text === String(normalized.opid || '').trim()) {
+                    return false;
+                  }
+                  return true;
+                }).sort(([leftKey], [rightKey]) => {
+                  const leftPriority = getUserFieldPriority(leftKey);
+                  const rightPriority = getUserFieldPriority(rightKey);
+                  if (leftPriority !== rightPriority) {
+                    return leftPriority - rightPriority;
+                  }
+                  return getPreferredUserFieldLabel(leftKey).localeCompare(getPreferredUserFieldLabel(rightKey));
+                });
                 return (
                   <div
                     key={`search-${normalized.opid}`}
                     className={isSelected ? 'association-list__item association-list__item--selected' : 'association-list__item'}
                   >
                     <span className="association-list__title">{normalized.display_name || 'Unknown User'}</span>
-                    <span className="association-list__meta">{normalized.opid}</span>
-                    {normalized.email ? <span className="association-list__meta">{normalized.email}</span> : null}
-                    {result?.job_title ? <span className="association-list__meta">{result.job_title}</span> : null}
-                    {result?.department ? <span className="association-list__meta">{result.department}</span> : null}
-                    {result?.location ? <span className="association-list__meta">{result.location}</span> : null}
-                    {result?.epic_group_name ? <span className="association-list__meta">{`Epic Group: ${result.epic_group_name}`}</span> : null}
+                    {fieldEntries.map(([key, value]) => (
+                      <span className="association-list__meta" key={`${normalized.opid}-${key}`}>
+                        {`${getPreferredUserFieldLabel(key)}: ${String(value).trim()}`}
+                      </span>
+                    ))}
                     {accountEnabled !== null ? (
                       <span className={accountEnabled ? 'association-status association-status--assigned' : 'association-status association-status--missing'}>
                         {accountEnabled ? 'Enabled' : 'Disabled'}
@@ -652,6 +773,64 @@ function UsersEntityWorkspace() {
               ))}
             </div>
           )}
+        </Card>
+
+        <Card className="user-groups-context-card">
+          <CardHeader
+            eyebrow="Devices"
+            title="Associated Hardware"
+            description={selectedUser?.opid ? `Hardware rows associated with ${selectedUser.display_name || selectedUser.opid}.` : 'Select a user to load hardware associations.'}
+          />
+          {!selectedUser?.opid ? (
+            <EmptyState title="No user selected" description="Choose a user to load associated hardware from the backend hardware table." />
+          ) : null}
+          {selectedUser?.opid && userDevicesLoading ? <p className="status-text">Loading associated hardware...</p> : null}
+          {selectedUser?.opid && userDevicesError ? <p className="status-text status-text--error">{userDevicesError}</p> : null}
+          {selectedUser?.opid && !userDevicesLoading && !userDevicesError && !userDevices.length ? (
+            <EmptyState title="No associated hardware" description="No hardware rows in the backend source matched this user." />
+          ) : null}
+          {selectedUser?.opid && userDevices.length ? (
+            <div className="association-list user-groups-context-list">
+              {userDevices.map((device, index) => {
+                const deviceId = String(device?.id || device?.asset_tag || device?.name || '').trim() || `device-${index}`;
+                return (
+                  <div key={deviceId} className="association-list__item user-groups-context-list__item">
+                    <span className="association-list__title">{String(device?.name || 'Unknown device').trim() || 'Unknown device'}</span>
+                    {String(device?.model || '').trim() ? (
+                      <span className="association-list__meta">{`Model: ${String(device.model).trim()}`}</span>
+                    ) : null}
+                    {String(device?.asset_tag || '').trim() ? (
+                      <span className="association-list__meta">{`Asset Tag: ${String(device.asset_tag).trim()}`}</span>
+                    ) : null}
+                    {String(device?.serial_number || '').trim() ? (
+                      <span className="association-list__meta">{`Serial Number: ${String(device.serial_number).trim()}`}</span>
+                    ) : null}
+                    {String(device?.assigned_to || '').trim() ? (
+                      <span className="association-list__meta">{`Assigned To: ${String(device.assigned_to).trim()}`}</span>
+                    ) : null}
+                    {String(device?.department || '').trim() ? (
+                      <span className="association-list__meta">{`Department: ${String(device.department).trim()}`}</span>
+                    ) : null}
+                    {String(device?.location || '').trim() ? (
+                      <span className="association-list__meta">{`Location: ${String(device.location).trim()}`}</span>
+                    ) : null}
+                    {String(device?.status || '').trim() ? (
+                      <span className="association-list__meta">{`Status: ${String(device.status).trim()}`}</span>
+                    ) : null}
+                    {String(device?.ip || '').trim() ? (
+                      <span className="association-list__meta">{`IP: ${String(device.ip).trim()}`}</span>
+                    ) : null}
+                    {String(device?.manufacturer || '').trim() ? (
+                      <span className="association-list__meta">{`Manufacturer: ${String(device.manufacturer).trim()}`}</span>
+                    ) : null}
+                    {String(device?.last_seen || '').trim() ? (
+                      <span className="association-list__meta">{`Last Seen: ${String(device.last_seen).trim()}`}</span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </Card>
       </aside>
 

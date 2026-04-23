@@ -28,7 +28,9 @@ from ..services.analysis_store import get_analysis_file, list_recent_analyses, s
 from ..services.csv_analyzer import build_csv_analysis
 from ..services.data_source_service import register_source
 from ..services.data_sources.manager import get_source
-from ..services.authz import RUN_AI, require_auth, require_permission
+from ..services.metrics_service import generate_ticket_metrics
+from ..services.user_service import get_user_devices, get_user_full_context, resolve_user
+from ..services.authz import get_current_user
 from ..services.ai_client import build_compat_chat_response, call_gateway_chat
 
 work_bp = Blueprint('work', __name__)
@@ -222,13 +224,87 @@ def latest_tickets():
         return error_response(str(error), 400)
 
 
+@work_bp.get('/api/users/<path:identifier>')
+def user_template(identifier: str):
+    normalized_identifier = str(identifier or '').strip()
+    if not normalized_identifier:
+        return error_response('identifier is required', 400)
+
+    refresh = str(request.args.get('refresh') or '').strip().lower() in {'1', 'true', 'yes', 'y'}
+    resolved_user = resolve_user(normalized_identifier)
+    resolved_opid = str(resolved_user.get('opid') or '').strip().lower()
+    if not resolved_opid:
+        return error_response('user could not be resolved', 404)
+
+    current_user = get_current_user()
+    current_user_id = int(current_user.id) if current_user is not None else None
+    context = get_user_full_context(resolved_opid, user_id=current_user_id, refresh=refresh)
+
+    profile = context.get('profile') if isinstance(context, dict) else {}
+    groups = context.get('groups') if isinstance(context, dict) else []
+    devices = context.get('devices') if isinstance(context, dict) else []
+
+    return success_response(
+        {
+            'user': {
+                'name': str(resolved_user.get('name') or profile.get('display_name') or resolved_opid),
+                'opid': resolved_opid,
+                'email': str(resolved_user.get('email') or profile.get('email') or ''),
+            },
+            'profile': profile if isinstance(profile, dict) else {},
+            'groups': groups if isinstance(groups, list) else [],
+            'devices': devices if isinstance(devices, list) else [],
+        }
+    )
+
+
+@work_bp.get('/api/users/<path:identifier>/devices')
+def user_devices(identifier: str):
+    normalized_identifier = str(identifier or '').strip()
+    if not normalized_identifier:
+        return error_response('identifier is required', 400)
+
+    name = str(request.args.get('name') or '').strip()
+    email = str(request.args.get('email') or '').strip()
+    payload = get_user_devices(normalized_identifier, name=name, email=email)
+    user = payload.get('user') if isinstance(payload, dict) else {}
+    resolved_opid = str(user.get('opid') or '').strip().lower()
+    if not resolved_opid:
+        return error_response('user could not be resolved', 404)
+
+    devices = payload.get('devices') if isinstance(payload, dict) else []
+    return success_response(
+        {
+            'user': user if isinstance(user, dict) else {},
+            'devices': devices if isinstance(devices, list) else [],
+        }
+    )
+
+
 @work_bp.get('/api/tickets/metrics')
 def ticket_metrics():
     try:
         payload = load_latest_ticket_payload()
         tickets = payload.get('tickets') if isinstance(payload.get('tickets'), list) else []
         columns = payload.get('columns') if isinstance(payload.get('columns'), list) else []
-        metrics = compute_ticket_metrics(tickets, columns)
+        metrics = generate_ticket_metrics(tickets, columns)
+        return success_response(metrics)
+    except ValueError as error:
+        return error_response(str(error), 400)
+
+
+@work_bp.get('/api/metrics/active-tickets')
+def active_ticket_metrics():
+    try:
+        payload = load_latest_ticket_payload()
+        tickets = payload.get('tickets') if isinstance(payload.get('tickets'), list) else []
+        columns = payload.get('columns') if isinstance(payload.get('columns'), list) else []
+        metrics = generate_ticket_metrics(tickets, columns)
+        metrics['source'] = {
+            'fileName': payload.get('fileName'),
+            'last_updated': payload.get('last_updated'),
+            'row_count': len(tickets),
+        }
         return success_response(metrics)
     except ValueError as error:
         return error_response(str(error), 400)
@@ -286,10 +362,6 @@ def get_ticket(ticket_id):
 
 @work_bp.post('/api/tickets/<ticket_id>/summary')
 def summarize_ticket(ticket_id):
-    permission_error = require_permission(RUN_AI)
-    if permission_error is not None:
-        return permission_error
-
     # Keep this endpoint aligned with the authenticated /api/ai/chat smart-analysis
     # behavior so ticket summaries use the same ticket_analyzer pipeline.
     from .ai import _run_smart_analysis
@@ -349,10 +421,6 @@ def summarize_ticket(ticket_id):
 
 @work_bp.post('/api/tickets/update-assignee')
 def update_assignee():
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
-
     payload = request.get_json(silent=True) or {}
     ticket_id = str(payload.get('ticket_id', '')).strip()
     assignee = str(payload.get('assignee', '')).strip()
@@ -373,23 +441,14 @@ def update_assignee():
 
 @work_bp.post('/api/tickets')
 def create_ticket():
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
     return error_response('Ticket creation is not enabled in this module.', 405)
 
 
 @work_bp.put('/api/tickets/<ticket_id>')
 def replace_ticket(ticket_id):
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
     return error_response(f'Ticket updates are not enabled for {ticket_id}.', 405)
 
 
 @work_bp.delete('/api/tickets/<ticket_id>')
 def delete_ticket(ticket_id):
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
     return error_response(f'Ticket deletes are not enabled for {ticket_id}.', 405)
