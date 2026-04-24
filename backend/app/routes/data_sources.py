@@ -1354,6 +1354,9 @@ def users_source_backup_search():
         limit = 50
 
     source_name, items = _search_backup_users(query, limit=limit)
+    if not items:
+        source_name = source_name or 'users_master'
+        items = _query_users_source_table(query, limit=limit)
     return jsonify({
         'success': True,
         'query': query,
