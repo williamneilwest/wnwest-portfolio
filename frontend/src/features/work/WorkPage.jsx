@@ -47,7 +47,6 @@ import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './work
 import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from './utils/ticketRules';
 import { IdentityAccessModule } from './components/IdentityAccessModule';
-import { TicketSidePanel } from './components/TicketSidePanel';
 import { linkifyText } from '../../utils/linkifyText';
 
 const VIEW_STORAGE_KEY = STORAGE_KEYS.TICKET_VIEW;
@@ -428,11 +427,6 @@ export function WorkPage({ readOnly = false }) {
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
   const [debouncedRowFilter, setDebouncedRowFilter] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [selectedTicketIndex, setSelectedTicketIndex] = useState(-1);
-  const [ticketPanelAiLoading, setTicketPanelAiLoading] = useState(false);
-  const [ticketPanelAiResult, setTicketPanelAiResult] = useState('');
-  const [ticketPanelAiError, setTicketPanelAiError] = useState('');
   const [isLoadingSavedRun, setIsLoadingSavedRun] = useState(false);
   const [kbTagWords, setKbTagWords] = useState([]);
   const [autoMetrics, setAutoMetrics] = useState({
@@ -459,7 +453,6 @@ export function WorkPage({ readOnly = false }) {
 
     setError('');
     setSelectedRow(null);
-    setSelectedTicket(null);
     setSelectedFile(null);
 
     if (showLoading) {
@@ -599,7 +592,6 @@ export function WorkPage({ readOnly = false }) {
       setIsLoadingSavedRun(true);
       setSelectedFile(null);
       setSelectedRow(null);
-      setSelectedTicket(null);
 
       try {
         const assignee = String(user?.username || '').trim();
@@ -719,7 +711,6 @@ export function WorkPage({ readOnly = false }) {
       setColumnFilters({});
       setSortConfig({ column: '', direction: 'asc' });
       setSelectedRow(null);
-      setSelectedTicket(null);
       setDatasetGlobalSearch('');
       setDatasetPage(0);
       setDatasetVisibleColumns([]);
@@ -734,7 +725,6 @@ export function WorkPage({ readOnly = false }) {
     setColumnFilters({});
     setSortConfig({ column: '', direction: 'asc' });
     setSelectedRow(null);
-    setSelectedTicket(null);
     setDatasetGlobalSearch('');
     setDatasetPage(0);
     setDatasetVisibleColumns(getStoredVisibleColumns(DATASET_COLUMN_PREFERENCE_KEY, analysis.columns || []));
@@ -1063,35 +1053,6 @@ export function WorkPage({ readOnly = false }) {
     }
     return linkifyText(value);
   }
-  const swipeTickets = useMemo(
-    () => visibleTickets.map(({ ticket }) => ticket).filter(Boolean),
-    [visibleTickets]
-  );
-
-  useEffect(() => {
-    if (!selectedTicket) {
-      if (selectedTicketIndex !== -1) {
-        setSelectedTicketIndex(-1);
-      }
-      return;
-    }
-
-    const selectedId = getTicketId(selectedTicket, datasetColumns);
-    const nextIndex = swipeTickets.findIndex((item) => getTicketId(item, datasetColumns) === selectedId);
-    if (nextIndex < 0) {
-      setSelectedTicket(null);
-      setSelectedTicketIndex(-1);
-      setTicketPanelAiError('');
-      setTicketPanelAiResult('');
-      return;
-    }
-    if (selectedTicketIndex !== nextIndex) {
-      setSelectedTicketIndex(nextIndex);
-    }
-    if (swipeTickets[nextIndex] !== selectedTicket) {
-      setSelectedTicket(swipeTickets[nextIndex]);
-    }
-  }, [datasetColumns, selectedTicket, selectedTicketIndex, swipeTickets]);
   const workspaceTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'identity', label: 'Identity' },
@@ -1124,7 +1085,6 @@ export function WorkPage({ readOnly = false }) {
       setLatestMessage('');
       setCachedWorkDataset(nextDataset);
       setSelectedRow(null);
-      setSelectedTicket(null);
       setRecentAnalyses((current) => {
         const next = [
           {
@@ -1188,7 +1148,6 @@ export function WorkPage({ readOnly = false }) {
       setLatestMessage(parsedDataset.rows.length ? '' : 'The selected upload contains no data rows.');
       setCachedWorkDataset(nextDataset);
       setSelectedRow(null);
-      setSelectedTicket(null);
     } catch (requestError) {
       setError(requestError.message || 'Uploaded file could not be loaded.');
     }
@@ -1256,65 +1215,7 @@ export function WorkPage({ readOnly = false }) {
   }
 
   function handleTicketCardSelect(row) {
-    setTicketPanelAiError('');
-    setTicketPanelAiResult('');
-    const ticket = row || null;
-    setSelectedTicket(ticket);
-    if (!ticket) {
-      setSelectedTicketIndex(-1);
-      return;
-    }
-    const selectedId = getTicketId(ticket, datasetColumns);
-    const nextIndex = swipeTickets.findIndex((item) => getTicketId(item, datasetColumns) === selectedId);
-    setSelectedTicketIndex(nextIndex >= 0 ? nextIndex : 0);
-  }
-
-  function handleSelectTicketByIndex(nextIndex) {
-    if (nextIndex < 0 || nextIndex >= swipeTickets.length) {
-      return;
-    }
-    const nextTicket = swipeTickets[nextIndex];
-    if (!nextTicket) {
-      return;
-    }
-    setTicketPanelAiError('');
-    setTicketPanelAiResult('');
-    setSelectedTicket(nextTicket);
-    setSelectedTicketIndex(nextIndex);
-  }
-
-  function handleOpenSelectedTicketFull() {
-    const ticketId = getTicketId(selectedTicket, datasetColumns);
-    if (!ticketId || ticketId === 'Untitled ticket') {
-      return;
-    }
-
-    navigate(`/tickets/${encodeURIComponent(ticketId)}`, {
-      state: {
-        from: `${location.pathname}${location.search || ''}`,
-        label: 'Active Tickets',
-      },
-    });
-  }
-
-  async function handleRunSelectedTicketAi() {
-    const ticketId = getTicketId(selectedTicket, datasetColumns);
-    if (!ticketId || ticketId === 'Untitled ticket' || !canMutate) {
-      return;
-    }
-
-    setTicketPanelAiLoading(true);
-    setTicketPanelAiError('');
-    setTicketPanelAiResult('');
-    try {
-      const payload = await summarizeTicket(ticketId, { ticket: selectedTicket || {} });
-      const summaryText = String(payload?.data?.summary || payload?.summary || payload?.message || '').trim();
-      setTicketPanelAiResult(summaryText || 'Summary completed.');
-    } catch (requestError) {
-      setTicketPanelAiError(requestError.message || 'Ticket AI summary failed.');
-    } finally {
-      setTicketPanelAiLoading(false);
-    }
+    handlePreviewRowSelect(row);
   }
 
   async function handleAiAnalysis() {
@@ -2110,31 +2011,6 @@ export function WorkPage({ readOnly = false }) {
                 </div>
               </aside>
             </div>
-          ) : null}
-
-          {selectedTicket ? (
-            <TicketSidePanel
-              mobileMode={isMobile}
-              ticket={selectedTicket}
-              ticketId={getTicketId(selectedTicket, datasetColumns)}
-              onClose={() => {
-                setSelectedTicket(null);
-                setSelectedTicketIndex(-1);
-                setTicketPanelAiError('');
-                setTicketPanelAiResult('');
-              }}
-              hasPrev={selectedTicketIndex > 0}
-              hasNext={selectedTicketIndex >= 0 && selectedTicketIndex < swipeTickets.length - 1}
-              onPrev={() => handleSelectTicketByIndex(selectedTicketIndex - 1)}
-              onNext={() => handleSelectTicketByIndex(selectedTicketIndex + 1)}
-              positionLabel={selectedTicketIndex >= 0 ? `${selectedTicketIndex + 1} / ${swipeTickets.length}` : ''}
-              onOpenFull={handleOpenSelectedTicketFull}
-              onRunAi={handleRunSelectedTicketAi}
-              canRunAi={canMutate}
-              aiLoading={ticketPanelAiLoading}
-              aiResult={ticketPanelAiResult}
-              aiError={ticketPanelAiError}
-            />
           ) : null}
 
           {rowDetail ? (

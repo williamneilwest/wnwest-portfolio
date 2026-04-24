@@ -195,6 +195,16 @@ def _extract_source_user_row(user: dict) -> dict | None:
         'title': _read_first_value(user, ('title', 'job_title', 'position_title')),
         'department': str(user.get('department') or '').strip(),
         'location': str(user.get('location') or '').strip(),
+        'physician': _read_first_value(user, ('u_physician', 'physician', 'user_u_physician')),
+        'cost_center': _read_first_value(user, ('cost_center', 'user_cost_center')),
+        'manager': _read_first_value(
+            user,
+            ('manager', 'u_manager', 'user_manager', 'manager_name', 'cost_center_manager_name'),
+        ),
+        'director': _read_first_value(
+            user,
+            ('u_director', 'director', 'user_u_director', 'director_name'),
+        ),
         'source': str(user.get('source') or 'users_master').strip() or 'users_master',
     }
 
@@ -302,6 +312,16 @@ def _extract_backup_people_row(row: dict) -> dict | None:
         'location': _read_first_value(
             row,
             ('user_location', 'user_u_peoplesoft_location', 'location', 'site', 'office_location', 'user_location.u_site.u_region'),
+        ),
+        'physician': _read_first_value(row, ('user_u_physician', 'u_physician', 'physician')),
+        'cost_center': _read_first_value(row, ('user_cost_center', 'cost_center')),
+        'manager': _read_first_value(
+            row,
+            ('user_manager', 'manager', 'u_manager', 'manager_name', 'cost_center_manager_name'),
+        ),
+        'director': _read_first_value(
+            row,
+            ('user_u_director', 'u_director', 'director', 'director_name'),
         ),
         'epic_group_name': _read_first_value(
             row,

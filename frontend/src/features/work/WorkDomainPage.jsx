@@ -116,9 +116,13 @@ function normalizeSourceUser(user) {
     opid,
     display_name: String(user?.display_name || user?.name || '').trim() || null,
     email: String(user?.email || user?.mail || '').trim() || null,
-    job_title: String(user?.job_title || '').trim() || null,
+    job_title: String(user?.job_title || user?.title || '').trim() || null,
     department: String(user?.department || '').trim() || null,
     location: String(user?.location || '').trim() || null,
+    physician: String(user?.physician || user?.u_physician || user?.user_u_physician || '').trim() || null,
+    cost_center: String(user?.cost_center || user?.user_cost_center || '').trim() || null,
+    manager: String(user?.manager || user?.u_manager || user?.user_manager || user?.cost_center_manager_name || '').trim() || null,
+    director: String(user?.director || user?.u_director || user?.user_u_director || user?.director_name || '').trim() || null,
     account_enabled: toBoolean(user?.account_enabled),
     groups: [],
     cached_at: new Date().toISOString(),
@@ -185,12 +189,13 @@ function getUserFieldPriority(key) {
   const normalized = String(key || '').trim().toLowerCase();
   const order = [
     ['name'],
+    ['job_title', 'title'],
     ['department'],
     ['cost_center', 'user_cost_center'],
     ['location'],
     ['u_epic_assignment_group', 'epic_group_name'],
-    ['manager'],
-    ['director', 'u_director'],
+    ['manager', 'u_manager', 'user_manager', 'cost_center_manager_name'],
+    ['director', 'u_director', 'user_u_director', 'director_name'],
   ];
 
   const index = order.findIndex((group) => group.includes(normalized));
@@ -202,8 +207,17 @@ function getPreferredUserFieldLabel(key) {
   if (normalized === 'cost_center' || normalized === 'user_cost_center') {
     return 'Cost Center';
   }
+  if (normalized === 'job_title' || normalized === 'title') {
+    return 'Job Title';
+  }
   if (normalized === 'u_epic_assignment_group' || normalized === 'epic_group_name') {
     return 'Epic Assignment Group';
+  }
+  if (normalized === 'manager' || normalized === 'u_manager' || normalized === 'user_manager' || normalized === 'cost_center_manager_name') {
+    return 'Cost Center Manager Name';
+  }
+  if (normalized === 'director' || normalized === 'u_director' || normalized === 'user_u_director' || normalized === 'director_name') {
+    return 'Director Name';
   }
   if (normalized === 'u_director') {
     return 'Director';
@@ -228,6 +242,10 @@ function buildUserContext(selectedUser, cacheMap) {
     job_title: selectedUser.job_title || null,
     department: selectedUser.department || null,
     location: selectedUser.location || null,
+    physician: selectedUser.physician || null,
+    cost_center: selectedUser.cost_center || null,
+    manager: selectedUser.manager || null,
+    director: selectedUser.director || null,
     account_enabled: selectedUser.account_enabled ?? null,
     group_count: cachedCount,
     groups,
@@ -249,6 +267,9 @@ function buildUserFieldEntries(record, normalizedUser = null) {
     'cachedAt',
     'cached_at',
     'created',
+    'physician',
+    'u_physician',
+    'user_u_physician',
     '__fallback_used',
   ]);
 
@@ -398,6 +419,10 @@ function UsersEntityWorkspace() {
                 job_title: user.job_title || '',
                 department: user.department || '',
                 location: user.location || '',
+                physician: user.physician || '',
+                cost_center: user.cost_center || '',
+                manager: user.manager || '',
+                director: user.director || '',
                 account_enabled: user.account_enabled,
                 source: user.source || 'cache',
               }));
@@ -544,6 +569,10 @@ function UsersEntityWorkspace() {
       && String(existingUser.job_title || '').trim() === String(normalized.job_title || '').trim()
       && String(existingUser.department || '').trim() === String(normalized.department || '').trim()
       && String(existingUser.location || '').trim() === String(normalized.location || '').trim()
+      && String(existingUser.physician || '').trim() === String(normalized.physician || '').trim()
+      && String(existingUser.cost_center || '').trim() === String(normalized.cost_center || '').trim()
+      && String(existingUser.manager || '').trim() === String(normalized.manager || '').trim()
+      && String(existingUser.director || '').trim() === String(normalized.director || '').trim()
       && String(existingUser.source || '').trim() === String(normalized.source || '').trim();
 
     if (hasCompleteBackupProfile(normalized)) {
@@ -556,6 +585,10 @@ function UsersEntityWorkspace() {
         job_title: normalized.job_title,
         department: normalized.department,
         location: normalized.location,
+        physician: normalized.physician,
+        cost_center: normalized.cost_center,
+        manager: normalized.manager,
+        director: normalized.director,
         account_enabled: normalized.account_enabled,
         groups: Array.isArray(current?.groups) ? current.groups : [],
         group_count: Array.isArray(current?.groups) ? current.groups.length : 0,
@@ -737,12 +770,16 @@ function UsersEntityWorkspace() {
                 const isSelected = normalized.opid === selectedUserOpid;
                 const accountEnabled = toBoolean(result?.account_enabled);
                 const fieldEntries = buildUserFieldEntries(result, normalized);
+                const isPhysician = toBoolean(result?.physician ?? result?.u_physician ?? result?.user_u_physician) === true;
                 return (
                   <div
                     key={`search-${normalized.opid}`}
                     className={isSelected ? 'association-list__item association-list__item--selected' : 'association-list__item'}
                   >
                     <span className="association-list__title">{normalized.display_name || 'Unknown User'}</span>
+                    {isPhysician ? (
+                      <span className="association-status association-status--live">Physician</span>
+                    ) : null}
                     {fieldEntries.map(([key, value]) => (
                       <span className="association-list__meta" key={`${normalized.opid}-${key}`}>
                         {`${getPreferredUserFieldLabel(key)}: ${String(value).trim()}`}

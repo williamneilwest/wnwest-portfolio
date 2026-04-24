@@ -79,6 +79,10 @@ export function normalizeCachedUserRecord(record, fallbackOpid = '') {
   const jobTitle = toText(record?.job_title || record?.jobTitle || record?.title) || null;
   const department = toText(record?.department || record?.dept || record?.department_name) || null;
   const location = toText(record?.location || record?.site || record?.office_location) || null;
+  const physician = toText(record?.physician || record?.u_physician || record?.user_u_physician) || null;
+  const costCenter = toText(record?.cost_center || record?.user_cost_center) || null;
+  const manager = toText(record?.manager || record?.u_manager || record?.user_manager || record?.cost_center_manager_name) || null;
+  const director = toText(record?.director || record?.u_director || record?.user_u_director || record?.director_name) || null;
   const accountEnabled = record?.account_enabled ?? record?.accountEnabled ?? null;
   const groups = normalizeGroupsFromRecord(record);
   const cachedAt = toText(record?.cachedAt || record?.cached_at || record?.timestamp) || null;
@@ -105,6 +109,10 @@ export function normalizeCachedUserRecord(record, fallbackOpid = '') {
     job_title: jobTitle,
     department,
     location,
+    physician,
+    cost_center: costCenter,
+    manager,
+    director,
     account_enabled: accountEnabled,
     cached_at: cachedAt,
     groups,
@@ -136,6 +144,10 @@ export function toCacheRecord(user) {
     job_title: normalized.job_title || '',
     department: normalized.department || '',
     location: normalized.location || '',
+    physician: normalized.physician || '',
+    cost_center: normalized.cost_center || '',
+    manager: normalized.manager || '',
+    director: normalized.director || '',
     account_enabled: normalized.account_enabled,
     items: normalized.groups,
     groups: normalized.groups,

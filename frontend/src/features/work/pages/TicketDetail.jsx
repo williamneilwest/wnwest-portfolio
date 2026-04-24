@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Clock3, MessageSquareText, ShieldCheck, ShieldX, Sparkles, UserRound } from 'lucide-react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useBackNavigation } from '../../../app/hooks/useBackNavigation';
 import { getKnowledgeBase, getReferenceGroups, getReferenceUsers, getTicket, getUserGroups, summarizeTicket } from '../../../app/services/api';
 import { getFeatureAgentId } from '../../../app/services/aiClient';
@@ -9,6 +9,7 @@ import { EmptyState } from '../../../app/ui/EmptyState';
 import { linkifyText } from '../../../utils/linkifyText';
 import { getCachedWorkDataset, setCachedWorkDataset } from '../workDatasetCache';
 import { useCurrentUser } from '../../../app/hooks/useCurrentUser';
+import { isUsableUserValue, openUserRecord } from '../utils/userLinks';
 import {
   findTicketById,
   getTicketAssignee,
@@ -175,6 +176,7 @@ function resolveUserOpid(candidates, users) {
 
 export function TicketDetail() {
   const { authenticated } = useCurrentUser();
+  const navigate = useNavigate();
   const { ticketId: routeTicketId = '' } = useParams();
   const location = useLocation();
   const sourceFromQuery = useMemo(() => {
@@ -225,6 +227,27 @@ export function TicketDetail() {
     () => parseTicketAiAnalysis(analysisResult),
     [analysisResult]
   );
+  const fieldMap = useMemo(() => getTicketColumns(columns), [columns]);
+  const ticketTitle = useMemo(() => getTicketTitle(ticket, columns), [ticket, columns]);
+  const impactedUser = useMemo(
+    () => normalizeLookupValue(
+      ticket?.u_impacted_user
+      || ticket?.impacted_user
+      || ticket?.caller_id
+      || ticket?.['u_task_1.u_impacted_user']
+    ) || '—',
+    [ticket]
+  );
+  const titleLabel = useMemo(() => {
+    const raw = String(fieldMap?.title || '').trim().toLowerCase();
+    if (raw.includes('short_description')) {
+      return 'Short Description';
+    }
+    if (raw.includes('description')) {
+      return 'Description';
+    }
+    return 'Short Description';
+  }, [fieldMap?.title]);
 
   useEffect(() => {
     if (!ticket || (typeof import.meta !== 'undefined' && !import.meta?.env?.DEV)) {
@@ -602,8 +625,7 @@ export function TicketDetail() {
             <CardHeader
               eyebrow="Ticket Detail"
               title={getTicketId(ticket, columns)}
-              description={getTicketTitle(ticket, columns)}
-              action={
+            action={
                 <button
                   className="ui-button ui-button--primary"
                   disabled={loading || !authenticated}
@@ -627,6 +649,20 @@ export function TicketDetail() {
                 <span>{getTicketAssignee(ticket, columns)}</span>
               </div>
               <div className="ticket-detail-hero__item">
+                <UserRound size={14} />
+                {isUsableUserValue(impactedUser) ? (
+                  <button
+                    className="user-record-link"
+                    onClick={() => void openUserRecord(impactedUser, navigate)}
+                    type="button"
+                  >
+                    {`Impacted User: ${impactedUser}`}
+                  </button>
+                ) : (
+                  <span>{`Impacted User: ${impactedUser}`}</span>
+                )}
+              </div>
+              <div className="ticket-detail-hero__item">
                 <Clock3 size={14} />
                 <span>{getTicketLastUpdatedLabel(ticket, columns)}</span>
               </div>
@@ -635,9 +671,13 @@ export function TicketDetail() {
               </div>
             </div>
 
-            <p>{linkifyText(getTicketTitle(ticket, columns))}</p>
-
             <div className="ticket-detail-grid">
+              {ticketTitle ? (
+                <div className="ticket-detail-grid__item">
+                  <span>{titleLabel}</span>
+                  <strong>{linkifyText(ticketTitle)}</strong>
+                </div>
+              ) : null}
               {metadataEntries.map((item) => (
                 <div className="ticket-detail-grid__item" key={item.label}>
                   <span>{item.label}</span>
