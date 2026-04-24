@@ -421,7 +421,7 @@ export function WorkPage({ readOnly = false }) {
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isUploadsExpanded, setIsUploadsExpanded] = useState(false);
   const [isEditDatasetOpen, setIsEditDatasetOpen] = useState(false);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState(() => (isActiveTicketsRoute ? 'tickets' : 'overview'));
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('tickets');
   const [datasetVisibleColumns, setDatasetVisibleColumns] = useState([]);
   const [columnFilters, setColumnFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
@@ -1054,12 +1054,10 @@ export function WorkPage({ readOnly = false }) {
     return linkifyText(value);
   }
   const workspaceTabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'identity', label: 'Identity' },
-    { id: 'source', label: 'Source' },
-    { id: 'data', label: 'Data' },
-    { id: 'ai', label: 'AI' },
-    { id: 'tools', label: 'Tools' },
+    { id: 'tickets', label: 'Tickets' },
+    { id: 'users-groups', label: 'Users & Groups' },
+    { id: 'software', label: 'Software' },
+    { id: 'useful-tools', label: 'Useful Tools' },
   ];
 
   async function runAnalysis(file) {
@@ -1264,7 +1262,7 @@ export function WorkPage({ readOnly = false }) {
       {aiError ? <p className="status-text status-text--error">{aiError}</p> : null}
       {isLoadingSavedRun ? <p className="status-text">Loading saved run dataset...</p> : null}
 
-      {analysis ? (
+      {(!isActiveTicketsRoute || analysis) ? (
         <>
           <input
             ref={fileInputRef}
@@ -1292,9 +1290,9 @@ export function WorkPage({ readOnly = false }) {
           ) : null}
 
           <div className="work-modules-stack">
-            {activeWorkspaceTab === 'overview' ? (
+            {activeWorkspaceTab === 'tickets' ? (
               <>
-                <ModuleCard title="Workspace Snapshot" collapsible>
+                <ModuleCard title="Ticket Snapshot" collapsible>
                   <div className="dataset-metrics-grid">
                     <div className="metric-tile"><span>Dataset</span><strong>{formatDataFileName(latestFileName) || 'Unknown'}</strong></div>
                     <div className="metric-tile"><span>Last uploaded</span><strong>{formatUploadTimestamp(latestLastUpdated)}</strong></div>
@@ -1303,10 +1301,22 @@ export function WorkPage({ readOnly = false }) {
                   </div>
                 </ModuleCard>
 
-                <ModuleCard title="Active Tickets" collapsible defaultCollapsed>
+                <ModuleCard title="Ticket Areas" collapsible defaultCollapsed>
                   <div className="table-actions">
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/active-tickets')}>
-                      Open Active Tickets
+                      Active Tickets
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/closed-tickets')}>
+                      Closed Tickets
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/hardware')}>
+                      Hardware
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/hardware')}>
+                      Computers
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/printers')}>
+                      Printers
                     </button>
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/data/active-tickets')}>
                       View Table
@@ -1698,16 +1708,16 @@ export function WorkPage({ readOnly = false }) {
               </div>
             ) : null}
 
-            {activeWorkspaceTab === 'identity' ? (
+            {activeWorkspaceTab === 'users-groups' ? (
               <>
-                <ModuleCard title="Identity & Access" collapsible>
+                <ModuleCard title="Users & Groups Workspace" collapsible>
                   <IdentityAccessModule
                     authenticated={authenticated}
                     canExecuteFlows={canExecuteFlows}
                     siteCode={String(user?.site_code || '').trim()}
                   />
                 </ModuleCard>
-                <ModuleCard title="Identity Tools" collapsible defaultCollapsed>
+                <ModuleCard title="Users & Groups Navigation" collapsible defaultCollapsed>
                   <div className="table-actions">
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
                       Get User Groups
@@ -1718,112 +1728,111 @@ export function WorkPage({ readOnly = false }) {
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
                       User-Group Association
                     </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/reference')}>
+                      Users Source Table
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/reference')}>
+                      Groups Source Table
+                    </button>
                   </div>
                 </ModuleCard>
               </>
             ) : null}
 
-            {activeWorkspaceTab === 'ai' ? (
-              <ModuleCard title="AI Tools" collapsible>
-                <section className="analysis-grid">
-                  <Card className="work-insights-pane">
-                    <CardHeader
-                      eyebrow="AI Insights"
-                      title="Structured analysis"
-                      description="AI results are grouped into concise sections instead of a raw response block."
-                    />
-
-                    {aiAnalysis ? (
-                      <div className="card__scroll">
-                        <div className="analysis-grid">
-                          <Card>
-                            <CardHeader eyebrow="Section 1" title="Summary" />
-                            <p>{aiSections.summary || 'No summary returned.'}</p>
-                          </Card>
-                          <Card>
-                            <CardHeader eyebrow="Section 2" title="Key Insights" />
-                            {aiSections.keyInsights.length ? (
-                              <ul className="card__list">{aiSections.keyInsights.map((item) => <li key={item}>{item}</li>)}</ul>
-                            ) : (
-                              <p>No key insights returned.</p>
-                            )}
-                          </Card>
-                          <Card>
-                            <CardHeader eyebrow="Section 3" title="Anomalies" />
-                            {aiSections.anomalies.length ? (
-                              <ul className="card__list">{aiSections.anomalies.map((item) => <li key={item}>{item}</li>)}</ul>
-                            ) : (
-                              <p>No anomalies identified.</p>
-                            )}
-                          </Card>
-                          <Card>
-                            <CardHeader eyebrow="Section 4" title="Recommendations" />
-                            {aiSections.recommendations.length ? (
-                              <ul className="card__list">{aiSections.recommendations.map((item) => <li key={item}>{item}</li>)}</ul>
-                            ) : (
-                              <p>No recommendations returned.</p>
-                            )}
-                          </Card>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="dataset-metrics-grid">
-                        <div className="metric-tile"><span>Total tickets</span><strong>{Number(autoMetrics?.total || latestDataset?.rows?.length || 0)}</strong></div>
-                        <div className="metric-tile"><span>Open tickets</span><strong>{Number(autoMetrics?.open || 0)}</strong></div>
-                        <div className="metric-tile"><span>Flagged tickets</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
-                        <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || latestDataset?.columns?.length || 0)}</strong></div>
-                      </div>
-                    )}
-                  </Card>
-                </section>
-              </ModuleCard>
-            ) : null}
-
-            {activeWorkspaceTab === 'data' ? (
-              <ModuleCard title="Data Tools" collapsible>
-                <div className="work-data-tools">
-                  <p className="status-text">Open existing Work tools and dataset views without changing ticket data flow.</p>
-                  <div className="table-actions">
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/data/active-tickets')}>
-                      View Table
-                    </button>
-                    <button className="compact-toggle" type="button" onClick={() => setIsEditDatasetOpen(true)}>
-                      Edit Dataset
-                    </button>
-                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/uploads')}>
-                      Upload Tools
-                    </button>
-                  </div>
-                </div>
-              </ModuleCard>
-            ) : null}
-
-            {activeWorkspaceTab === 'source' ? (
-              <ModuleCard title="Source / Reference Tables" collapsible>
-                <div className="work-data-tools">
-                  <p className="status-text">Open backend reference source tables for users and groups.</p>
-                  <div className="table-actions">
-                    <button
-                      className="compact-toggle"
-                      type="button"
-                      onClick={() => navigate('/app/reference')}
-                    >
-                      Users Source Table
-                    </button>
-                    <button
-                      className="compact-toggle"
-                      type="button"
-                      onClick={() => navigate('/app/reference')}
-                    >
-                      Groups Source Table
-                    </button>
-                  </div>
-                </div>
-              </ModuleCard>
-            ) : null}
-
-            {activeWorkspaceTab === 'tools' ? (
+            {activeWorkspaceTab === 'software' ? (
               <>
+                <ModuleCard title="Software Workspace" collapsible>
+                  <div className="work-data-tools">
+                    <p className="status-text">Open the software registry and approval workspace without changing the current ticket dataset.</p>
+                    <div className="table-actions">
+                      <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/software')}>
+                        Open Software
+                      </button>
+                    </div>
+                  </div>
+                </ModuleCard>
+                <ModuleCard title="Software Context" collapsible defaultCollapsed>
+                  <div className="dataset-metrics-grid">
+                    <div className="metric-tile"><span>Authenticated</span><strong>{authenticated ? 'Yes' : 'No'}</strong></div>
+                    <div className="metric-tile"><span>Role</span><strong>{String(role || 'public')}</strong></div>
+                    <div className="metric-tile"><span>Active file</span><strong>{formatDataFileName(latestFileName) || 'Unknown'}</strong></div>
+                    <div className="metric-tile"><span>Rows loaded</span><strong>{latestDataset?.rows?.length || 0}</strong></div>
+                  </div>
+                </ModuleCard>
+              </>
+            ) : null}
+
+            {activeWorkspaceTab === 'useful-tools' ? (
+              <>
+                <ModuleCard title="AI Tools" collapsible>
+                  <section className="analysis-grid">
+                    <Card className="work-insights-pane">
+                      <CardHeader
+                        eyebrow="AI Insights"
+                        title="Structured analysis"
+                        description="AI results are grouped into concise sections instead of a raw response block."
+                      />
+
+                      {aiAnalysis ? (
+                        <div className="card__scroll">
+                          <div className="analysis-grid">
+                            <Card>
+                              <CardHeader eyebrow="Section 1" title="Summary" />
+                              <p>{aiSections.summary || 'No summary returned.'}</p>
+                            </Card>
+                            <Card>
+                              <CardHeader eyebrow="Section 2" title="Key Insights" />
+                              {aiSections.keyInsights.length ? (
+                                <ul className="card__list">{aiSections.keyInsights.map((item) => <li key={item}>{item}</li>)}</ul>
+                              ) : (
+                                <p>No key insights returned.</p>
+                              )}
+                            </Card>
+                            <Card>
+                              <CardHeader eyebrow="Section 3" title="Anomalies" />
+                              {aiSections.anomalies.length ? (
+                                <ul className="card__list">{aiSections.anomalies.map((item) => <li key={item}>{item}</li>)}</ul>
+                              ) : (
+                                <p>No anomalies identified.</p>
+                              )}
+                            </Card>
+                            <Card>
+                              <CardHeader eyebrow="Section 4" title="Recommendations" />
+                              {aiSections.recommendations.length ? (
+                                <ul className="card__list">{aiSections.recommendations.map((item) => <li key={item}>{item}</li>)}</ul>
+                              ) : (
+                                <p>No recommendations returned.</p>
+                              )}
+                            </Card>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="dataset-metrics-grid">
+                          <div className="metric-tile"><span>Total tickets</span><strong>{Number(autoMetrics?.total || latestDataset?.rows?.length || 0)}</strong></div>
+                          <div className="metric-tile"><span>Open tickets</span><strong>{Number(autoMetrics?.open || 0)}</strong></div>
+                          <div className="metric-tile"><span>Flagged tickets</span><strong>{Number(autoMetrics?.flagged || 0)}</strong></div>
+                          <div className="metric-tile"><span>Visible columns</span><strong>{Number(autoMetrics?.visible_columns || latestDataset?.columns?.length || 0)}</strong></div>
+                        </div>
+                      )}
+                    </Card>
+                  </section>
+                </ModuleCard>
+                <ModuleCard title="Data Tools" collapsible>
+                  <div className="work-data-tools">
+                    <p className="status-text">Open existing Work tools and dataset views without changing ticket data flow.</p>
+                    <div className="table-actions">
+                      <button className="compact-toggle" type="button" onClick={() => navigate('/app/data/active-tickets')}>
+                        View Table
+                      </button>
+                      <button className="compact-toggle" type="button" onClick={() => setIsEditDatasetOpen(true)}>
+                        Edit Dataset
+                      </button>
+                      <button className="compact-toggle" type="button" onClick={() => navigate('/app/uploads')}>
+                        Upload Tools
+                      </button>
+                    </div>
+                  </div>
+                </ModuleCard>
                 <ModuleCard title="Utilities" collapsible>
                   <div className="table-actions">
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/users')}>
@@ -1837,6 +1846,9 @@ export function WorkPage({ readOnly = false }) {
                     </button>
                     <button className="compact-toggle" type="button" onClick={() => navigate('/app/work/ai-metrics')}>
                       AI Metrics
+                    </button>
+                    <button className="compact-toggle" type="button" onClick={() => navigate('/app/reference')}>
+                      Reference Tables
                     </button>
                   </div>
                 </ModuleCard>
