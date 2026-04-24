@@ -12,7 +12,6 @@ import {
   Search,
   Shield,
   Upload,
-  User,
   Users,
   Wrench,
 } from 'lucide-react';
@@ -26,54 +25,114 @@ import { getCachedWorkDataset, setCachedWorkDataset } from './workDatasetCache';
 
 const LAST_ACTIVITY_KEY = 'westos.work.lastHubActivity';
 
-const domainCards = [
+const groupedSections = [
   {
-    title: 'Active Tickets',
-    description: 'Card-based triage view with fast ticket inspection and panel details.',
-    icon: FileSpreadsheet,
-    href: '/app/work/active-tickets',
+    title: 'Tickets',
+    description: 'Open ticket workspaces for active and closed ticket review.',
+    items: [
+      {
+        title: 'Active Tickets',
+        description: 'Card-based triage view with fast ticket inspection and panel details.',
+        icon: FileSpreadsheet,
+        href: '/app/work/active-tickets',
+      },
+      {
+        title: 'Closed Tickets',
+        description: 'Separate closed and resolved ticket review with assignee and timeframe filters.',
+        icon: CheckCircle2,
+        href: '/app/work/closed-tickets',
+      },
+    ],
   },
   {
-    title: 'Closed Tickets',
-    description: 'Separate closed and resolved ticket review with assignee and timeframe filters.',
-    icon: CheckCircle2,
-    href: '/app/work/closed-tickets',
+    title: 'Hardware',
+    description: 'Lookup and operational pages for endpoints, assets, and printers.',
+    items: [
+      {
+        title: 'Devices',
+        description: 'Computer lookup, assignment checks, and operational context.',
+        icon: Monitor,
+        href: '/app/work/devices',
+      },
+      {
+        title: 'Hardware',
+        description: 'Asset lookup and supporting investigation tooling.',
+        icon: Shield,
+        href: '/app/work/hardware',
+      },
+      {
+        title: 'Printers',
+        description: 'Printer registration and group-driven assignment workflow.',
+        icon: Printer,
+        href: '/app/work/printers',
+      },
+    ],
   },
   {
-    title: 'Users',
-    description: 'User identity, groups, and account actions.',
-    icon: Users,
-    href: '/app/work/users',
-  },
-  {
-    title: 'Devices',
-    description: 'Computer lookup, assignment checks, and operational context.',
-    icon: Monitor,
-    href: '/app/work/devices',
-  },
-  {
-    title: 'Printers',
-    description: 'Printer registration and group-driven assignment workflow.',
-    icon: Printer,
-    href: '/app/work/printers',
+    title: 'Users & Groups',
+    description: 'Identity, group lookup, and user-centered work actions.',
+    items: [
+      {
+        title: 'Users',
+        description: 'User identity, groups, and account actions.',
+        icon: Users,
+        href: '/app/work/users',
+      },
+      {
+        title: 'Lookup User',
+        description: 'Open user search and group membership context.',
+        icon: Search,
+        href: '/app/work/users',
+      },
+      {
+        title: 'Lookup Device',
+        description: 'Jump into device lookup when working from user context.',
+        icon: Monitor,
+        href: '/app/work/devices',
+      },
+    ],
   },
   {
     title: 'Software',
     description: 'Application checks and deployment support actions.',
-    icon: HardDrive,
-    href: '/app/work/software',
+    items: [
+      {
+        title: 'Software',
+        description: 'Open the software workspace and registry tools.',
+        icon: HardDrive,
+        href: '/app/work/software',
+      },
+    ],
   },
   {
-    title: 'Hardware',
-    description: 'Asset lookup and supporting investigation tooling.',
-    icon: Shield,
-    href: '/app/work/hardware',
-  },
-  {
-    title: 'Codes',
-    description: 'Create and store QR/barcodes from text or uploads.',
-    icon: Barcode,
-    href: '/app/work/codes',
+    title: 'Other Tools',
+    description: 'Utilities, uploads, scripts, codes, and knowledge resources.',
+    items: [
+      {
+        title: 'Codes',
+        description: 'Create and store QR/barcodes from text or uploads.',
+        icon: Barcode,
+        href: '/app/work/codes',
+      },
+      {
+        title: 'Upload CSV',
+        description: 'Open uploads and manage CSV inputs for work tools.',
+        icon: Upload,
+        href: '/app/uploads',
+      },
+      {
+        title: 'Run Script',
+        description: 'Open the existing script-related workflow entry point.',
+        icon: Wrench,
+        href: '/app/work/users',
+      },
+      {
+        title: 'Open KB',
+        description: 'Jump into the knowledge base and reference content.',
+        icon: BookOpen,
+        href: '/app/kb',
+      },
+    ],
   },
 ];
 
@@ -97,25 +156,16 @@ const externalLinks = [
   { label: 'Internal Dashboards', href: '/app/work/ai-metrics' },
 ];
 
-function CollapsibleSection({ title, subtitle, defaultOpen = true, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-
+function DomainSection({ title, description, children }) {
   return (
-    <section className="work-hub-section">
-      <header className="work-hub-section__header">
+    <section className="work-hub-domain-section">
+      <header className="work-hub-domain-section__header">
         <div>
           <strong>{title}</strong>
-          {subtitle ? <small>{subtitle}</small> : null}
+          {description ? <small>{description}</small> : null}
         </div>
-        <button
-          type="button"
-          className={open ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
-          onClick={() => setOpen((current) => !current)}
-        >
-          {open ? 'Collapse' : 'Expand'}
-        </button>
       </header>
-      {open ? <div className="work-hub-section__body">{children}</div> : null}
+      <div className="work-hub-domain-section__body">{children}</div>
     </section>
   );
 }
@@ -257,16 +307,21 @@ export function WorkHubPage() {
         </div>
       </section>
 
-      <CollapsibleSection
-        title="Core Domains"
-        subtitle="Primary operational domains grouped by responsibility."
-      >
-        <div className="work-domain-grid">
-          {domainCards.map((domain) => (
-            <DomainCard key={domain.title} domain={domain} onOpen={handleModuleOpen} />
-          ))}
-        </div>
-      </CollapsibleSection>
+      <div className="work-hub-domain-sections">
+        {groupedSections.map((section) => (
+          <DomainSection
+            key={section.title}
+            title={section.title}
+            description={section.description}
+          >
+            <div className="work-domain-grid">
+              {section.items.map((domain) => (
+                <DomainCard key={`${section.title}-${domain.title}`} domain={domain} onOpen={handleModuleOpen} />
+              ))}
+            </div>
+          </DomainSection>
+        ))}
+      </div>
 
       <details className="work-links-panel">
         <summary>

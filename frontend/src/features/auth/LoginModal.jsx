@@ -59,7 +59,7 @@ export function LoginModal({ open, onClose }) {
           <CardHeader
             eyebrow="westOS"
             title="Sign in to continue"
-            description="Authenticate to run protected actions."
+            description="Sign in with your westOS account."
           />
 
           <form onSubmit={onSubmit} className="login-page__form">

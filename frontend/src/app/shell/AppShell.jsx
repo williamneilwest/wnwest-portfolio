@@ -18,7 +18,6 @@ import { AssistantPopover } from '../../features/ai/components/AssistantPopover'
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { UserPanel } from '../../features/auth/UserPanel';
 import { AuthHeaderControl } from '../../features/auth/AuthHeaderControl';
-import { LoginModal } from '../../features/auth/LoginModal';
 
 const NAV_LAST_USED_KEY = 'westos.nav.lastUsed';
 const NAV_LAST_USED_MAP_KEY = 'westos.nav.lastUsedMap';
@@ -303,7 +302,6 @@ export function AppShell() {
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [navPreferences, setNavPreferences] = useState(() => getNavPreferences());
   const { authenticated, isAdmin } = useCurrentUser();
   const visibleModules = useMemo(() => {
@@ -512,12 +510,9 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    const onAuthRequired = () => setIsLoginModalOpen(true);
     const onNavPrefsChanged = () => setNavPreferences(getNavPreferences());
-    window.addEventListener('westos:auth-required', onAuthRequired);
     window.addEventListener('westos:nav-preferences-changed', onNavPrefsChanged);
     return () => {
-      window.removeEventListener('westos:auth-required', onAuthRequired);
       window.removeEventListener('westos:nav-preferences-changed', onNavPrefsChanged);
     };
   }, []);
@@ -712,7 +707,7 @@ export function AppShell() {
               </button>
             ) : null}
             <div className="shell__topbar-actions">
-              {showDesktopTopbarExtras ? <AuthHeaderControl onOpenLogin={() => setIsLoginModalOpen(true)} /> : null}
+              {showDesktopTopbarExtras ? <AuthHeaderControl onOpenLogin={() => navigate('/login')} /> : null}
               {showDesktopTopbarExtras && location.pathname.startsWith('/app/ai') ? (
                 <NavLink
                   to={location.pathname.startsWith('/app/ai/documents') ? '/app/ai' : '/app/ai/documents'}
@@ -776,7 +771,6 @@ export function AppShell() {
           <Outlet />
         </div>
       </main>
-      <LoginModal open={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
     </div>
   );
 }

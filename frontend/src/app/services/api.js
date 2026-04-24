@@ -1,5 +1,3 @@
-import { isWorkDomainHost } from '../constants/domain';
-
 const backendBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
 const aiBaseUrl = backendBaseUrl;
 
@@ -7,16 +5,6 @@ function handleUnauthorizedResponse(response) {
   if (response.status !== 401) {
     return;
   }
-
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (isWorkDomainHost()) {
-    return;
-  }
-
-  window.dispatchEvent(new CustomEvent('westos:auth-required'));
 }
 
 async function request(baseUrl, path, options = {}) {

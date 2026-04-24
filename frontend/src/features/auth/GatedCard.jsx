@@ -6,7 +6,7 @@ function openAuthModal() {
   if (typeof window === 'undefined') {
     return;
   }
-  window.dispatchEvent(new CustomEvent('westos:auth-required'));
+  window.location.assign('/login');
 }
 
 export function GatedCard({
