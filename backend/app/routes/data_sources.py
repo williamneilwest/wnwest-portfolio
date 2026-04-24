@@ -1312,10 +1312,6 @@ def delete_source_row(name: str):
 
 @data_sources_bp.get('/api/search-users')
 def search_users():
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
-
     query = str(request.args.get('q') or '').strip().lower()
     if not query:
         return jsonify([])
@@ -1334,10 +1330,6 @@ def users_search():
 
 @data_sources_bp.get('/api/users-source')
 def users_source_table():
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
-
     query = str(request.args.get('q') or '').strip()
     limit_raw = str(request.args.get('limit') or '200').strip()
     try:
@@ -1351,10 +1343,6 @@ def users_source_table():
 
 @data_sources_bp.get('/api/users-source/backup-search')
 def users_source_backup_search():
-    auth_error = require_auth()
-    if auth_error is not None:
-        return auth_error
-
     query = str(request.args.get('q') or '').strip()
     if len(query) < 2:
         return jsonify({'success': True, 'query': query, 'count': 0, 'items': [], 'source_name': ''})
