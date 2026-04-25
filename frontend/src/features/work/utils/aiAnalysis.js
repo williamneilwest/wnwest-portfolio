@@ -271,12 +271,12 @@ export function getTicketColumns(columns = []) {
   );
 
   return {
-    id: findColumn(columns, ID_PATTERNS),
-    title: findColumn(columns, TITLE_PATTERNS),
-    assignee: findColumn(columns, ASSIGNEE_PATTERNS),
-    status: findColumn(columns, STATUS_PATTERNS),
+    id: columns.includes('ticket_id') ? 'ticket_id' : findColumn(columns, ID_PATTERNS),
+    title: columns.includes('title') ? 'title' : findColumn(columns, TITLE_PATTERNS),
+    assignee: columns.includes('assignee') ? 'assignee' : findColumn(columns, ASSIGNEE_PATTERNS),
+    status: columns.includes('status') ? 'status' : findColumn(columns, STATUS_PATTERNS),
     active: findColumn(columns, ACTIVE_PATTERNS),
-    updated: findColumn(columns, UPDATED_PATTERNS),
+    updated: columns.includes('updated_at') ? 'updated_at' : findColumn(columns, UPDATED_PATTERNS),
     noteColumns: orderedNoteColumns,
   };
 }
@@ -314,6 +314,10 @@ export function dedupeNotes(notes = []) {
 }
 
 export function getTicketId(ticket, columns = Object.keys(ticket || {})) {
+  const canonicalId = normalizeValue(ticket?.ticket_id);
+  if (canonicalId) {
+    return canonicalId;
+  }
   const fieldMap = getTicketColumns(columns);
   const explicitId = normalizeValue(ticket?.[fieldMap.id]) || normalizeValue(ticket?.id);
   if (explicitId) {
@@ -333,16 +337,28 @@ export function getTicketId(ticket, columns = Object.keys(ticket || {})) {
 }
 
 export function getTicketTitle(ticket, columns = Object.keys(ticket || {})) {
+  const canonicalTitle = normalizeValue(ticket?.title);
+  if (canonicalTitle) {
+    return canonicalTitle;
+  }
   const fieldMap = getTicketColumns(columns);
   return normalizeValue(ticket?.[fieldMap.title]) || getTicketId(ticket, columns);
 }
 
 export function getTicketAssignee(ticket, columns = Object.keys(ticket || {})) {
+  const canonicalAssignee = normalizeValue(ticket?.assignee);
+  if (canonicalAssignee) {
+    return canonicalAssignee;
+  }
   const fieldMap = getTicketColumns(columns);
   return normalizeValue(ticket?.[fieldMap.assignee]) || 'Unassigned';
 }
 
 export function getTicketStatus(ticket, columns = Object.keys(ticket || {})) {
+  const canonicalStatus = normalizeValue(ticket?.status);
+  if (canonicalStatus) {
+    return canonicalStatus;
+  }
   const fieldMap = getTicketColumns(columns);
   return normalizeValue(ticket?.[fieldMap.status]) || 'Unknown';
 }
@@ -360,7 +376,7 @@ export function isActiveTicket(ticket, columns = Object.keys(ticket || {})) {
 
 export function getTicketNotes(ticket, columns = Object.keys(ticket || {})) {
   const fieldMap = getTicketColumns(columns);
-  const combinedNotes = resolve_combined_notes(ticket);
+  const combinedNotes = normalizeValue(ticket?.combined_notes) || resolve_combined_notes(ticket);
   const sourceColumns = combinedNotes
     ? ['combined_notes']
     : Array.from(
@@ -426,7 +442,7 @@ export function get_last_update_info(ticket, columns = Object.keys(ticket || {})
   const fieldMap = getTicketColumns(columns);
   const notes = getTicketNotes(ticket, columns);
   const lastNote = notes[0] || null;
-  const updatedAt = parseDate(ticket?.[fieldMap.updated]) || lastNote?.timestamp || null;
+  const updatedAt = parseDate(ticket?.updated_at) || parseDate(ticket?.[fieldMap.updated]) || lastNote?.timestamp || null;
   const daysSince =
     updatedAt ? Math.max(0, Math.floor((Date.now() - updatedAt.getTime()) / (24 * 60 * 60 * 1000))) : null;
 
@@ -452,9 +468,13 @@ function buildTicketSummaryPayload(ticket) {
   const columns = Object.keys(ticket || {});
   const fieldMap = getTicketColumns(columns);
   const notes = getTicketNotes(ticket, columns);
-  const metadataEntries = columns
+  const rawTicket = ticket?.raw && typeof ticket.raw === 'object' ? ticket.raw : null;
+  const metadataSource = rawTicket && Object.keys(rawTicket).length ? rawTicket : ticket;
+  const metadataColumns = Object.keys(metadataSource || {});
+  const metadataEntries = metadataColumns
     .filter((column) => !fieldMap.noteColumns.includes(column) && !isSuppressedTicketColumn(column))
-    .map((column) => [formatLabel(column), normalizeValue(ticket?.[column])])
+    .filter((column) => !['ticket_id', 'title', 'status', 'assignee', 'priority', 'opened_at', 'updated_at', 'combined_notes', 'raw'].includes(column))
+    .map((column) => [formatLabel(column), normalizeValue(metadataSource?.[column])])
     .filter(([, value]) => value);
 
   const workNotes = notes
@@ -481,6 +501,9 @@ function buildTicketSummaryPayload(ticket) {
       ['title', getTicketTitle(ticket, columns)],
       ['assigned_to', getTicketAssignee(ticket, columns)],
       ['status', getTicketStatus(ticket, columns)],
+      ['priority', normalizeValue(ticket?.priority)],
+      ['opened_at', normalizeValue(ticket?.opened_at)],
+      ['updated_at', normalizeValue(ticket?.updated_at)],
       ...metadataEntries,
       ['work_notes', workNotes],
       ['comments', comments],
@@ -592,7 +615,7 @@ export function findTicketById(dataset, ticketId) {
     return null;
   }
 
-  return dataset.rows.find((row) => getTicketId(row, dataset.columns) === ticketId) || null;
+  return dataset.rows.find((row) => normalizeValue(row?.ticket_id) === ticketId || getTicketId(row, dataset.columns) === ticketId) || null;
 }
 
 export function updateTicketAnalysis(dataset, ticketId, aiAnalysis) {

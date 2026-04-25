@@ -9,8 +9,8 @@ import {
 } from '../../app/services/api';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { Card, CardHeader } from '../../app/ui/Card';
+import { parseCsvText } from '../../app/utils/csvDataset';
 import { setCachedWorkDataset } from '../work/workDatasetCache';
-import { parseCsvText } from '../work/workDatasetCache';
 
 function normalizeValue(value) {
   return String(value ?? '').trim();

@@ -7,6 +7,7 @@ import { EmptyState } from '../../app/ui/EmptyState';
 import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { isCsvFile } from '../../app/utils/documentFiles';
+import { parseCsvText } from '../../app/utils/csvDataset';
 import {
   getDeviceLocationSource,
   getUserDevices,
@@ -22,7 +23,6 @@ import {
 import { SoftwareRegistryPage } from '../software/SoftwareRegistryPage';
 import { getCachedUsersFromMap, readUserGroupsCacheMap, upsertCachedUserRecord, writeUserGroupsCacheMap } from './userGroupsCache';
 import { GroupsSearchCard } from './components/GroupsSearchCard';
-import { parseCsvText } from './workDatasetCache';
 
 const DOMAIN_CONFIG = {
   users: {

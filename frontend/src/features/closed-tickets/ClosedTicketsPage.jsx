@@ -14,9 +14,9 @@ import { getUploadFile, getUploads, uploadDataFile } from '../../app/services/ap
 import { useCurrentUser } from '../../app/hooks/useCurrentUser';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { SectionHeader } from '../../app/ui/SectionHeader';
+import { parseCsvText } from '../../app/utils/csvDataset';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { isCsvFile } from '../../app/utils/documentFiles';
-import { parseCsvText } from '../work/workDatasetCache';
 
 const STATUS_COLUMN_HINTS = ['state', 'status', 'incident_state', 'ticket_state', 'task_state'];
 const ASSIGNEE_COLUMN_HINTS = ['assigned_to', 'assignee', 'owner', 'technician', 'tech', 'resolver', 'resolved_by', 'closed_by'];

@@ -179,6 +179,7 @@ export function DataCardList({
   const primaryField = config.primaryField || visibleColumns[0] || '';
   const secondaryField = config.secondaryField || visibleColumns[1] || '';
   const badgeField = config.badgeField || '';
+  const hideSubtitle = Boolean(config.hideSubtitle);
   const isTicketVariant = config.variant === 'ticket';
   const duplicateFirstNames = isTicketVariant
     ? (() => {
@@ -246,9 +247,11 @@ export function DataCardList({
                   </div>
                 </div>
 
-                <p className="dataset-card__subtitle dataset-card__subtitle--clamped dataset-card__subtitle--ticket-only" title={shortDescription || 'No short description available'}>
-                  {linkifyText(shortDescription || 'No short description available')}
-                </p>
+                {!hideSubtitle ? (
+                  <p className="dataset-card__subtitle dataset-card__subtitle--clamped dataset-card__subtitle--ticket-only" title={shortDescription || 'No short description available'}>
+                    {linkifyText(shortDescription || 'No short description available')}
+                  </p>
+                ) : null}
 
                 <div className="dataset-card__meta dataset-card__meta--ticket">
                   <span>

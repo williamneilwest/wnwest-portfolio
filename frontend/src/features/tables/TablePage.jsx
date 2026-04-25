@@ -5,6 +5,7 @@ import { getRecentCsvAnalyses, getRecentCsvAnalysisFile, getUploadFile, getUploa
 import { useBackNavigation } from '../../app/hooks/useBackNavigation';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
+import { parseCsvText } from '../../app/utils/csvDataset';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { DataTable } from '../../components/dataset/DataTable';
@@ -19,7 +20,7 @@ import {
   inferColumnType,
   setStoredVisibleColumns,
 } from './tableUtils';
-import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from '../work/workDatasetCache';
+import { getCachedWorkDataset, setCachedWorkDataset } from '../work/workDatasetCache';
 import { dedupeNotes, getTicketColumns, getTicketId, isSuppressedTicketColumn } from '../work/utils/aiAnalysis';
 
 const DATASET_COLUMN_PREFERENCE_KEY = 'westos.work.datasetColumns';

@@ -23,6 +23,7 @@ import { chatAI, getFeatureAgentId } from '../../app/services/aiClient';
 import { STORAGE_KEYS } from '../../app/constants/storageKeys';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
+import { parseCsvText } from '../../app/utils/csvDataset';
 import { Card, CardHeader } from '../../app/ui/Card';
 import { EmptyState } from '../../app/ui/EmptyState';
 import { ErrorBoundary } from '../../app/ui/ErrorBoundary';
@@ -43,7 +44,7 @@ import {
 } from '../../components/dataset/utils';
 import { DatasetPage } from '../../pages/dataset/DatasetPage';
 import { useCurrentUser } from '../../app/hooks/useCurrentUser';
-import { getCachedWorkDataset, parseCsvText, setCachedWorkDataset } from './workDatasetCache';
+import { getCachedWorkDataset, setCachedWorkDataset } from './workDatasetCache';
 import { dedupeNotes, getTicketAssignee, getTicketColumns, getTicketId, isSuppressedTicketColumn } from './utils/aiAnalysis';
 import { buildTicketRuleText, collectKbTagWordsFromKnowledgeBase, matchTicketRules } from './utils/ticketRules';
 import { IdentityAccessModule } from './components/IdentityAccessModule';
@@ -421,7 +422,7 @@ export function WorkPage({ readOnly = false }) {
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isUploadsExpanded, setIsUploadsExpanded] = useState(false);
   const [isEditDatasetOpen, setIsEditDatasetOpen] = useState(false);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('tickets');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState(() => (isActiveTicketsRoute ? 'tickets' : 'tickets'));
   const [datasetVisibleColumns, setDatasetVisibleColumns] = useState([]);
   const [columnFilters, setColumnFilters] = useState({});
   const [sortConfig, setSortConfig] = useState({ column: '', direction: 'asc' });
@@ -1262,7 +1263,7 @@ export function WorkPage({ readOnly = false }) {
       {aiError ? <p className="status-text status-text--error">{aiError}</p> : null}
       {isLoadingSavedRun ? <p className="status-text">Loading saved run dataset...</p> : null}
 
-      {(!isActiveTicketsRoute || analysis) ? (
+      {analysis ? (
         <>
           <input
             ref={fileInputRef}
@@ -1290,7 +1291,7 @@ export function WorkPage({ readOnly = false }) {
           ) : null}
 
           <div className="work-modules-stack">
-            {activeWorkspaceTab === 'tickets' ? (
+            {!isActiveTicketsRoute && activeWorkspaceTab === 'tickets' ? (
               <>
                 <ModuleCard title="Ticket Snapshot" collapsible>
                   <div className="dataset-metrics-grid">
@@ -1582,6 +1583,7 @@ export function WorkPage({ readOnly = false }) {
                                   variant: 'ticket',
                                   primaryField: 'number',
                                   secondaryField: datasetDescriptionColumn,
+                                  hideSubtitle: true,
                                   badgeField: 'state',
                                   getIndicators: (row) => {
                                     const rules = row?.__westos?.matchedRules || [];
@@ -1621,6 +1623,7 @@ export function WorkPage({ readOnly = false }) {
                                   variant: 'ticket',
                                   primaryField: 'number',
                                   secondaryField: datasetDescriptionColumn,
+                                  hideSubtitle: true,
                                   badgeField: 'state',
                                   getIndicators: (row) => {
                                     const rules = row?.__westos?.matchedRules || [];

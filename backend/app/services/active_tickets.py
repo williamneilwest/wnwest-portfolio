@@ -10,6 +10,7 @@ from pathlib import Path
 from .data_processing import normalize_headers
 from .data_sources.manager import get_source
 from ..utils.storage import get_uploads_dir
+from ..utils.note_cleaner import clean_note_blob
 
 
 LOGGER = logging.getLogger(__name__)
@@ -50,6 +51,24 @@ PRIORITY_PATTERNS = (
     re.compile(r'severity', re.IGNORECASE),
     re.compile(r'impact', re.IGNORECASE),
     re.compile(r'urgency', re.IGNORECASE),
+)
+OPENED_AT_PATTERNS = (
+    re.compile(r'opened', re.IGNORECASE),
+    re.compile(r'created', re.IGNORECASE),
+    re.compile(r'opened_at', re.IGNORECASE),
+    re.compile(r'opened_on', re.IGNORECASE),
+)
+UPDATED_AT_PATTERNS = (
+    re.compile(r'updated', re.IGNORECASE),
+    re.compile(r'modified', re.IGNORECASE),
+    re.compile(r'last_updated', re.IGNORECASE),
+    re.compile(r'sys_updated_on', re.IGNORECASE),
+)
+DESCRIPTION_PATTERNS = (
+    re.compile(r'^description$', re.IGNORECASE),
+    re.compile(r'full_description', re.IGNORECASE),
+    re.compile(r'issue_description', re.IGNORECASE),
+    re.compile(r'details', re.IGNORECASE),
 )
 ACTIVE_BLOCKLIST = ('closed', 'resolved', 'complete', 'completed', 'done', 'cancelled', 'canceled')
 TICKET_NUMBER_VALUE_PATTERN = re.compile(r'\b(?:INC|TASK|REQ)\s*[-_]?\s*\d+\b', re.IGNORECASE)
@@ -149,7 +168,8 @@ def _parse_csv_bytes(content):
     normalization_fallback_rows = 0
 
     for index, row in enumerate(rows):
-        normalized, fallback_used = normalize_ticket_row(row)
+        normalized = canonicalize_ticket_row(row, headers)
+        fallback_used = bool(normalized.get('combined_notes')) and not clean_note_value(row.get('combined_notes'))
         rows[index] = normalized
         if fallback_used:
             normalization_fallback_rows += 1
@@ -177,7 +197,6 @@ def _parse_csv_bytes(content):
 
 def _dataset_from_rows(rows):
     source_rows = rows if isinstance(rows, list) else []
-    normalized_rows = []
     key_order = []
 
     for row in source_rows:
@@ -187,14 +206,18 @@ def _dataset_from_rows(rows):
             if key and key not in key_order:
                 key_order.append(key)
 
-        header_map = dict(zip(key_order, normalize_headers(key_order), strict=False))
-        aligned = {header_map.get(str(key), str(key)): value for key, value in source_row.items()}
-        normalized, _ = normalize_ticket_row(aligned)
-        normalized_rows.append(normalized)
-
     discovered_columns = normalize_headers(key_order)
     if 'combined_notes' not in discovered_columns:
         discovered_columns.append('combined_notes')
+
+    normalized_rows = []
+    header_map = dict(zip(key_order, normalize_headers(key_order), strict=False))
+
+    for row in source_rows:
+        source_row = row if isinstance(row, dict) else {}
+        aligned = {header_map.get(str(key), str(key)): value for key, value in source_row.items()}
+        normalized = canonicalize_ticket_row(aligned, discovered_columns)
+        normalized_rows.append(normalized)
 
     return {
         'columns': discovered_columns,
@@ -358,6 +381,15 @@ def clean_note_value(value):
     return text
 
 
+def _clean_text_value(value):
+    text = str(value or '').strip()
+    if not text:
+        return ''
+    if text.lower() in EMPTY_NOTE_TOKENS:
+        return ''
+    return text
+
+
 def _resolve_row_value(row, keys):
     for key in keys:
         if key not in row:
@@ -366,6 +398,28 @@ def _resolve_row_value(row, keys):
         if cleaned:
             return cleaned, key
     return '', ''
+
+
+def _resolve_text_value(row, keys):
+    for key in keys:
+        if key not in row:
+            continue
+        text = _clean_text_value(row.get(key))
+        if text:
+            return text
+    return ''
+
+
+def _resolve_pattern_value(row, patterns):
+    if not isinstance(row, dict):
+        return ''
+    for pattern in patterns:
+        for key, value in row.items():
+            if pattern.search(str(key or '')):
+                text = _clean_text_value(value)
+                if text:
+                    return text
+    return ''
 
 
 def resolve_combined_notes(row):
@@ -394,6 +448,104 @@ def resolve_combined_notes(row):
             chunks.append(description)
 
     return '\n\n'.join(chunks).strip()
+
+
+def _clean_ticket_text(value):
+    return clean_note_blob(value)
+
+
+def _resolve_ticket_assignee(row, columns):
+    assignee_column = _find_assignee_column(columns if isinstance(columns, list) else [])
+    if assignee_column:
+        assignee_value = _clean_text_value(row.get(assignee_column))
+        if assignee_value:
+            return assignee_value
+    return _resolve_pattern_value(row, ASSIGNEE_PATTERNS)
+
+
+def _resolve_ticket_status(row, columns):
+    status_column = _resolve_column(columns if isinstance(columns, list) else [], STATUS_PATTERNS)
+    if status_column:
+        status_value = _clean_text_value(row.get(status_column))
+        if status_value:
+            return status_value
+    return _resolve_pattern_value(row, STATUS_PATTERNS)
+
+
+def _resolve_ticket_opened_at(row):
+    return _resolve_text_value(
+        row,
+        ('opened_at', 'opened_on', 'sys_created_on', 'created_at', 'created_on', 'opened'),
+    ) or _resolve_pattern_value(row, OPENED_AT_PATTERNS)
+
+
+def _resolve_ticket_updated_at(row):
+    return _resolve_text_value(
+        row,
+        ('updated_at', 'updated_on', 'sys_updated_on', 'modified_at', 'last_updated'),
+    ) or _resolve_pattern_value(row, UPDATED_AT_PATTERNS)
+
+
+def _resolve_ticket_description(row, title=''):
+    description = _resolve_text_value(
+        row,
+        ('description', 'u_task_1.description', 'full_description', 'issue_description'),
+    ) or _resolve_pattern_value(row, DESCRIPTION_PATTERNS)
+    cleaned = _clean_ticket_text(description)
+    if cleaned:
+        return cleaned
+    return title
+
+
+def canonicalize_ticket_row(row, columns=None):
+    existing_row = dict(row) if isinstance(row, dict) else {}
+    raw_source = existing_row.get('raw') if isinstance(existing_row.get('raw'), dict) else existing_row
+    source_row = dict(raw_source) if isinstance(raw_source, dict) else {}
+    normalized_legacy, _ = normalize_ticket_row(source_row)
+    field_names = list(columns) if isinstance(columns, list) and columns else list(normalized_legacy.keys())
+
+    ticket_id = _clean_text_value(normalized_legacy.get('ticket_id')) or _row_ticket_id(normalized_legacy, field_names)
+    title = _resolve_ticket_title(normalized_legacy, field_names) or ticket_id or 'Untitled ticket'
+    status = _resolve_ticket_status(normalized_legacy, field_names)
+    assignee = _resolve_ticket_assignee(normalized_legacy, field_names)
+    priority = _resolve_ticket_priority(normalized_legacy, field_names)
+    opened_at = _resolve_ticket_opened_at(normalized_legacy)
+    updated_at = _resolve_ticket_updated_at(normalized_legacy)
+    combined_notes = _clean_ticket_text(normalized_legacy.get('combined_notes') or resolve_combined_notes(normalized_legacy))
+    description = _resolve_ticket_description(normalized_legacy, title=title)
+
+    enriched = {
+        **existing_row,
+        **normalized_legacy,
+        'ticket_id': ticket_id,
+        'title': title,
+        'status': status,
+        'assignee': assignee,
+        'priority': priority,
+        'opened_at': opened_at,
+        'updated_at': updated_at,
+        'description': description,
+        'combined_notes': combined_notes,
+        'raw': source_row,
+    }
+
+    # Backfill legacy fields for transition safety without removing any original keys.
+    if ticket_id:
+        enriched.setdefault('id', ticket_id)
+        if not _clean_text_value(enriched.get('number')):
+            enriched['number'] = ticket_id
+    if title and not _clean_text_value(enriched.get('short_description')):
+        enriched['short_description'] = title
+    if assignee and not _clean_text_value(enriched.get('assigned_to')):
+        enriched['assigned_to'] = assignee
+    if priority and not _clean_text_value(enriched.get('Priority')):
+        enriched['Priority'] = priority
+    if status and not _clean_text_value(enriched.get('State')):
+        enriched['State'] = status
+    if description and not _clean_text_value(enriched.get('description')):
+        enriched['description'] = description
+
+    return enriched
 
 
 def normalize_ticket_row(row):
@@ -474,18 +626,18 @@ def normalize_ticket(ticket):
                 return text
         return ''
 
-    ticket_id = _pick('number', 'Number')
+    ticket_id = _pick('ticket_id', 'number', 'Number', 'id')
     if not ticket_id and isinstance(row, dict):
         ticket_id = _row_ticket_id(row, list(row.keys()))
 
-    title = _pick('short_description', 'Short description')
+    title = _pick('title', 'short_description', 'Short description')
     if not title and ticket_id:
         title = ticket_id
 
     return {
         'id': ticket_id,
         'title': title,
-        'assigned_to': _pick('assigned_to', 'Assigned to', 'Assignee'),
+        'assigned_to': _pick('assignee', 'assigned_to', 'Assigned to', 'Assignee'),
         'status': _pick('status', 'State'),
         'priority': _pick('priority', 'Priority'),
     }
@@ -576,7 +728,7 @@ def load_active_ticket_dataset(force_reload=False):
         cached_name = (_cached_metadata or {}).get('file_name') if isinstance(_cached_metadata, dict) else None
         cached_mtime = (_cached_metadata or {}).get('file_mtime') if isinstance(_cached_metadata, dict) else None
         if current_name == cached_name and current_mtime == cached_mtime:
-            _cached_dataset['rows'] = _ensure_combined_notes(_cached_dataset.get('rows', []))
+            _cached_dataset['rows'] = [canonicalize_ticket_row(row, _cached_dataset.get('columns', [])) for row in _ensure_combined_notes(_cached_dataset.get('rows', []))]
             return _cached_dataset
 
         if _cached_metadata is None:
@@ -681,6 +833,8 @@ def get_ticket_by_id(ticket_id):
     dataset = load_active_ticket_dataset()
     ticket_id_norm = str(ticket_id or '').strip()
     for row in dataset['rows']:
+        if str(row.get('ticket_id') or '').strip() == ticket_id_norm:
+            return row
         if _row_ticket_id(row, dataset['columns']) == ticket_id_norm:
             return row
 
@@ -703,10 +857,16 @@ def update_ticket_assignee(ticket_id, assignee):
     updated = False
     ticket_id_norm = str(ticket_id or '').strip()
     for row in dataset['rows']:
-        if _row_ticket_id(row, dataset['columns']) != ticket_id_norm:
+        row_ticket_id = str(row.get('ticket_id') or '').strip() or _row_ticket_id(row, dataset['columns'])
+        if row_ticket_id != ticket_id_norm:
             continue
 
         row[assignee_column] = assignee
+        if isinstance(row.get('raw'), dict):
+            row['raw'][assignee_column] = assignee
+        row['assignee'] = assignee
+        if not _clean_text_value(row.get('assigned_to')):
+            row['assigned_to'] = assignee
         updated = True
         break
 

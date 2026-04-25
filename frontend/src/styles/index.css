@@ -2359,19 +2359,19 @@ textarea {
 }
 
 .work-hub-section--compact {
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
 .work-hub-section__header {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.55rem;
+  gap: 0.35rem;
 }
 
 .work-hub-section__header strong {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   line-height: 1.2;
 }
 
@@ -2384,26 +2384,26 @@ textarea {
 
 .work-hub-section__body {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.45rem;
 }
 
 .work-hub-domain-sections {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .work-hub-domain-section {
   display: grid;
-  gap: 0.7rem;
-  padding: 0.9rem;
+  gap: 0.5rem;
+  padding: 0.72rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
+  border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
   box-shadow: 0 16px 34px rgba(4, 10, 8, 0.18);
 }
 
 .work-hub-domain-section--compact {
-  gap: 0.6rem;
+  gap: 0.45rem;
 }
 
 .work-hub-domain-section--core {
@@ -2418,12 +2418,12 @@ textarea {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.8rem;
+  gap: 0.5rem;
 }
 
 .work-hub-domain-section__header strong {
   display: block;
-  font-size: 0.98rem;
+  font-size: 0.88rem;
   line-height: 1.2;
 }
 
@@ -2437,7 +2437,7 @@ textarea {
 
 .work-hub-domain-section__body {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
 .work-hub-search {
@@ -2446,9 +2446,9 @@ textarea {
 
 .work-hub-search__input {
   width: 100%;
-  min-height: 2.5rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
+  min-height: 2.2rem;
+  padding: 0.52rem 0.72rem;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
@@ -2477,12 +2477,13 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  min-height: 2.5rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 12px;
+  min-height: 2.2rem;
+  padding: 0.42rem 0.68rem;
+  border-radius: 10px;
   text-decoration: none;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 650;
+  font-size: 0.84rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
   transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
@@ -2508,9 +2509,9 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 8px;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 7px;
   color: #b6f5ec;
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.24);
@@ -3121,8 +3122,8 @@ textarea {
   display: grid;
   gap: 0.55rem;
   min-height: 100%;
-  padding: 0.78rem 0.82rem;
-  border-radius: 14px;
+  padding: 0.62rem 0.68rem;
+  border-radius: 12px;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: none;
   background:
@@ -3153,17 +3154,17 @@ textarea {
 
 .work-domain-card__head {
   display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .work-domain-card__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.55rem;
-  height: 1.55rem;
-  border-radius: 8px;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 7px;
   color: #b6f5ec;
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.28);
@@ -3171,21 +3172,21 @@ textarea {
 }
 
 .work-domain-card__copy {
-  display: grid;
-  gap: 0.24rem;
+  display: block;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .work-domain-card__title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .work-domain-card h3 {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   line-height: 1.2;
 }
 
@@ -3219,13 +3220,6 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.work-domain-card p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  line-height: 1.35;
 }
 
 .hardware-workspace-card,
@@ -4101,6 +4095,10 @@ textarea {
   margin: 0;
   font-size: 0.84rem;
   line-height: 1.3;
+}
+
+.module--dataset-surface:not(.table-page-neutral) .dataset-card__subtitle--ticket-only {
+  display: none;
 }
 
 .dataset-card__meta {

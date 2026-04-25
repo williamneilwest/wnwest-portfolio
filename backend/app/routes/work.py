@@ -17,6 +17,7 @@ from .email_upload import (
 )
 from ..services.active_tickets import (
     build_todo_from_tickets,
+    canonicalize_ticket_row,
     compute_ticket_metrics,
     SOURCE_EMAIL,
     get_ticket_by_id,
@@ -355,7 +356,7 @@ def get_ticket(ticket_id):
     if source_key:
         source_ticket = _find_ticket_in_source(source_key, ticket_id)
         if source_ticket:
-            return success_response(source_ticket)
+            return success_response(canonicalize_ticket_row(source_ticket))
 
     try:
         ticket = get_ticket_by_id(ticket_id)

@@ -27,7 +27,6 @@ export function WorkCard({ item, onOpen, featured = false }) {
             <h3>{item.title}</h3>
             <ArrowRight className="work-domain-card__arrow" size={14} aria-hidden="true" />
           </div>
-          <p>{item.description}</p>
         </div>
       </div>
     </Link>

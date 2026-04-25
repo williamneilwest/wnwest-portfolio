@@ -6,7 +6,6 @@ export function WorkQuickActions({ actions, onOpen, searchValue, onSearchChange 
       <header className="work-hub-section__header">
         <div>
           <strong>Quick Actions</strong>
-          <small>Start with the most common work tasks, then move into the deeper modules below.</small>
         </div>
       </header>
 

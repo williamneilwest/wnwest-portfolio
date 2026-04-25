@@ -1,4 +1,5 @@
 export function WorkSection({ title, description, children, compact = false, prominent = false }) {
+  void description;
   const className = [
     'work-hub-domain-section',
     compact ? 'work-hub-domain-section--compact' : '',
@@ -12,7 +13,6 @@ export function WorkSection({ title, description, children, compact = false, pro
       <header className="work-hub-domain-section__header">
         <div>
           <strong>{title}</strong>
-          {description ? <small>{description}</small> : null}
         </div>
       </header>
       <div className="work-hub-domain-section__body">{children}</div>
