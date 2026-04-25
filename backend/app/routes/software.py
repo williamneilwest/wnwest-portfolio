@@ -9,6 +9,7 @@ from ..models.platform import SessionLocal, SoftwareRegistry, init_platform_db
 from ..services.authz import get_current_user, require_admin
 from ..services.software_registry_service import save_software_registry, sync_software_registry_from_latest_file
 from ..tools.document.csv_cleaner import normalize_headers, read_clean_table_rows
+from ..utils.deprecation import log_deprecated_route
 
 try:
     from openpyxl import load_workbook
@@ -181,6 +182,9 @@ def list_software_registry():
 @software_bp.post('/api/software/upload')
 @software_bp.post('/api/software-registry/upload')
 def upload_software_registry():
+    if request.path == '/api/software-registry/upload':
+        log_deprecated_route('/api/software-registry/upload', '/api/software/upload')
+
     admin_error = require_admin()
     if admin_error is not None:
         return admin_error

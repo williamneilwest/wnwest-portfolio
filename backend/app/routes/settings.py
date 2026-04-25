@@ -3,6 +3,7 @@ import os
 from flask import Blueprint, current_app, jsonify, request
 
 from ..services.settings_store import get_ai_settings, save_ai_settings
+from ..utils.deprecation import log_deprecated_route
 
 
 settings_bp = Blueprint('settings', __name__)
@@ -90,18 +91,27 @@ def _validate_pipeline(pipeline):
 @settings_bp.get('/api/settings')
 @settings_bp.get('/settings')
 def get_settings():
+    if request.path == '/settings':
+        log_deprecated_route('/settings', '/api/settings')
+
     return jsonify({'ai': _settings_payload()})
 
 
 @settings_bp.get('/api/settings/ai')
 @settings_bp.get('/settings/ai')
 def get_ai_settings_route():
+    if request.path == '/settings/ai':
+        log_deprecated_route('/settings/ai', '/api/settings/ai')
+
     return jsonify(_settings_payload())
 
 
 @settings_bp.post('/api/settings/ai')
 @settings_bp.post('/settings/ai')
 def update_ai_settings():
+    if request.path == '/settings/ai':
+        log_deprecated_route('/settings/ai', '/api/settings/ai')
+
     payload = request.get_json(silent=True) or {}
     models = payload.get('models') or {}
     pipeline = payload.get('pipeline') or {}

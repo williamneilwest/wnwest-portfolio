@@ -13,7 +13,6 @@ import {
   Shield,
   Upload,
   Users,
-  Wrench,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,80 +20,85 @@ import { getLatestTickets, getUploads } from '../../app/services/api';
 import { SectionHeader } from '../../app/ui/SectionHeader';
 import { formatDataFileName } from '../../app/utils/fileDisplay';
 import { storage } from '../../app/utils/storage';
+import { WorkCard } from './components/WorkCard';
+import { WorkQuickActions } from './components/WorkQuickActions';
+import { WorkSection } from './components/WorkSection';
 import { getCachedWorkDataset, setCachedWorkDataset } from './workDatasetCache';
 
 const LAST_ACTIVITY_KEY = 'westos.work.lastHubActivity';
 
 const groupedSections = [
   {
-    title: 'Tickets',
-    description: 'Open ticket workspaces for active and closed ticket review.',
+    title: 'Core Work',
+    description: 'The main ticket queues and review surfaces used throughout the day.',
+    prominent: true,
     items: [
       {
         title: 'Active Tickets',
-        description: 'Card-based triage view with fast ticket inspection and panel details.',
+        description: 'Open the active triage workspace for ticket review, notes, and summary actions.',
         icon: FileSpreadsheet,
         href: '/app/work/active-tickets',
       },
       {
         title: 'Closed Tickets',
-        description: 'Separate closed and resolved ticket review with assignee and timeframe filters.',
+        description: 'Review resolved and closed work with filters for assignee, timing, and follow-up.',
         icon: CheckCircle2,
         href: '/app/work/closed-tickets',
       },
     ],
   },
   {
+    title: 'Users & Access',
+    description: 'Jump into user lookup, group context, and user-adjacent device checks.',
+    items: [
+      {
+        title: 'Search User',
+        description: 'Open user search and review identity, groups, and nearby account actions.',
+        icon: Search,
+        href: '/app/work/users',
+      },
+      {
+        title: 'Groups',
+        description: 'Inspect membership and access context when group-based troubleshooting is needed.',
+        icon: Users,
+        href: '/app/work/users',
+      },
+      {
+        title: 'Devices',
+        description: 'Move from user context into device lookup when endpoint ownership matters.',
+        icon: Monitor,
+        href: '/app/work/devices',
+      },
+    ],
+  },
+  {
     title: 'Hardware',
-    description: 'Lookup and operational pages for endpoints, assets, and printers.',
+    description: 'Lookup and operational pages for endpoints, assets, and printer workflows.',
     items: [
       {
         title: 'Devices',
-        description: 'Computer lookup, assignment checks, and operational context.',
+        description: 'Open the device workspace for computer lookup, assignment checks, and context.',
         icon: Monitor,
         href: '/app/work/devices',
       },
       {
         title: 'Hardware',
-        description: 'Asset lookup and supporting investigation tooling.',
+        description: 'Review asset data and supporting hardware investigation tools.',
         icon: Shield,
         href: '/app/work/hardware',
       },
       {
         title: 'Printers',
-        description: 'Printer registration and group-driven assignment workflow.',
+        description: 'Handle printer registration and assignment workflows from one place.',
         icon: Printer,
         href: '/app/work/printers',
       },
     ],
   },
   {
-    title: 'Users & Groups',
-    description: 'Identity, group lookup, and user-centered work actions.',
-    items: [
-      {
-        title: 'Users',
-        description: 'User identity, groups, and account actions.',
-        icon: Users,
-        href: '/app/work/users',
-      },
-      {
-        title: 'Lookup User',
-        description: 'Open user search and group membership context.',
-        icon: Search,
-        href: '/app/work/users',
-      },
-      {
-        title: 'Lookup Device',
-        description: 'Jump into device lookup when working from user context.',
-        icon: Monitor,
-        href: '/app/work/devices',
-      },
-    ],
-  },
-  {
-    title: 'Software',
-    description: 'Application checks and deployment support actions.',
+    title: 'Tools',
+    description: 'Secondary utilities for software checks, codes, and knowledge reference.',
+    compact: true,
     items: [
       {
         title: 'Software',
@@ -102,32 +106,14 @@ const groupedSections = [
         icon: HardDrive,
         href: '/app/work/software',
       },
-    ],
-  },
-  {
-    title: 'Other Tools',
-    description: 'Utilities, uploads, scripts, codes, and knowledge resources.',
-    items: [
       {
         title: 'Codes',
-        description: 'Create and store QR/barcodes from text or uploads.',
+        description: 'Create and store QR or barcode assets from text or file input.',
         icon: Barcode,
         href: '/app/work/codes',
       },
       {
-        title: 'Upload CSV',
-        description: 'Open uploads and manage CSV inputs for work tools.',
-        icon: Upload,
-        href: '/app/uploads',
-      },
-      {
-        title: 'Run Script',
-        description: 'Open the existing script-related workflow entry point.',
-        icon: Wrench,
-        href: '/app/work/users',
-      },
-      {
-        title: 'Open KB',
+        title: 'Knowledge Base',
         description: 'Jump into the knowledge base and reference content.',
         icon: BookOpen,
         href: '/app/kb',
@@ -137,17 +123,9 @@ const groupedSections = [
 ];
 
 const quickActionChips = [
-  { label: 'Active Tickets', href: '/app/work/active-tickets', icon: FileSpreadsheet },
-  { label: 'Closed Tickets', href: '/app/work/closed-tickets', icon: CheckCircle2 },
-  { label: 'Hardware', href: '/app/work/hardware', icon: Shield },
-  { label: 'Register Printer', href: '/app/work/printers', icon: Printer },
-  { label: 'Lookup User', href: '/app/work/users', icon: Users },
-  { label: 'Lookup Device', href: '/app/work/devices', icon: Search },
-  { label: 'Open KB', href: '/app/kb', icon: BookOpen },
-  { label: 'Software', href: '/app/work/software', icon: HardDrive },
-  { label: 'Codes', href: '/app/work/codes', icon: Barcode },
+  { label: 'Active Tickets', href: '/app/work/active-tickets', icon: FileSpreadsheet, primary: true },
+  { label: 'Lookup User', href: '/app/work/users', icon: Search },
   { label: 'Upload CSV', href: '/app/uploads', icon: Upload },
-  { label: 'Run Script', href: '/app/work/users', icon: Wrench },
 ];
 
 const externalLinks = [
@@ -156,45 +134,10 @@ const externalLinks = [
   { label: 'Internal Dashboards', href: '/app/work/ai-metrics' },
 ];
 
-function DomainSection({ title, description, children }) {
-  return (
-    <section className="work-hub-domain-section">
-      <header className="work-hub-domain-section__header">
-        <div>
-          <strong>{title}</strong>
-          {description ? <small>{description}</small> : null}
-        </div>
-      </header>
-      <div className="work-hub-domain-section__body">{children}</div>
-    </section>
-  );
-}
-
-function DomainCard({ domain, onOpen }) {
-  return (
-    <Link
-      className="ui-card work-domain-card work-domain-card--nav"
-      to={domain.href}
-      onClick={() => onOpen({ title: domain.title, href: domain.href })}
-      state={{ from: '/app/work', label: 'Work Hub' }}
-    >
-      <div className="work-domain-card__head">
-        <span className="work-domain-card__icon" aria-hidden="true">
-          <domain.icon size={16} />
-        </span>
-        <div>
-          <h3>{domain.title}</h3>
-          <p>{domain.description}</p>
-        </div>
-      </div>
-      <small className="work-domain-card__hint">Click to open</small>
-    </Link>
-  );
-}
-
 export function WorkHubPage() {
   const [lastActivity, setLastActivity] = useState(() => storage.get(LAST_ACTIVITY_KEY) || null);
   const [latestUpload, setLatestUpload] = useState('None');
+  const [searchValue, setSearchValue] = useState('');
   const cachedDataset = getCachedWorkDataset();
 
   useEffect(() => {
@@ -282,44 +225,33 @@ export function WorkHubPage() {
         title="Work Hub"
       />
 
-      <section className="work-hub-section">
-        <header className="work-hub-section__header">
-          <div>
-            <strong>Quick Actions</strong>
-            <small>Run common actions immediately without navigating deeper.</small>
-          </div>
-        </header>
-        <div className="work-hub-section__body">
-          <div className="work-chip-row" role="group" aria-label="Quick action chips">
-            {quickActionChips.map((item) => (
-              <Link
-                key={item.label}
-                className="work-action-chip"
-                to={item.href}
-                onClick={() => handleModuleOpen({ title: item.label, href: item.href })}
-                state={{ from: '/app/work', label: 'Work Hub' }}
-              >
-                <item.icon size={13} />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <WorkQuickActions
+        actions={quickActionChips}
+        onOpen={handleModuleOpen}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+      />
 
       <div className="work-hub-domain-sections">
         {groupedSections.map((section) => (
-          <DomainSection
+          <WorkSection
             key={section.title}
             title={section.title}
             description={section.description}
+            compact={section.compact}
+            prominent={section.prominent}
           >
-            <div className="work-domain-grid">
-              {section.items.map((domain) => (
-                <DomainCard key={`${section.title}-${domain.title}`} domain={domain} onOpen={handleModuleOpen} />
+            <div className={`work-domain-grid${section.prominent ? ' work-domain-grid--core' : ''}`}>
+              {section.items.map((item) => (
+                <WorkCard
+                  key={`${section.title}-${item.title}`}
+                  item={item}
+                  onOpen={handleModuleOpen}
+                  featured={section.prominent}
+                />
               ))}
             </div>
-          </DomainSection>
+          </WorkSection>
         ))}
       </div>
 

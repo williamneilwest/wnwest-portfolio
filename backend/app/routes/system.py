@@ -6,6 +6,7 @@ from ..services.regression_service import run_regression_check
 from ..services.system_aggregator import build_system_map
 from ..services.system_metrics import build_system_status
 from ..services.system_validator import run_system_validation
+from ..utils.deprecation import log_deprecated_route
 
 system_bp = Blueprint('system', __name__)
 
@@ -13,6 +14,9 @@ system_bp = Blueprint('system', __name__)
 @system_bp.get('/flows/system/status')
 @system_bp.get('/api/system/status')
 def system_status():
+    if request.path == '/flows/system/status':
+        log_deprecated_route('/flows/system/status', '/api/system/status')
+
     return success_response(build_system_status())
 
 

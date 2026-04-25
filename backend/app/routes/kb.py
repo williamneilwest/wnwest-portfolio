@@ -16,6 +16,7 @@ from ..services.file_registry import upsert_file_metadata
 from ..services.tag_derivation import derive_tags
 from ..services.ticket_match import match_ticket_to_kb
 from ..models.reference import AIDocument, SessionLocal, init_db
+from ..utils.deprecation import log_deprecated_route
 from ..utils.storage import get_kb_category_dir, get_kb_dir
 
 
@@ -382,6 +383,9 @@ def handle_kb_email():
 @kb_bp.route("/kb", methods=["GET"])  # back-compat style
 @kb_bp.route("/api/kb", methods=["GET"])  # preferred API path
 def list_kb():
+    if request.path == '/kb':
+        log_deprecated_route('/kb', '/api/kb')
+
     # Optional filter: ?q=tag or comma-separated tags
     q = (request.args.get("q") or request.args.get("tag") or "").strip().lower()
     q_tags = [t for t in {p.strip().lower() for p in q.split(",")} if t]
@@ -490,6 +494,9 @@ def match_ticket_against_kb():
 @kb_bp.route("/kb/<path:category>/<path:filename>", methods=["GET"])
 @kb_bp.route("/api/kb/<path:category>/<path:filename>", methods=["GET"])  # alias
 def get_kb_file(category, filename):
+    if request.path.startswith('/kb/'):
+        log_deprecated_route('/kb/<path:category>/<path:filename>', '/api/kb/<path:category>/<path:filename>')
+
     # Serve with an inline disposition to favor in-browser viewing/printing where supported
     directory = _kb_category_dir(category)
     path = os.path.join(directory, filename)

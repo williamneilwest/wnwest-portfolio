@@ -2314,7 +2314,7 @@ textarea {
 
 .work-hub-cockpit {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
   width: min(100%, 1120px);
   margin: 0 auto;
 }
@@ -2348,12 +2348,18 @@ textarea {
 
 .work-hub-section {
   display: grid;
-  gap: 0.7rem;
-  padding: 1rem;
+  gap: 0.65rem;
+  padding: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.08), transparent 42%),
+    rgba(255, 255, 255, 0.02);
   box-shadow: 0 14px 32px rgba(4, 10, 8, 0.18);
+}
+
+.work-hub-section--compact {
+  gap: 0.55rem;
 }
 
 .work-hub-section__header {
@@ -2378,22 +2384,34 @@ textarea {
 
 .work-hub-section__body {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.6rem;
 }
 
 .work-hub-domain-sections {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.75rem;
 }
 
 .work-hub-domain-section {
   display: grid;
-  gap: 0.8rem;
-  padding: 1rem;
+  gap: 0.7rem;
+  padding: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
   box-shadow: 0 16px 34px rgba(4, 10, 8, 0.18);
+}
+
+.work-hub-domain-section--compact {
+  gap: 0.6rem;
+}
+
+.work-hub-domain-section--core {
+  border-color: rgba(34, 197, 94, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.09), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  box-shadow: 0 16px 34px rgba(4, 10, 8, 0.18), 0 0 0 1px rgba(34, 197, 94, 0.06);
 }
 
 .work-hub-domain-section__header {
@@ -2419,7 +2437,83 @@ textarea {
 
 .work-hub-domain-section__body {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.65rem;
+}
+
+.work-hub-search {
+  display: block;
+}
+
+.work-hub-search__input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.work-hub-search__input::placeholder {
+  color: var(--text-soft);
+}
+
+.work-hub-search__input:focus {
+  border-color: rgba(52, 211, 153, 0.38);
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.16);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.work-quick-actions-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.55rem;
+}
+
+.work-quick-action-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.work-quick-action-pill:hover,
+.work-quick-action-pill:focus-visible {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 12px 26px rgba(4, 10, 8, 0.18);
+  transform: translateY(-1px);
+}
+
+.work-quick-action-pill--primary {
+  border-color: rgba(34, 197, 94, 0.34);
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.18), transparent 46%),
+    rgba(34, 197, 94, 0.09);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.14), 0 10px 24px rgba(34, 197, 94, 0.12);
+}
+
+.work-quick-action-pill__leading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 8px;
+  color: #b6f5ec;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.24);
 }
 
 .system-service-card__actions {
@@ -3001,31 +3095,45 @@ textarea {
 .work-domain-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
+  gap: 0.6rem;
+}
+
+.work-domain-grid--core {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
 .work-domain-card {
   display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 0.65rem;
+  gap: 0.55rem;
   min-height: 100%;
-  padding: 0.85rem 0.9rem;
+  padding: 0.78rem 0.82rem;
   border-radius: 14px;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: none;
-  background: rgba(255, 255, 255, 0.02);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.02);
 }
 
 .work-domain-card--nav {
   text-decoration: none;
   color: inherit;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
 }
 
 .work-domain-card--nav:hover,
 .work-domain-card--nav:focus-visible {
   border-color: rgba(52, 211, 153, 0.3);
   background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 12px 24px rgba(4, 10, 8, 0.16);
+  transform: translateY(-1px);
+}
+
+.work-domain-card--featured {
+  border-color: rgba(34, 197, 94, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
 }
 
 .work-domain-card__head {
@@ -3047,9 +3155,28 @@ textarea {
   flex: 0 0 auto;
 }
 
+.work-domain-card__copy {
+  display: grid;
+  gap: 0.24rem;
+  min-width: 0;
+}
+
+.work-domain-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
 .work-domain-card h3 {
   margin: 0;
   font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.work-domain-card__arrow {
+  color: var(--text-soft);
+  flex: 0 0 auto;
 }
 
 .codes-image-wrap {
@@ -3080,10 +3207,10 @@ textarea {
 }
 
 .work-domain-card p {
-  margin: 0.2rem 0 0;
+  margin: 0;
   color: var(--text-muted);
   font-size: 0.76rem;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .hardware-workspace-card,
@@ -3102,14 +3229,6 @@ textarea {
 .hardware-record-card .data-table-wrap {
   width: 100%;
   max-width: 100%;
-}
-
-.work-domain-card__hint {
-  display: inline-flex;
-  margin-top: 0;
-  color: var(--text-soft);
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
 }
 
 .work-ticket-row {
@@ -3263,6 +3382,18 @@ textarea {
 .work-links-panel__body a:focus-visible {
   border-color: rgba(52, 211, 153, 0.3);
   background: rgba(255, 255, 255, 0.04);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .life-actions {

@@ -11,6 +11,7 @@ from werkzeug.utils import secure_filename
 
 from ..services.tag_derivation import derive_tags
 from ..services.file_registry import upsert_file_metadata, move_file_metadata, delete_file_metadata
+from ..utils.deprecation import log_deprecated_route
 from ..utils.storage import get_kb_category_dir, get_uploads_dir
 
 email_upload_bp = Blueprint("email_upload", __name__)
@@ -558,6 +559,9 @@ def handle_incoming_email():
 @email_upload_bp.route("/uploads", methods=["GET"])
 @email_upload_bp.route("/api/uploads", methods=["GET"])  # parallel API path (back-compat preserved)
 def list_uploads():
+    if request.path == '/uploads':
+        log_deprecated_route('/uploads', '/api/uploads')
+
     files = []
     uploads_dir = _uploads_dir()
 
@@ -605,6 +609,9 @@ def list_uploads():
 @email_upload_bp.route("/uploads/<path:filename>", methods=["GET"])
 @email_upload_bp.route("/api/uploads/<path:filename>", methods=["GET"])  # parallel API path
 def get_upload(filename):
+    if request.path.startswith('/uploads/'):
+        log_deprecated_route('/uploads/<path:filename>', '/api/uploads/<path:filename>')
+
     full_path = os.path.join(_uploads_dir(), filename)
     if not os.path.isfile(full_path):
         if request.path.startswith('/api/'):

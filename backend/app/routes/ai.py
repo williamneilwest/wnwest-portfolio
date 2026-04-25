@@ -32,6 +32,7 @@ from ..services.smart_analysis import (
     save_cached_result,
     smart_analysis_requested,
 )
+from ..utils.deprecation import log_deprecated_route
 
 
 ai_bp = Blueprint('ai', __name__)
@@ -326,6 +327,11 @@ def _run_smart_analysis(payload):
 @ai_bp.post('/api/ai/chat')
 @ai_bp.post('/chat')
 def chat():
+    if request.path == '/ai/chat':
+        log_deprecated_route('/ai/chat', '/api/ai/chat')
+    elif request.path == '/chat':
+        log_deprecated_route('/chat', '/api/ai/chat')
+
     raw_payload = request.get_json(silent=True) or {}
     selected_agent_id = str(raw_payload.get('agent_id') or '').strip()
     if not current_app.config.get('USE_AI_GATEWAY', False):
@@ -383,6 +389,11 @@ def chat():
 @ai_bp.post('/api/ai/v1/chat/completions')
 @ai_bp.post('/v1/chat/completions')
 def openai_chat():
+    if request.path == '/ai/v1/chat/completions':
+        log_deprecated_route('/ai/v1/chat/completions', '/api/ai/v1/chat/completions')
+    elif request.path == '/v1/chat/completions':
+        log_deprecated_route('/v1/chat/completions', '/api/ai/v1/chat/completions')
+
     if not current_app.config.get('USE_AI_GATEWAY', False):
         return jsonify({'error': {'message': 'AI gateway is disabled.', 'type': 'service_unavailable'}}), 503
     payload = _gateway_payload(request.get_json(silent=True) or {})
@@ -400,6 +411,9 @@ def openai_chat():
 @ai_bp.get('/api/ai/logs')
 @ai_bp.get('/ai/logs')
 def ai_logs():
+    if request.path == '/ai/logs':
+        log_deprecated_route('/ai/logs', '/api/ai/logs')
+
     try:
         limit = int(request.args.get('limit', 200))
     except (TypeError, ValueError):
@@ -412,6 +426,9 @@ def ai_logs():
 @ai_bp.get('/ai/health')
 @ai_bp.get('/api/ai/health')
 def health():
+    if request.path == '/ai/health':
+        log_deprecated_route('/ai/health', '/api/ai/health')
+
     return jsonify(
         build_health_payload(
             app_name=current_app.config['APP_NAME'],
@@ -424,6 +441,8 @@ def health():
 
 @ai_bp.post('/api/analyze/document')
 def analyze_document_manual():
+    log_deprecated_route('/api/analyze/document', '/api/ai/analyze-document')
+
     payload = request.get_json(silent=True) or {}
     file_path = str(payload.get('file_path') or payload.get('filePath') or '').strip()
     agent_id = str(payload.get('agent_id') or payload.get('agentId') or 'kb_ingestion').strip() or 'kb_ingestion'
@@ -458,6 +477,9 @@ def analyze_document_manual():
 @ai_bp.post('/api/ai/analyze-document')
 @ai_bp.post('/ai/analyze-document')
 def analyze_document_endpoint():
+    if request.path == '/ai/analyze-document':
+        log_deprecated_route('/ai/analyze-document', '/api/ai/analyze-document')
+
     if not _ai_analysis_enabled():
         return jsonify({'error': 'AI document analysis is disabled by environment configuration.'}), 503
 

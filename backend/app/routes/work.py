@@ -32,6 +32,7 @@ from ..services.metrics_service import generate_ticket_metrics
 from ..services.user_service import get_user_devices, get_user_full_context, resolve_user
 from ..services.authz import get_current_user
 from ..services.ai_client import build_compat_chat_response, call_gateway_chat
+from ..utils.deprecation import log_deprecated_route
 
 work_bp = Blueprint('work', __name__)
 LOGGER = logging.getLogger(__name__)
@@ -204,6 +205,13 @@ def upload_email_csv():
 @work_bp.get('/api/tickets')
 @work_bp.get('/api/tickets/latest')
 def latest_tickets():
+    if request.path == '/work/tickets':
+        log_deprecated_route('/work/tickets', '/api/work/tickets')
+    elif request.path == '/api/tickets':
+        log_deprecated_route('/api/tickets', '/api/work/tickets')
+    elif request.path == '/api/tickets/latest':
+        log_deprecated_route('/api/tickets/latest', '/api/work/tickets')
+
     try:
         payload = load_latest_ticket_payload()
         tickets = payload.get('tickets') if isinstance(payload.get('tickets'), list) else []
