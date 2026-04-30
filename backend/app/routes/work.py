@@ -33,6 +33,7 @@ from ..services.metrics_service import generate_ticket_metrics
 from ..services.user_service import get_user_devices, get_user_full_context, resolve_user
 from ..services.authz import get_current_user
 from ..services.ai_client import build_compat_chat_response, call_gateway_chat
+from ..services.smart_analysis import build_ticket_summary_fallback
 from ..utils.deprecation import log_deprecated_route
 
 work_bp = Blueprint('work', __name__)
@@ -423,9 +424,29 @@ def summarize_ticket(ticket_id):
     except ValueError as error:
         return error_response(str(error), 400)
     except Timeout:
-        return error_response('AI request timed out.', 504)
+        fallback = build_ticket_summary_fallback(ticket, 'AI request timed out.')
+        LOGGER.warning('Ticket summary AI timed out for %s; returning fallback summary.', ticket_id)
+        return success_response(
+            {
+                'ticket_id': str(ticket_id),
+                'summary': fallback,
+                'message': fallback,
+                'agent_id': ai_payload['agent_id'],
+                'fallback': True,
+            }
+        )
     except RequestException as error:
-        return error_response(f'AI request failed: {error}', 502)
+        fallback = build_ticket_summary_fallback(ticket, str(error))
+        LOGGER.warning('Ticket summary AI failed for %s; returning fallback summary: %s', ticket_id, error)
+        return success_response(
+            {
+                'ticket_id': str(ticket_id),
+                'summary': fallback,
+                'message': fallback,
+                'agent_id': ai_payload['agent_id'],
+                'fallback': True,
+            }
+        )
 
 
 @work_bp.post('/api/tickets/update-assignee')

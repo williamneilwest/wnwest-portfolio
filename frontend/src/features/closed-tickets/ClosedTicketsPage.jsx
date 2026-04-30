@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarCheck,
-  CheckCircle2,
   FileSpreadsheet,
   Loader2,
   Search,
   Settings,
   Upload,
-  UserCheck,
-  Users,
 } from 'lucide-react';
 import { getUploadFile, getUploads, uploadDataFile } from '../../app/services/api';
 import { useCurrentUser } from '../../app/hooks/useCurrentUser';
@@ -37,8 +33,8 @@ const DATE_COLUMN_HINTS = [
 const TICKET_ID_HINTS = ['ticket', 'number', 'ticket_number', 'incident', 'request', 'id'];
 const SUMMARY_HINTS = ['short_description', 'description', 'summary', 'title', 'subject'];
 const ALLOWED_CLOSED_STATUSES = new Set(['closed', 'closed complete', 'resolved']);
-const SAVED_CLOSED_TICKETS_FILE = 'ClosedTicketsLAH.csv';
-const SAVED_CLOSED_TICKETS_KEY = 'closedticketslah';
+const SAVED_CLOSED_TICKETS_FILE = 'TicketsLAH.csv';
+const SAVED_CLOSED_TICKETS_KEY = 'ticketslah';
 
 function getColumnScore(column, hints) {
   const normalized = String(column || '').toLowerCase();
@@ -67,7 +63,13 @@ function getUploadTitle(file) {
 }
 
 function findSavedClosedTicketsUpload(files) {
-  return (Array.isArray(files) ? files : []).find((file) => getUploadTitle(file) === SAVED_CLOSED_TICKETS_KEY) || null;
+  return (Array.isArray(files) ? files : [])
+    .filter((file) => getUploadTitle(file) === SAVED_CLOSED_TICKETS_KEY)
+    .sort((left, right) => {
+      const leftTime = Date.parse(left?.modifiedAt || '') || 0;
+      const rightTime = Date.parse(right?.modifiedAt || '') || 0;
+      return rightTime - leftTime;
+    })[0] || null;
 }
 
 function getCell(row, column) {
@@ -263,7 +265,7 @@ export function ClosedTicketsPage() {
   const [loadingDataset, setLoadingDataset] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [timeframe, setTimeframe] = useState('week');
+  const [timeframe, setTimeframe] = useState('day');
   const [anchorDate, setAnchorDate] = useState(toDateInputValue(new Date()));
   const [selectedTech, setSelectedTech] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -275,6 +277,7 @@ export function ClosedTicketsPage() {
     ticketIdColumn: '',
     summaryColumn: '',
   });
+  const savedUpload = useMemo(() => findSavedClosedTicketsUpload(uploads), [uploads]);
 
   useEffect(() => {
     let isMounted = true;
@@ -302,12 +305,13 @@ export function ClosedTicketsPage() {
   }, []);
 
   useEffect(() => {
-    if (loadingUploads || dataset.fileName) {
+    if (loadingUploads) {
       return;
     }
 
-    const savedUpload = findSavedClosedTicketsUpload(uploads);
     if (!savedUpload) {
+      setSavedUploadUrl('');
+      setDataset({ fileName: '', columns: [], rows: [] });
       setMessage(`${SAVED_CLOSED_TICKETS_FILE} has not been uploaded yet.`);
       return;
     }
@@ -340,7 +344,7 @@ export function ClosedTicketsPage() {
     return () => {
       isMounted = false;
     };
-  }, [dataset.fileName, loadingUploads, uploads]);
+  }, [loadingUploads, savedUpload?.filename, savedUpload?.url]);
 
   useEffect(() => {
     if (!dataset.columns.length) {
@@ -525,51 +529,61 @@ export function ClosedTicketsPage() {
         )}
       />
 
+      <Card className="closed-tickets-toolbar-card">
+        <details className="closed-tickets-toolbar-details">
+          <summary className="compact-toggle">
+            Quick Filters
+          </summary>
+          <div className="closed-tickets-toolbar-details__content">
+            <p className="status-text">Day view is the default. Expand this section to adjust filters.</p>
+            <div className="closed-tickets-filter-grid">
+              <label className="closed-tickets-field">
+                <span>Timeframe</span>
+                <select value={timeframe} onChange={(event) => setTimeframe(event.target.value)}>
+                  <option value="day">Day</option>
+                  <option value="week">Week</option>
+                  <option value="month">Month</option>
+                  <option value="year">Year</option>
+                </select>
+              </label>
+              <label className="closed-tickets-field">
+                <span>Selected date</span>
+                <input type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
+              </label>
+              <label className="closed-tickets-field">
+                <span>Technician</span>
+                <select value={selectedTech} onChange={(event) => setSelectedTech(event.target.value)}>
+                  <option value="all">All technicians</option>
+                  {techOptions.map((tech) => (
+                    <option key={tech} value={tech}>
+                      {tech}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="closed-tickets-field">
+                <span>Search tickets</span>
+                <span className="closed-tickets-search">
+                  <Search size={14} />
+                  <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Ticket, status, summary" />
+                </span>
+              </label>
+            </div>
+          </div>
+        </details>
+      </Card>
+
       {settingsOpen ? (
         <Card className="closed-tickets-settings-card">
           <CardHeader
             eyebrow="Settings"
-            title="Filters, saved CSV, and field mapping"
+            title="Saved CSV and field mapping"
             description={
               isAdmin
-                ? 'Adjust timeframe filters, replace the saved CSV, or tune detected columns.'
-                : 'Adjust timeframe filters or review detected columns.'
+                ? 'Replace the saved CSV or tune detected columns.'
+                : 'Review the saved CSV and detected columns.'
             }
           />
-          <div className="closed-tickets-filter-grid">
-            <label className="closed-tickets-field">
-              <span>Timeframe</span>
-              <select value={timeframe} onChange={(event) => setTimeframe(event.target.value)}>
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-                <option value="year">Year</option>
-              </select>
-            </label>
-            <label className="closed-tickets-field">
-              <span>Selected date</span>
-              <input type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
-            </label>
-            <label className="closed-tickets-field">
-              <span>Technician</span>
-              <select value={selectedTech} onChange={(event) => setSelectedTech(event.target.value)}>
-                <option value="all">All technicians</option>
-                {techOptions.map((tech) => (
-                  <option key={tech} value={tech}>
-                    {tech}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="closed-tickets-field">
-              <span>Search tickets</span>
-              <span className="closed-tickets-search">
-                <Search size={14} />
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Ticket, status, summary" />
-              </span>
-            </label>
-          </div>
-
           <div className="closed-tickets-source-grid">
             <p className="closed-tickets-saved-source">
               <FileSpreadsheet size={16} />
@@ -622,53 +636,6 @@ export function ClosedTicketsPage() {
           ) : null}
         </Card>
       ) : null}
-
-      <div className="closed-tickets-stat-grid">
-        <Card>
-          <div className="closed-tickets-stat">
-            <span className="closed-tickets-stat__icon">
-              <CheckCircle2 size={18} />
-            </span>
-            <div>
-              <strong>{timeframeTickets.length.toLocaleString()}</strong>
-              <small>{`Closed or resolved in ${selectedRangeLabel}`}</small>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className="closed-tickets-stat">
-            <span className="closed-tickets-stat__icon">
-              <Users size={18} />
-            </span>
-            <div>
-              <strong>{assigneeCounts.length.toLocaleString()}</strong>
-              <small>Technicians with closures</small>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className="closed-tickets-stat">
-            <span className="closed-tickets-stat__icon">
-              <UserCheck size={18} />
-            </span>
-            <div>
-              <strong>{displayedTickets.length.toLocaleString()}</strong>
-              <small>{selectedTech === 'all' ? 'Visible ticket rows' : `${selectedTech} ticket rows`}</small>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className="closed-tickets-stat">
-            <span className="closed-tickets-stat__icon">
-              <CalendarCheck size={18} />
-            </span>
-            <div>
-              <strong>{normalizedTickets.length.toLocaleString()}</strong>
-              <small>Closed or resolved in CSV</small>
-            </div>
-          </div>
-        </Card>
-      </div>
 
       <div className="closed-tickets-results-grid">
         <Card className="closed-tickets-leaderboard-card">

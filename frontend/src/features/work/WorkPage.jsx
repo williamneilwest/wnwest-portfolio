@@ -56,6 +56,11 @@ const PREVIEW_COLUMN_PREFERENCE_KEY = 'westos.work.previewColumns';
 const DATASET_COLUMN_PREFERENCE_KEY = 'westos.work.datasetColumns';
 const ACTIVE_TICKETS_FIXED_FILE = 'ActiveTicketsLAH.csv';
 
+function isActiveTicketsUploadName(fileName) {
+  const normalized = String(fileName || '').trim().toLowerCase();
+  return normalized === ACTIVE_TICKETS_FIXED_FILE.toLowerCase();
+}
+
 function parseAiSections(aiAnalysis) {
   const template = {
     summary: '',
@@ -438,13 +443,33 @@ export function WorkPage({ readOnly = false }) {
   });
   const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
   const csvUploads = useMemo(
-    () =>
-      uploadedFiles.filter((file) => {
+    () => {
+      const matchingUploads = uploadedFiles.filter((file) => {
         const filename = String(file?.filename || '').toLowerCase();
         const mime = String(file?.mimeType || '').toLowerCase();
-        return filename.endsWith('.csv') || mime.includes('csv');
-      }),
-    [uploadedFiles]
+        if (!(filename.endsWith('.csv') || mime.includes('csv'))) {
+          return false;
+        }
+        if (isActiveTicketsRoute) {
+          return isActiveTicketsUploadName(file?.filename);
+        }
+        return true;
+      });
+
+      if (isActiveTicketsRoute) {
+        return matchingUploads
+          .slice()
+          .sort((left, right) => {
+            const leftTime = Date.parse(left?.modifiedAt || '') || 0;
+            const rightTime = Date.parse(right?.modifiedAt || '') || 0;
+            return rightTime - leftTime;
+          })
+          .slice(0, 1);
+      }
+
+      return matchingUploads;
+    },
+    [isActiveTicketsRoute, uploadedFiles]
   );
 
   async function loadSavedAnalysisEntry(entry, { showLoading = true } = {}) {
@@ -1066,6 +1091,10 @@ export function WorkPage({ readOnly = false }) {
     setIsSubmitting(true);
 
     try {
+      if (isActiveTicketsRoute && !isActiveTicketsUploadName(file?.name)) {
+        throw new Error('Active Tickets only uses the latest upload named ActiveTicketsLAH.csv.');
+      }
+
       const result = await analyzeCsvFile(file);
       setAnalysis(result.data);
       const parsedDataset = parseCsvText(await file.text());
@@ -1128,6 +1157,13 @@ export function WorkPage({ readOnly = false }) {
     setIsUploadsExpanded(false);
 
     try {
+      if (isActiveTicketsRoute && !isActiveTicketsUploadName(file?.filename)) {
+        throw new Error('Active Tickets only uses uploads named ActiveTicketsLAH.csv.');
+      }
+      if (isActiveTicketsRoute && csvUploads.length && file?.url !== csvUploads[0]?.url) {
+        throw new Error('Active Tickets only uses the latest uploaded ActiveTicketsLAH.csv file.');
+      }
+
       const csvText = await getUploadFile(file.url);
       const parsedDataset = parseCsvText(csvText);
       const nextAnalysis = buildLocalAnalysis(file.filename, parsedDataset);

@@ -937,22 +937,29 @@ function getPrinterField(row, candidates) {
   return '';
 }
 
+function normalizePrinterName(value) {
+  const text = String(value || '').trim();
+  return text ? text.toUpperCase() : '';
+}
+
 function normalizePrinterRow(row, index) {
-  const name = getPrinterField(row, ['name', 'printer', 'printer_name', 'sharename']);
+  const serial = getPrinterField(row, ['serial', 'serial_number', 'u_printer_1']);
+  const name = getPrinterField(row, ['name', 'printer', 'printer_name', 'u_printer_1.name']);
   const shareName = getPrinterField(row, ['sharename', 'share_name', 'queue', 'queue_name']);
   const ipAddress = getPrinterField(row, ['portname', 'port_name', 'ip', 'ip_address', 'address']);
-  const status = getPrinterField(row, ['printerstatus', 'printer_status', 'status']);
-  const driver = getPrinterField(row, ['drivername', 'driver_name', 'driver']);
+  const model = getPrinterField(row, ['model', 'model_id', 'u_printer_1.model_id', 'printer_model']);
+  const macAddress = getPrinterField(row, ['mac_address', 'mac', 'macaddress', 'u_printer_1.mac_address']);
   const location = getPrinterField(row, ['location', 'site', 'room']);
   const comment = getPrinterField(row, ['comment', 'comments', 'description', 'notes']);
 
   return {
-    id: `${name || shareName || ipAddress || 'printer'}-${index}`,
-    name: name || shareName || 'Unnamed printer',
-    shareName,
+    id: `${serial || name || shareName || ipAddress || 'printer'}-${index}`,
+    serial,
+    name: normalizePrinterName(name || shareName) || 'UNNAMED PRINTER',
+    shareName: normalizePrinterName(shareName),
     ipAddress,
-    status,
-    driver,
+    model,
+    macAddress,
     location,
     comment,
     row,
@@ -962,16 +969,28 @@ function normalizePrinterRow(row, index) {
 function PrinterRecordCard({ printer }) {
   return (
     <article className="printer-record-card">
-      <div className="printer-record-card__main">
-        <strong>{printer.name}</strong>
-        <small>{printer.ipAddress || 'No IP/port listed'}</small>
+      <div className="printer-record-card__header">
+        <div className="printer-record-card__main">
+          <strong>{printer.name}</strong>
+        </div>
       </div>
-      <div className="printer-record-card__meta">
-        <span>{printer.status || 'Unknown status'}</span>
-        <span>{printer.location || 'No location'}</span>
-        <span>{printer.driver || 'No driver'}</span>
-      </div>
-      {printer.comment ? <p>{printer.comment}</p> : null}
+
+      <dl className="printer-record-card__details">
+        <div className="printer-record-card__detail">
+          <dt>Serial</dt>
+          <dd>{printer.serial || 'No serial listed'}</dd>
+        </div>
+        <div className="printer-record-card__detail">
+          <dt>IP / Port</dt>
+          <dd>{printer.ipAddress || 'No IP/port listed'}</dd>
+        </div>
+        <div className="printer-record-card__detail">
+          <dt>Model</dt>
+          <dd>{printer.model || 'No model listed'}</dd>
+        </div>
+      </dl>
+
+      {printer.comment ? <p className="printer-record-card__comment">{printer.comment}</p> : null}
     </article>
   );
 }
@@ -983,7 +1002,6 @@ function PrintersEntityWorkspace() {
   const [dataset, setDataset] = useState({ fileName: '', columns: [], rows: [] });
   const [query, setQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('cards');
   const [page, setPage] = useState(0);
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [loadingDataset, setLoadingDataset] = useState(false);
@@ -1118,27 +1136,26 @@ function PrintersEntityWorkspace() {
   const printers = useMemo(() => dataset.rows.map(normalizePrinterRow), [dataset.rows]);
   const filteredPrinters = useMemo(() => {
     const normalizedQuery = normalizeSearch(query);
-    if (!normalizedQuery) {
-      return printers;
-    }
-
-    return printers.filter((printer) => {
+    const matchingPrinters = !normalizedQuery ? printers : printers.filter((printer) => {
       const primaryText = [
         printer.name,
+        printer.serial,
         printer.shareName,
         printer.ipAddress,
+        printer.model,
         printer.location,
-        printer.driver,
-        printer.status,
+        printer.macAddress,
         printer.comment,
       ].join(' ').toLowerCase();
       return primaryText.includes(normalizedQuery);
     });
+
+    return [...matchingPrinters].sort((left, right) => left.name.localeCompare(right.name));
   }, [printers, query]);
 
   useEffect(() => {
     setPage(0);
-  }, [query, viewMode]);
+  }, [query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPrinters.length / PRINTER_PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages - 1);
@@ -1147,36 +1164,21 @@ function PrintersEntityWorkspace() {
     return filteredPrinters.slice(start, start + PRINTER_PAGE_SIZE);
   }, [clampedPage, filteredPrinters]);
 
-  const statusCounts = useMemo(() => {
-    const counts = new Map();
-    for (const printer of printers) {
-      const status = printer.status || 'Unknown';
-      counts.set(status, (counts.get(status) || 0) + 1);
+  const savedUpload = useMemo(() => findSavedPrinterUpload(uploads), [uploads]);
+  const lastUpdatedLabel = useMemo(() => {
+    const timestamp = savedUpload?.modifiedAt || '';
+    const parsed = Date.parse(timestamp);
+    if (!timestamp || Number.isNaN(parsed)) {
+      return 'Unknown';
     }
-    return [...counts.entries()]
-      .map(([status, count]) => ({ status, count }))
-      .sort((left, right) => right.count - left.count || left.status.localeCompare(right.status));
-  }, [printers]);
-
-  const topLocations = useMemo(() => {
-    const counts = new Map();
-    for (const printer of printers) {
-      const location = printer.location || 'Unknown';
-      counts.set(location, (counts.get(location) || 0) + 1);
-    }
-    return [...counts.entries()]
-      .map(([location, count]) => ({ location, count }))
-      .sort((left, right) => right.count - left.count || left.location.localeCompare(right.location))
-      .slice(0, 6);
-  }, [printers]);
+    return new Date(parsed).toLocaleString();
+  }, [savedUpload?.modifiedAt]);
 
   return (
     <div className="printers-workspace">
       <Card className="printers-results-card">
         <CardHeader
-          eyebrow="Printer Search"
           title="Printer Directory"
-          description={`${filteredPrinters.length.toLocaleString()} of ${printers.length.toLocaleString()} printer${printers.length === 1 ? '' : 's'} shown.`}
           action={(
             <button
               className={settingsOpen ? 'compact-toggle compact-toggle--active' : 'compact-toggle'}
@@ -1188,6 +1190,10 @@ function PrintersEntityWorkspace() {
           )}
         />
 
+        <div className="printers-last-updated">
+          <small>Last updated: {lastUpdatedLabel}</small>
+        </div>
+
         <div className="printers-directory-toolbar">
           <label className="settings-field printers-search-field">
             <span>Printer name or IP</span>
@@ -1197,15 +1203,6 @@ function PrintersEntityWorkspace() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Example: SDCASPECCLN1 or 10.171.85.107"
             />
-          </label>
-          <label className="printer-view-switch">
-            <input
-              checked={viewMode === 'table'}
-              type="checkbox"
-              onChange={(event) => setViewMode(event.target.checked ? 'table' : 'cards')}
-            />
-            <span aria-hidden="true" />
-            <strong>{viewMode === 'table' ? 'Table view' : 'Card view'}</strong>
           </label>
         </div>
 
@@ -1239,63 +1236,30 @@ function PrintersEntityWorkspace() {
 
         {filteredPrinters.length ? (
           <>
-            {viewMode === 'cards' ? (
-              <>
-                <div className="printer-card-list" aria-label="Printer result cards">
-                  {pagedPrinters.map((printer) => (
-                    <PrinterRecordCard key={printer.id} printer={printer} />
-                  ))}
-                </div>
-                <div className="printer-pagination">
-                  <button
-                    className="compact-toggle"
-                    disabled={clampedPage === 0}
-                    type="button"
-                    onClick={() => setPage((current) => Math.max(0, current - 1))}
-                  >
-                    Previous
-                  </button>
-                  <span>{`Page ${clampedPage + 1} of ${totalPages}`}</span>
-                  <button
-                    className="compact-toggle"
-                    disabled={clampedPage >= totalPages - 1}
-                    type="button"
-                    onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
-                  >
-                    Next
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="data-table-wrap printers-table-wrap">
-                <table className="data-table printers-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>IP / Port</th>
-                      <th>Status</th>
-                      <th>Location</th>
-                      <th>Driver</th>
-                      <th>Share</th>
-                      <th>Comment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPrinters.map((printer) => (
-                      <tr key={printer.id}>
-                        <td>{printer.name}</td>
-                        <td>{printer.ipAddress || '—'}</td>
-                        <td>{printer.status || '—'}</td>
-                        <td>{printer.location || '—'}</td>
-                        <td>{printer.driver || '—'}</td>
-                        <td>{printer.shareName || '—'}</td>
-                        <td>{printer.comment || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="printer-card-list" aria-label="Printer result cards">
+              {pagedPrinters.map((printer) => (
+                <PrinterRecordCard key={printer.id} printer={printer} />
+              ))}
+            </div>
+            <div className="printer-pagination">
+              <button
+                className="compact-toggle"
+                disabled={clampedPage === 0}
+                type="button"
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+              >
+                Previous
+              </button>
+              <span>{`Page ${clampedPage + 1} of ${totalPages}`}</span>
+              <button
+                className="compact-toggle"
+                disabled={clampedPage >= totalPages - 1}
+                type="button"
+                onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
+              >
+                Next
+              </button>
+            </div>
           </>
         ) : (
           <EmptyState
@@ -1304,31 +1268,6 @@ function PrintersEntityWorkspace() {
           />
         )}
       </Card>
-
-      <div className="printers-summary-grid">
-        <Card>
-          <CardHeader eyebrow="Statuses" title="Printer Status" />
-          <div className="printer-chip-list">
-            {statusCounts.length ? statusCounts.map((item) => (
-              <span className="printer-chip" key={item.status}>
-                <strong>{item.status}</strong>
-                <small>{item.count.toLocaleString()}</small>
-              </span>
-            )) : <span className="status-text">No status data loaded.</span>}
-          </div>
-        </Card>
-        <Card>
-          <CardHeader eyebrow="Locations" title="Top Locations" />
-          <div className="printer-chip-list">
-            {topLocations.length ? topLocations.map((item) => (
-              <span className="printer-chip" key={item.location}>
-                <strong>{item.location}</strong>
-                <small>{item.count.toLocaleString()}</small>
-              </span>
-            )) : <span className="status-text">No location data loaded.</span>}
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }
@@ -1707,7 +1646,7 @@ export function WorkDomainPage({ domain = 'users' }) {
 
   return (
     <section className="module">
-      {domain !== 'software' ? (
+      {domain !== 'software' && domain !== 'printers' ? (
         <SectionHeader
           tag={`/app/work/${domain}`}
           title={config.title}

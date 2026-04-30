@@ -447,6 +447,52 @@ def format_deep_message(parsed):
     return '\n'.join(lines)
 
 
+def build_ticket_summary_fallback(record, error_message=''):
+    normalized_record = record if isinstance(record, dict) else {}
+    ticket_id = _normalize_value(normalized_record.get('ticket_id'))
+    issue = _normalize_value(normalized_record.get('issue'))
+    latest_update = _normalize_value(normalized_record.get('latest_update'))
+    history_summary = _normalize_value(normalized_record.get('history_summary'))
+    status = _normalize_value(normalized_record.get('status'))
+    assigned_to = _normalize_value(normalized_record.get('assigned_to'))
+    error_text = _normalize_value(error_message)
+
+    summary_parts = []
+    if ticket_id and issue:
+        summary_parts.append(f'Ticket {ticket_id} is for {issue}.')
+    elif issue:
+        summary_parts.append(f'The ticket is for {issue}.')
+    elif ticket_id:
+        summary_parts.append(f'Ticket {ticket_id} needs review.')
+    else:
+        summary_parts.append('The ticket needs review.')
+
+    if latest_update:
+        summary_parts.append(f'The latest documented update says: {latest_update}.')
+    elif history_summary:
+        summary_parts.append(f'Recent ticket history includes: {history_summary}.')
+    else:
+        summary_parts.append('No detailed work notes were available in the payload.')
+
+    if status and assigned_to:
+        summary_parts.append(f'Current status is {status} and the ticket is assigned to {assigned_to}.')
+    elif status:
+        summary_parts.append(f'Current status is {status}.')
+    elif assigned_to:
+        summary_parts.append(f'The ticket is currently assigned to {assigned_to}.')
+
+    if latest_update and re.search(r'\bunable to\b', latest_update, re.IGNORECASE):
+        summary_parts.append('The available evidence shows troubleshooting is blocked by the condition described in the latest update rather than a confirmed final root cause.')
+        summary_parts.append('The next logical step is to remove that blocker and continue the pending investigation or reinstall path described in the latest work note.')
+    else:
+        summary_parts.append('The available evidence does not confirm a root cause yet, so the safest summary is to continue from the most recent technical note and validate the affected device or workflow directly.')
+
+    if error_text:
+        summary_parts.append(f'AI-generated analysis was unavailable because the upstream AI service returned: {error_text}.')
+
+    return ' '.join(part.strip() for part in summary_parts if part.strip())
+
+
 def build_output_payload(mode, parsed, meta):
     summary = _normalize_value(parsed.get('summary')) or 'No summary returned.'
     insights = parsed.get('insights') or []

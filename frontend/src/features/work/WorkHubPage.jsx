@@ -7,11 +7,9 @@ import {
   BookOpen,
   Link2,
   Mail,
-  Monitor,
   Printer,
   Search,
   Shield,
-  Upload,
   Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -63,24 +61,12 @@ const groupedSections = [
         icon: Users,
         href: '/app/work/users',
       },
-      {
-        title: 'Devices',
-        description: 'Move from user context into device lookup when endpoint ownership matters.',
-        icon: Monitor,
-        href: '/app/work/devices',
-      },
     ],
   },
   {
     title: 'Hardware',
     description: 'Lookup and operational pages for endpoints, assets, and printer workflows.',
     items: [
-      {
-        title: 'Devices',
-        description: 'Open the device workspace for computer lookup, assignment checks, and context.',
-        icon: Monitor,
-        href: '/app/work/devices',
-      },
       {
         title: 'Hardware',
         description: 'Review asset data and supporting hardware investigation tools.',
@@ -120,12 +106,6 @@ const groupedSections = [
       },
     ],
   },
-];
-
-const quickActionChips = [
-  { label: 'Active Tickets', href: '/app/work/active-tickets', icon: FileSpreadsheet, primary: true },
-  { label: 'Lookup User', href: '/app/work/users', icon: Search },
-  { label: 'Upload CSV', href: '/app/uploads', icon: Upload },
 ];
 
 const externalLinks = [
@@ -226,8 +206,6 @@ export function WorkHubPage() {
       />
 
       <WorkQuickActions
-        actions={quickActionChips}
-        onOpen={handleModuleOpen}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
       />

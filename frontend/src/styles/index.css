@@ -2440,20 +2440,74 @@ textarea {
   gap: 0.5rem;
 }
 
+.work-hub-search-panel {
+  margin-bottom: 0.9rem;
+}
+
 .work-hub-search {
-  display: block;
+  display: grid;
+  grid-template-columns: auto minmax(0, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+    rgba(9, 14, 22, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.work-hub-search__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 14px;
+  color: #9ae6b4;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.18), rgba(96, 165, 250, 0.12));
+  border: 1px solid rgba(154, 230, 180, 0.18);
+}
+
+.work-hub-search__copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.work-hub-search__copy strong {
+  font-size: 0.95rem;
+  line-height: 1.1;
+}
+
+.work-hub-search__copy small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.work-hub-search__field {
+  min-width: 0;
 }
 
 .work-hub-search__input {
   width: 100%;
-  min-height: 2.2rem;
-  padding: 0.52rem 0.72rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  min-height: 3rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--text);
   outline: none;
-  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  font-size: 0.94rem;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
 }
 
 .work-hub-search__input::placeholder {
@@ -2461,15 +2515,12 @@ textarea {
 }
 
 .work-hub-search__input:focus {
-  border-color: rgba(52, 211, 153, 0.38);
-  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.16);
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.work-quick-actions-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.55rem;
+  border-color: rgba(52, 211, 153, 0.42);
+  box-shadow:
+    0 0 0 4px rgba(52, 211, 153, 0.12),
+    0 10px 24px rgba(52, 211, 153, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
 }
 
 .work-quick-action-pill {
@@ -6444,11 +6495,27 @@ textarea {
   gap: 0.85rem;
 }
 
+.closed-tickets-toolbar-card,
 .closed-tickets-settings-card,
 .closed-tickets-leaderboard-card,
 .closed-tickets-table-card {
   display: grid;
   gap: 0.8rem;
+}
+
+.closed-tickets-toolbar-details > summary {
+  list-style: none;
+  width: fit-content;
+}
+
+.closed-tickets-toolbar-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.closed-tickets-toolbar-details__content {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
 }
 
 .closed-tickets-filter-grid,
@@ -6479,6 +6546,16 @@ textarea {
   border-radius: 10px;
   color: var(--text);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.closed-tickets-field select {
+  appearance: none;
+  background-color: #172033;
+}
+
+.closed-tickets-field select option {
+  color: var(--text);
+  background-color: #172033;
 }
 
 .closed-tickets-search {
@@ -6547,40 +6624,6 @@ textarea {
   inset: 0;
   opacity: 0;
   cursor: pointer;
-}
-
-.closed-tickets-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 0.75rem;
-}
-
-.closed-tickets-stat {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.closed-tickets-stat__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 12px;
-  color: #b6f5ec;
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(16, 185, 129, 0.22);
-  flex: 0 0 auto;
-}
-
-.closed-tickets-stat strong {
-  display: block;
-  font-size: 1.15rem;
-}
-
-.closed-tickets-stat small {
-  color: var(--text-soft);
 }
 
 .closed-tickets-results-grid {
@@ -7744,9 +7787,218 @@ textarea {
     max-height: none;
   }
 
-  .identity-module__context,
-  .identity-module__grid {
+.identity-module__context,
+.identity-module__grid {
+  grid-template-columns: 1fr;
+}
+}
+
+.printers-workspace {
+  display: grid;
+  gap: 1rem;
+}
+
+.printers-results-card {
+  overflow: hidden;
+}
+
+.printers-last-updated {
+  margin: -0.15rem 0 0.85rem;
+}
+
+.printers-last-updated small {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+}
+
+.printers-directory-toolbar {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.printers-search-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.printers-search-field > span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.printers-search-field input {
+  min-height: 3rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.printers-search-field input::placeholder {
+  color: var(--text-soft);
+}
+
+.printers-search-field input:focus {
+  border-color: rgba(56, 189, 248, 0.42);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.printer-card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.printer-record-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16);
+}
+
+.printer-record-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.printer-record-card__main {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.printer-record-card__main strong {
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.printer-record-card__main small {
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+}
+
+.printer-record-card__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: #d5f5ff;
+  background: rgba(14, 165, 233, 0.14);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.printer-record-card__details {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.printer-record-card__detail {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.printer-record-card__detail dt {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.printer-record-card__detail dd {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.printer-record-card__comment {
+  margin: 0;
+  padding-top: 0.2rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.printer-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.printers-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.printer-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.printer-chip {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.printer-chip strong {
+  font-size: 0.84rem;
+}
+
+.printer-chip small {
+  color: var(--text-soft);
+}
+
+@media (max-width: 960px) {
+  .printers-summary-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .printer-record-card__header,
+  .printer-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .printer-record-card__status {
+    white-space: normal;
+  }
+
+  .printer-record-card__detail {
+    grid-template-columns: 1fr;
+    gap: 0.18rem;
   }
 }
 

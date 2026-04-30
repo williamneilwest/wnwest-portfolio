@@ -82,10 +82,23 @@ NOTE_FIELD_CANDIDATES = {
     'description': ('description', 'u_task_1.description'),
     'short_description': ('short_description', 'u_task_1.short_description'),
 }
+ACTIVE_TICKETS_UPLOAD_STEM = 'activeticketslah'
 
 
 def _storage_root():
     return Path(os.getenv('BACKEND_DATA_DIR', '/app/data'))
+
+
+def _is_active_tickets_upload_name(filename):
+    name = str(filename or '').strip()
+    if not name:
+        return False
+
+    path = Path(name)
+    if path.suffix.lower() != '.csv':
+        return False
+
+    return path.stem.strip().lower() == ACTIVE_TICKETS_UPLOAD_STEM
 
 
 def _latest_csv_path():
@@ -115,8 +128,8 @@ def _format_file_mtime(value):
 
 def _resolve_active_ticket_dataset_path():
     uploads_dir = Path(get_uploads_dir())
-    latest_email_match = None
-    latest_email_mtime = -1.0
+    latest_upload_match = None
+    latest_upload_mtime = -1.0
 
     if uploads_dir.exists():
         for entry in uploads_dir.iterdir():
@@ -128,29 +141,19 @@ def _resolve_active_ticket_dataset_path():
                 continue
             if lower_name.endswith('.old') or lower_name.endswith('.meta.json'):
                 continue
-            if 'activetickets' not in lower_name:
-                continue
-
-            meta_path = Path(f'{entry}.meta.json')
-            if not meta_path.exists():
-                continue
-            try:
-                metadata = json.loads(meta_path.read_text(encoding='utf-8'))
-            except (OSError, json.JSONDecodeError):
-                continue
-            if str(metadata.get('source') or '').strip().lower() != SOURCE_EMAIL:
+            if not _is_active_tickets_upload_name(name):
                 continue
 
             try:
                 mtime = entry.stat().st_mtime
             except OSError:
                 mtime = 0
-            if mtime >= latest_email_mtime:
-                latest_email_mtime = mtime
-                latest_email_match = entry
+            if mtime >= latest_upload_mtime:
+                latest_upload_mtime = mtime
+                latest_upload_match = entry
 
-    if latest_email_match is not None:
-        return latest_email_match
+    if latest_upload_match is not None:
+        return latest_upload_match
 
     fixed_path = _storage_root() / 'work' / 'live' / 'ActiveTicketsLAH.csv'
     if fixed_path.exists():
